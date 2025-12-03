@@ -1,0 +1,16 @@
+[package]
+name = "friend_fi"
+version = "1.0.0"
+authors = []
+
+[addresses]
+friend_fi = "0xf7443a305c55ed501e0fcaa97c8bcc9e2e06664a88f6bae43f5170995ed6c9cf"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/movementlabsxyz/aptos-core.git"
+rev = "movement"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dev-dependencies]
