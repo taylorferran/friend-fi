@@ -7,30 +7,22 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
-
-function generateGroupId() {
-  const adjectives = ['cosmic', 'stellar', 'lunar', 'solar', 'astral', 'crystal', 'thunder', 'diamond', 'golden', 'silver'];
-  const nouns = ['crew', 'squad', 'gang', 'pack', 'tribe', 'club', 'circle', 'league', 'alliance', 'guild'];
-  const randomNum = Math.floor(Math.random() * 9999);
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return `${adj}-${noun}-${randomNum}`;
-}
+import { useMoveWallet } from '@/hooks/useMoveWallet';
 
 export default function CreateGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = usePrivy();
+  const { wallet, balance, createGroup } = useMoveWallet();
   
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
-  const [groupId, setGroupId] = useState(generateGroupId());
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
   if (ready && !authenticated) {
     router.push('/login');
     return null;
@@ -39,6 +31,17 @@ export default function CreateGroupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setTxHash(null);
+
+    if (!wallet) {
+      setError('Wallet not initialized');
+      return;
+    }
+
+    if (balance === 0) {
+      setError('Your wallet has no MOVE tokens. Please fund it first via Settings.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -53,51 +56,86 @@ export default function CreateGroupPage() {
     setLoading(true);
 
     try {
-      // TODO: Call Move smart contract to create group
-      
-      // Store group in session for current context
+      // Call the smart contract
+      const result = await createGroup(groupName, password);
+      setTxHash(result.hash);
+
+      // Store group info locally for reference
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
-        id: groupId,
+        id: result.groupId,
         name: groupName,
-        password: password, // Used for encryption/decryption
+        password: password,
       }));
 
       // Show success and redirect
-      alert('Group created successfully! Share your Group ID and Password with friends.');
-      router.push('/dashboard');
-    } catch (err) {
-      setError('Failed to create group. Please try again.');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create group. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      {/* Decorative background */}
-      <div className="fixed top-40 right-20 w-80 h-80 bg-[#7311d4]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="fixed bottom-40 left-20 w-64 h-64 bg-purple-900/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-lg relative z-10">
-        {/* Back button */}
         <Link 
           href="/dashboard" 
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
         >
           <span className="material-symbols-outlined">arrow_back</span>
-          <span className="text-sm font-medium">Back to Dashboard</span>
+          <span>Back to Dashboard</span>
         </Link>
 
-        {/* Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 p-4 bg-[#7311d4]/20 rounded-full w-fit">
-            <span className="material-symbols-outlined text-[#7311d4] text-4xl">group_add</span>
+          <div className="mx-auto mb-4 p-4 bg-primary border-2 border-text w-fit">
+            <span className="material-symbols-outlined text-text text-4xl">group_add</span>
           </div>
-          <h1 className="text-white text-3xl font-black mb-2">Create a New Group</h1>
-          <p className="text-[#ad92c9]">Set up a private prediction group and invite your friends.</p>
+          <h1 className="text-text text-3xl font-display font-bold mb-2">Create a New Group</h1>
+          <p className="text-accent font-mono">Set up a private prediction group and invite your friends.</p>
         </div>
 
-        {/* Form */}
+        {/* Wallet status banner */}
+        {wallet && balance === 0 && (
+          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary">warning</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
+                <p className="text-accent text-xs font-mono mt-1">
+                  Your Move wallet has no MOVE tokens. Go to{' '}
+                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
+                  {' '}to copy your address and fund it from the faucet.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {txHash && (
+          <div className="mb-6 p-4 border-2 border-green-600 bg-green-600/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-green-600">check_circle</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">Group created on-chain!</p>
+                <a 
+                  href={`https://explorer.movementnetwork.xyz/txn/${txHash}?network=testnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary text-xs font-mono hover:underline flex items-center gap-1 mt-1"
+                >
+                  View transaction <span className="material-symbols-outlined text-xs">open_in_new</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -110,46 +148,24 @@ export default function CreateGroupPage() {
               />
 
               <div className="flex flex-col w-full">
-                <label className="text-white text-base font-medium leading-normal pb-2">
-                  Description <span className="text-white/40">(optional)</span>
+                <label className="text-text text-base font-bold font-mono uppercase tracking-wider pb-2">
+                  Description <span className="text-accent">(optional)</span>
                 </label>
                 <textarea
                   rows={3}
                   placeholder="What's this group for?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-lg border border-[#4d3267] bg-[#261933] text-white placeholder:text-[#ad92c9]/60 p-4 text-base focus:outline-none focus:ring-2 focus:ring-[#7311d4]/50 focus:border-[#7311d4] resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col w-full">
-                <div className="flex items-center justify-between pb-2">
-                  <label className="text-white text-base font-medium">Group ID</label>
-                  <button 
-                    type="button" 
-                    onClick={() => setGroupId(generateGroupId())}
-                    className="text-[#7311d4] text-sm hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">refresh</span>
-                    Generate
-                  </button>
-                </div>
-                <Input
-                  value={groupId}
-                  onChange={(e) => setGroupId(e.target.value)}
-                  required
-                  className="font-mono"
-                  icon={<span className="material-symbols-outlined">tag</span>}
-                  hint="Share this ID with friends so they can join"
+                  className="w-full border-2 border-text bg-surface text-text placeholder:text-accent/60 p-4 text-base font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
 
               <div className="flex flex-col w-full">
                 <div className="flex items-center gap-2 pb-2">
-                  <label className="text-white text-base font-medium">Group Password</label>
+                  <label className="text-text text-base font-bold font-mono uppercase tracking-wider">Group Password</label>
                   <div className="group relative">
-                    <span className="material-symbols-outlined text-white/40 text-base cursor-help">help</span>
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-md bg-[#261933] border border-white/10 p-3 text-center text-xs text-white/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    <span className="material-symbols-outlined text-accent text-base cursor-help">help</span>
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-surface border-2 border-text p-3 text-center text-xs text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 font-mono">
                       This password encrypts all group data on-chain. Members need it to view and participate in bets.
                     </span>
                   </div>
@@ -166,14 +182,14 @@ export default function CreateGroupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#ad92c9] hover:text-white transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-accent hover:text-text transition-colors"
                   >
                     <span className="material-symbols-outlined">
                       {showPassword ? 'visibility_off' : 'visibility'}
                     </span>
                   </button>
                 </div>
-                <p className="text-white/40 text-xs mt-2">Minimum 6 characters. Share securely with friends.</p>
+                <p className="text-accent text-xs mt-2 font-mono">Minimum 6 characters. Share securely with friends.</p>
               </div>
 
               <Input
@@ -186,12 +202,11 @@ export default function CreateGroupPage() {
                 error={error}
               />
 
-              {/* Security Notice */}
-              <div className="flex items-start gap-3 p-4 bg-[#7311d4]/10 border border-[#7311d4]/30 rounded-lg">
-                <span className="material-symbols-outlined text-[#7311d4] text-xl">lock</span>
+              <div className="flex items-start gap-3 p-4 bg-primary/20 border-2 border-primary">
+                <span className="material-symbols-outlined text-text text-xl">lock</span>
                 <div>
-                  <p className="text-white text-sm font-medium">End-to-End Encryption</p>
-                  <p className="text-white/60 text-xs mt-1">
+                  <p className="text-text text-sm font-mono font-bold uppercase tracking-wider">End-to-End Encryption</p>
+                  <p className="text-accent text-xs mt-1 font-mono">
                     All group data is encrypted with your password before being stored on-chain. Even we can&apos;t see your bets!
                   </p>
                 </div>
@@ -202,9 +217,9 @@ export default function CreateGroupPage() {
                 Create Group
               </Button>
 
-              <p className="text-[#ad92c9] text-sm text-center">
+              <p className="text-accent text-sm text-center font-mono">
                 Want to join an existing group?{' '}
-                <Link href="/groups/join" className="text-[#7311d4] hover:underline font-medium">
+                <Link href="/groups/join" className="text-primary hover:underline font-bold">
                   Join here
                 </Link>
               </p>
@@ -215,4 +230,3 @@ export default function CreateGroupPage() {
     </div>
   );
 }
-

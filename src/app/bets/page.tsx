@@ -57,16 +57,16 @@ export default function BetsPage() {
   });
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 lg:p-8 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 pt-8 pb-8 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-white text-3xl lg:text-4xl font-black tracking-tight mb-2">My Bets</h1>
-              <p className="text-white/60">Track all your predictions and winnings.</p>
+              <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">My Bets</h1>
+              <p className="text-accent font-mono">Track all your predictions and winnings.</p>
             </div>
             <Link href="/bets/create">
               <Button>
@@ -80,26 +80,26 @@ export default function BetsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <Card>
               <CardContent className="text-center py-4">
-                <p className="text-white text-2xl font-bold">3</p>
-                <p className="text-white/50 text-sm">Total Bets</p>
+                <p className="text-text text-2xl font-display font-bold">3</p>
+                <p className="text-accent text-sm font-mono uppercase tracking-wider">Total Bets</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="text-center py-4">
-                <p className="text-white text-2xl font-bold">2</p>
-                <p className="text-white/50 text-sm">Active</p>
+                <p className="text-text text-2xl font-display font-bold">2</p>
+                <p className="text-accent text-sm font-mono uppercase tracking-wider">Active</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="text-center py-4">
-                <p className="text-[#10B981] text-2xl font-bold">1</p>
-                <p className="text-white/50 text-sm">Won</p>
+                <p className="text-green-600 text-2xl font-display font-bold">1</p>
+                <p className="text-accent text-sm font-mono uppercase tracking-wider">Won</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="text-center py-4">
-                <p className="text-white text-2xl font-bold">47.50</p>
-                <p className="text-white/50 text-sm">USDC Won</p>
+                <p className="text-text text-2xl font-display font-bold">47.50</p>
+                <p className="text-accent text-sm font-mono uppercase tracking-wider">USDC Won</p>
               </CardContent>
             </Card>
           </div>
@@ -110,10 +110,10 @@ export default function BetsPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                className={`px-4 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-colors border-2 ${
                   filter === f
-                    ? 'bg-[#7311d4] text-white'
-                    : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                    ? 'bg-primary border-text text-text'
+                    : 'bg-surface border-text text-text hover:bg-primary/20'
                 }`}
               >
                 {f}
@@ -130,23 +130,23 @@ export default function BetsPage() {
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded-full ${
+                          <span className={`text-xs font-mono font-bold uppercase tracking-wider px-2 py-1 border-2 ${
                             bet.status === 'active' 
-                              ? 'text-blue-400 bg-blue-500/20' 
-                              : 'text-green-400 bg-green-500/20'
+                              ? 'text-blue-600 border-blue-600 bg-blue-100' 
+                              : 'text-green-600 border-green-600 bg-green-100'
                           }`}>
                             {bet.status}
                           </span>
                           {bet.choice && (
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${
-                              bet.choice === 'yes' ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#E42575]/20 text-[#E42575]'
+                            <span className={`text-xs font-mono font-bold px-2 py-1 border-2 ${
+                              bet.choice === 'yes' ? 'bg-green-100 text-green-600 border-green-600' : 'bg-red-100 text-secondary border-secondary'
                             }`}>
                               Your bet: {bet.choice.toUpperCase()}
                             </span>
                           )}
                         </div>
-                        <h3 className="text-white font-bold text-lg mb-1">{bet.question}</h3>
-                        <p className="text-white/50 text-sm">
+                        <h3 className="text-text font-display font-bold text-lg mb-1">{bet.question}</h3>
+                        <p className="text-accent text-sm font-mono">
                           Pool: {bet.pool.toLocaleString()} USDC
                           {bet.amount && ` · Your stake: ${bet.amount} USDC`}
                         </p>
@@ -155,17 +155,17 @@ export default function BetsPage() {
                       <div className="flex items-center gap-4">
                         {bet.status === 'settled' && bet.won && (
                           <div className="text-right">
-                            <p className="text-[#10B981] font-bold">+{bet.winnings} USDC</p>
-                            <p className="text-white/40 text-xs">Won</p>
+                            <p className="text-green-600 font-display font-bold">+{bet.winnings} USDC</p>
+                            <p className="text-accent text-xs font-mono uppercase">Won</p>
                           </div>
                         )}
                         {bet.status === 'active' && (
                           <div className="text-right">
-                            <p className="text-white/70">{bet.endsAt}</p>
-                            <p className="text-white/40 text-xs">Ends</p>
+                            <p className="text-accent font-mono">{bet.endsAt}</p>
+                            <p className="text-accent/60 text-xs font-mono uppercase">Ends</p>
                           </div>
                         )}
-                        <span className="material-symbols-outlined text-white/40">chevron_right</span>
+                        <span className="material-symbols-outlined text-accent">chevron_right</span>
                       </div>
                     </div>
                   </CardContent>
@@ -177,8 +177,8 @@ export default function BetsPage() {
           {filteredBets.length === 0 && (
             <Card>
               <CardContent className="text-center py-12">
-                <span className="material-symbols-outlined text-white/20 text-5xl mb-4">casino</span>
-                <p className="text-white/60">No bets found</p>
+                <span className="material-symbols-outlined text-accent text-5xl mb-4">casino</span>
+                <p className="text-accent font-mono">No bets found</p>
               </CardContent>
             </Card>
           )}
@@ -187,4 +187,3 @@ export default function BetsPage() {
     </div>
   );
 }
-

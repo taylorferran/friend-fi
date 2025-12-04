@@ -43,11 +43,11 @@ export function Logo({ size = 'md', showText = true }: LogoProps) {
 
   return (
     <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-      <div className={`${sizeClasses[size]} text-[#7311d4]`}>
+      <div className={`${sizeClasses[size]} text-primary`}>
         <FriendsIcon className="w-full h-full" />
       </div>
       {showText && (
-        <span className={`${textSizes[size]} font-bold text-white`}>Friend-Fi</span>
+        <span className={`${textSizes[size]} font-display font-bold text-text tracking-tighter`}>Friend-Fi</span>
       )}
     </Link>
   );

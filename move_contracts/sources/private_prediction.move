@@ -6,7 +6,7 @@
 /// key features:
 ///
 /// 1. USDC ESCROW SYSTEM
-///    - Uses Aptos fungible_asset framework with a secondary store (best practice)
+///    - Uses Aptos fungible_asset framework with a secondary store 
 ///    - All wagers are held in a contract-controlled escrow object
 ///    - 0.3% fee (rake) is taken on every wager deposited
 ///    - Admin can withdraw accumulated fees
@@ -526,6 +526,12 @@ module friend_fi::private_prediction_market {
         // STEP 2: Create global State
         // =====================================================================
 
+        init_state_internal(admin);
+    }
+
+    /// Internal function to initialize just the State (no escrow).
+    /// Used by both init() and test-only initialization.
+    fun init_state_internal(admin: &signer) {
         let groups = vector::empty<Group>();
         let bets = vector::empty<Bet>();
         let profile_addrs = vector::empty<address>();
@@ -537,6 +543,21 @@ module friend_fi::private_prediction_market {
             profile_addrs,
             profiles,
         });
+    }
+
+    #[test_only]
+    /// Test-only initialization that skips USDC escrow setup.
+    /// This allows unit testing of groups, bets, profiles without needing real USDC.
+    public fun init_for_testing(admin: &signer) {
+        let admin_addr = signer::address_of(admin);
+        
+        // Only the module deployer can initialize
+        assert!(admin_addr == admin_address(), E_NOT_ADMIN);
+
+        // Prevent double initialization
+        assert!(!exists<State>(admin_addr), E_ALREADY_INITIALIZED);
+
+        init_state_internal(admin);
     }
 
     // =========================================================================

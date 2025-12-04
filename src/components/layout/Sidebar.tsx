@@ -25,7 +25,7 @@ const bottomNavItems: NavItem[] = [
 ];
 
 function getAvatarUrl(seed: string) {
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=7311d4,E42575,10B981&backgroundType=gradientLinear`;
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
 }
 
 export function Sidebar() {
@@ -49,27 +49,27 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-[#191022]/30 p-4 backdrop-blur-sm border-r border-white/5 h-screen sticky top-0">
+      <aside className="hidden lg:flex w-64 flex-col bg-surface border-r-2 border-text h-screen sticky top-0">
         <div className="flex h-full flex-col justify-between">
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col">
             {/* Logo */}
-            <div className="px-2">
+            <div className="px-4 py-4 border-b-2 border-text">
               <Logo size="md" />
             </div>
 
             {/* User Info */}
             {user && (
-              <Link href="/settings" className="flex gap-3 px-2 group">
+              <Link href="/settings" className="flex gap-3 px-4 py-4 border-b-2 border-text group hover:bg-primary/20 transition-colors">
                 <img 
                   src={avatarUrl}
                   alt="Your avatar"
-                  className="w-10 h-10 rounded-full ring-2 ring-white/10 group-hover:ring-[#7311d4]/50 transition-all"
+                  className="w-10 h-10 border-2 border-text group-hover:border-primary transition-colors"
                 />
                 <div className="flex flex-col overflow-hidden">
-                  <h2 className="text-white text-sm font-medium truncate group-hover:text-[#7311d4] transition-colors">
+                  <h2 className="text-text text-sm font-bold font-mono truncate group-hover:text-accent transition-colors">
                     {displayName}
                   </h2>
-                  <p className="text-neutral-400 text-xs truncate">
+                  <p className="text-accent text-xs font-mono truncate">
                     {user.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : 'No wallet'}
                   </p>
                 </div>
@@ -77,52 +77,52 @@ export function Sidebar() {
             )}
 
             {/* Main Navigation */}
-            <nav className="flex flex-col gap-2">
+            <nav className="flex flex-col">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                    flex items-center gap-3 px-4 py-3 border-b-2 border-text transition-all font-mono uppercase text-sm tracking-wider
                     ${isActive(item.href) 
-                      ? 'bg-[#7311d4]/20 text-white' 
-                      : 'text-neutral-400 hover:bg-[#7311d4]/10 hover:text-white'
+                      ? 'bg-primary text-text' 
+                      : 'text-text hover:bg-primary/20'
                     }
                   `}
                 >
                   <span className="material-symbols-outlined">{item.icon}</span>
-                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="font-bold">{item.label}</p>
                 </Link>
               ))}
             </nav>
           </div>
 
           {/* Bottom Navigation */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col border-t-2 border-text">
             {bottomNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                  flex items-center gap-3 px-4 py-3 border-b-2 border-text transition-all font-mono uppercase text-sm tracking-wider
                   ${isActive(item.href) 
-                    ? 'bg-[#7311d4]/20 text-white' 
-                    : 'text-neutral-400 hover:bg-[#7311d4]/10 hover:text-white'
+                    ? 'bg-primary text-text' 
+                    : 'text-text hover:bg-primary/20'
                   }
                 `}
               >
                 <span className="material-symbols-outlined">{item.icon}</span>
-                <p className="text-sm font-medium">{item.label}</p>
+                <p className="font-bold">{item.label}</p>
               </Link>
             ))}
             
             {user && (
               <button
                 onClick={() => logout()}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-neutral-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                className="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-secondary/20 transition-colors font-mono uppercase text-sm tracking-wider"
               >
                 <span className="material-symbols-outlined">logout</span>
-                <p className="text-sm font-medium">Sign Out</p>
+                <p className="font-bold">Sign Out</p>
               </button>
             )}
           </div>
@@ -130,7 +130,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-[#0a0510]/95 backdrop-blur-lg border-b border-white/10 px-4 py-3 safe-area-pt">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b-2 border-text px-4 py-3 safe-area-pt">
         <div className="flex items-center justify-between">
           <Logo size="sm" />
           {user && (
@@ -138,7 +138,7 @@ export function Sidebar() {
               <img 
                 src={avatarUrl}
                 alt="Your avatar"
-                className="w-8 h-8 rounded-full ring-2 ring-white/10"
+                className="w-8 h-8 border-2 border-text"
               />
             </Link>
           )}

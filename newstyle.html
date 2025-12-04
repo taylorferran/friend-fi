@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Friend-Fi Home Feed</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#F5C301",
+                        "background-light": "#F3F0E9",
+                        "background-dark": "#320E5A",
+                        "text-light": "#211408",
+                        "text-dark": "#F3F0E9",
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#3B1863",
+                        "accent-light": "#593D2C",
+                        "accent-dark": "#D1C3E8",
+                        "secondary": "#E60023",
+                    },
+                    fontFamily: {
+                        display: ["'Libre Baskerville'", "serif"],
+                        mono: ["'Space Mono'", "monospace"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0px",
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-mono text-text-light dark:text-text-dark antialiased">
+<div class="flex flex-col min-h-screen">
+<header class="bg-background-light dark:bg-surface-dark border-b-2 border-text-light dark:border-text-dark text-text-light dark:text-text-dark sticky top-0 z-10">
+<div class="flex items-center justify-between mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="flex items-center">
+<h1 class="font-display font-bold text-2xl tracking-tighter py-4">Friend-Fi</h1>
+</div>
+<nav class="hidden md:flex items-center border-l-2 border-r-2 border-text-light dark:border-text-dark h-full">
+<a class="flex items-center justify-center w-24 h-full py-5 border-r-2 border-text-light dark:border-text-dark bg-primary text-text-light" href="#">
+<span class="material-icons">home</span>
+</a>
+<a class="px-6 py-5 hover:bg-primary/20 transition-colors duration-200" href="#">FEED</a>
+<a class="px-6 py-5 border-l-2 border-text-light dark:border-text-dark hover:bg-primary/20 transition-colors duration-200" href="#">DISCOVER</a>
+<a class="px-6 py-5 border-l-2 border-text-light dark:border-text-dark hover:bg-primary/20 transition-colors duration-200" href="#">MESSAGES</a>
+<a class="px-6 py-5 border-l-2 border-text-light dark:border-text-dark hover:bg-primary/20 transition-colors duration-200" href="#">PROFILE</a>
+</nav>
+<div class="flex items-center">
+<button class="md:hidden p-2">
+<span class="material-icons text-3xl">menu</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-0 border-x-2 border-text-light dark:border-text-dark min-h-full">
+<div class="lg:col-span-1 lg:border-r-2 border-text-light dark:border-text-dark">
+<div class="bg-primary p-8 md:p-12 border-b-2 border-text-light dark:border-text-dark">
+<h2 class="font-display text-4xl md:text-5xl text-text-light leading-tight">Your world, connected. See what friends are up to.</h2>
+</div>
+<div class="p-6">
+<h3 class="font-mono font-bold uppercase tracking-widest mb-4">Friends Online (6)</h3>
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<img alt="Avatar for Alex" class="w-10 h-10 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAz8Y_k7oGuKKFcLENLn4XgoJKoSmY6vM5_3Gpf3r_wlJohqGcj43LJWqLE2s3gjrH6gFMxXgSFAEm38EzBgxLmJSsAte9_aeeHRDNzlmZdSNHwZ04CWBa-o1fqvS6Oa_rSYyKPYBusko_hA9K189qumTsmiaIx_maAOV_0Pg-g8Ho04O4MDWudDhYu2iqJeKHfGFSIt7p821CqMToiFZuS3TtkFZJZf-Zu3P9v5Cs3at7b1OBF580Ryamdaezm5h2i88oS3gHQi8kX"/>
+<span>Alex</span>
+</div>
+<div class="flex items-center gap-4">
+<img alt="Avatar for Brenda" class="w-10 h-10 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbmxtUCgQYlQnN2nVXmgOjGcCvsf8QERCaLw2c5eqH3057FtJKn5JhhizY136WfeL_Vwwz3MPVRqZOJ3wusJMcWY8XBAb2QBUpppoFc1gHdJaS5QkbmWECdxJWoFQVTCjJfPs6MGUhLP77hXOA97DPEjpdm5Zgc_YiwNilE7p0-BqUhZ0iJ5x-mWJvIqRG4OCYZxhNJGH4ccHmqVYXqtasLO-yScsNrUpQqlpNzlSTasE-QPM8_HfXJUMWe8QK2gFPGUMOioyGS86x"/>
+<span>Brenda</span>
+</div>
+<div class="flex items-center gap-4">
+<img alt="Avatar for Charlie" class="w-10 h-10 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhkZ_C-e2YYqGyMkwqOGVGMxz12x6HObhc8yoBkd7rUBNnzE7rXIHqL1zwvXPu0wclowULw578Qzk3YbMmytFlaVh2jwkhR_pFamzs2UjSGWTHmaRkZlfSXobbcfmfnMM-n988YrsN2VePLlZ6tsVG-KTtxYwaUMobdyQjCnAP4Zbdz0HwNrdM6LgK19MmH-MtHaHn7rILefFy-kPGyzwWDfpxUfS619kxNc0sZsI_KAZlTGZWvt6_cbEtrpW9WEuqvZj3M-r62Hvw"/>
+<span>Charlie</span>
+</div>
+<div class="flex items-center gap-4">
+<img alt="Avatar for Diana" class="w-10 h-10 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEe3FGl0idqJIw_UUAfvxvVXAYKbWCHdsnLhtB26D5Z4NydXO-x4yYVtT6xLuZAC5muaJiDKV9kTTlrg_7ZEgaoU-ncb-htj8ETdzHY4phmqrYMo_9Xd9djqfLRK3GsCBohue7-kY7k_WMfW_iQOI9xLN5KsqPwlLV1m-DmS1C2rNT9FIqaLYcrQ8dzRjuZod1_IWQ_OVawMOjq6iQ0Tz2hOuqTKT81zKyEdOpbpsMYq8qhaTY3WZNTORyF2PBjwzaNV0E6u3xwUrS"/>
+<span>Diana</span>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-2 bg-accent-light dark:bg-background-dark">
+<div class="p-6 border-b-2 border-text-light dark:border-text-dark">
+<textarea class="w-full bg-background-light dark:bg-surface-dark border-2 border-text-light dark:border-text-dark p-4 focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-text-light/70 dark:placeholder:text-text-dark/70" placeholder="What's new?" rows="3"></textarea>
+<button class="mt-4 w-full bg-primary text-text-light font-bold py-3 border-2 border-text-light dark:border-text-dark hover:bg-yellow-500 transition-colors duration-200">POST</button>
+</div>
+<div class="p-6 border-b-2 border-text-light dark:border-text-dark">
+<div class="flex items-start gap-4 mb-4">
+<img alt="Avatar for Emily" class="w-12 h-12 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiXpk0bYoRA4eEFIALNO7i7stZZxIGkTqZkK4RxUk4qDobbdJiLvzMuh7vpx8lwmo8m9MYjIlRs1H9QWqHHd4sXlhXfB85sY0NvHEKpTRol56zZkhU-ka334oQ79CQCwa5I9Cc0wKQj1juQaTExUwVReN6jY76QXp91Qs8fQ3nxKVJZYCrJzp5TtUJCz51y41WR7zebh7twcMbYco2KI323iAOr7mzhvw7acmjewLJGveFHuakUZwtru6TaEwAZDLGToY6rgHGn7y5"/>
+<div>
+<p class="font-bold">Emily Carter</p>
+<p class="text-sm opacity-70">2 hours ago</p>
+</div>
+</div>
+<p class="mb-4">Just finished a beautiful hike at Sunrise Peak! The view was absolutely worth the climb. 🌄</p>
+<div class="border-4 border-secondary p-2">
+<img alt="A scenic mountain landscape with a person hiking on a trail" class="w-full h-auto object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBAQHXCGqzawf7lZAiad8gBWVtxQ8vlkrOykPwZnOgBvum6yf0kazvzMzNlMI_Oi2g7yG0TI9MjsvfjFTegIxYxBj_onlxMBWS6MCDelVFCV0AhgqOmECJF9OQxS2WYQgo9dak6EAJcGXdlp-VPNkHmBSwlJhBFvuTTHu9yGFcF1sRbn2YkHbAX-fSIugx1po8XWzAzZUT3agXvaa57Ikm6wIyXFDFfUpZwwv2VBp6J3AGaHfg2vaNiA9LiadW-OialV6rEUB7tn8v"/>
+</div>
+</div>
+<div class="p-6">
+<div class="flex items-start gap-4 mb-4">
+<img alt="Avatar for Frank" class="w-12 h-12 rounded-full border-2 border-text-light dark:border-text-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDp0oHAnKPHyjrs8lJJbj69XN3T335xVtoaQACjhTPoazgQVSL3y5t498P2w91_5aIl8wCth4GSjawhzTPZrsZDJ7Q78vKZYg-UgJjECOhPoxXFBY2MDSWw1LzXb3K5_dic58_Dh-QBVuDnHlyL2mBcR7sWKzY6tDJUaCJhpZf6wY48xN_z3kYrC66MeduLJhfbzqXTjkfq1tQ5UrXxeYk5Wngo3kXBZapTqmbUN5C5yW6T5-sPubYFkqCKy_KFtuj8sQbcwJRvk2lR"/>
+<div>
+<p class="font-bold">Frank Gomez</p>
+<p class="text-sm opacity-70">5 hours ago</p>
+</div>
+</div>
+<p>Finally launched my side project today. It's a small tool for organizing weekly tasks, but I'm proud of it. Check it out!</p>
+<a class="mt-2 inline-block font-bold text-primary hover:underline" href="#">#projectlaunch #devlife</a>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

@@ -8,7 +8,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 
-// Mock group data
 const mockGroup = {
   id: 'crypto-degens',
   name: 'Crypto Degens',
@@ -19,7 +18,6 @@ const mockGroup = {
   settledBets: 12,
 };
 
-// Mock members with P&L
 const mockMembers = [
   { id: '1', name: 'Michael', avatar: 'felix', pnl: 2450, bets: 15, winRate: 73, isOnline: true },
   { id: '2', name: 'Sarah', avatar: 'luna', pnl: 1820, bets: 12, winRate: 67, isOnline: true },
@@ -31,7 +29,7 @@ const mockMembers = [
 ];
 
 function getAvatarUrl(seed: string) {
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=7311d4,E42575,10B981&backgroundType=gradientLinear`;
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
 }
 
 export default function GroupPage() {
@@ -46,8 +44,13 @@ export default function GroupPage() {
 
   if (!ready || !authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#7311d4] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="brutalist-spinner">
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+        </div>
       </div>
     );
   }
@@ -56,31 +59,29 @@ export default function GroupPage() {
   const onlineCount = mockMembers.filter(m => m.isOnline).length;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 lg:p-8 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 pt-8 pb-8 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          {/* Back button */}
           <Link 
             href="/dashboard" 
-            className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6"
+            className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
           >
             <span className="material-symbols-outlined">arrow_back</span>
-            <span className="text-sm font-medium">Back to Dashboard</span>
+            <span>Back to Dashboard</span>
           </Link>
 
-          {/* Group Header */}
           <Card className="mb-6">
             <CardContent className="p-6 lg:p-8">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7311d4] to-[#E42575] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-white text-3xl">groups</span>
+                  <div className="w-16 h-16 bg-primary border-2 border-text flex items-center justify-center">
+                    <span className="material-symbols-outlined text-text text-3xl">groups</span>
                   </div>
                   <div>
-                    <h1 className="text-white text-2xl lg:text-3xl font-bold">{mockGroup.name}</h1>
-                    <p className="text-white/50 text-sm mt-1">{mockGroup.description}</p>
+                    <h1 className="text-text text-2xl lg:text-3xl font-display font-bold">{mockGroup.name}</h1>
+                    <p className="text-accent text-sm font-mono mt-1">{mockGroup.description}</p>
                   </div>
                 </div>
                 
@@ -96,37 +97,35 @@ export default function GroupPage() {
                 </div>
               </div>
 
-              {/* Stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-                <div className="bg-white/5 rounded-xl p-4">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Members</p>
+                <div className="bg-background border-2 border-text p-4">
+                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Members</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-white text-2xl font-bold">{mockMembers.length}</p>
-                    <span className="text-[#10B981] text-xs">({onlineCount} online)</span>
+                    <p className="text-text text-2xl font-display font-bold">{mockMembers.length}</p>
+                    <span className="text-green-600 text-xs font-mono">({onlineCount} online)</span>
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Total Wagered</p>
-                  <p className="text-white text-2xl font-bold">{mockGroup.totalWagered.toLocaleString()} <span className="text-sm font-normal text-white/50">USDC</span></p>
+                <div className="bg-background border-2 border-text p-4">
+                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Total Wagered</p>
+                  <p className="text-text text-2xl font-display font-bold">{mockGroup.totalWagered.toLocaleString()} <span className="text-sm font-normal text-accent">USDC</span></p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Active Bets</p>
-                  <p className="text-white text-2xl font-bold">{mockGroup.activeBets}</p>
+                <div className="bg-background border-2 border-text p-4">
+                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Active Bets</p>
+                  <p className="text-text text-2xl font-display font-bold">{mockGroup.activeBets}</p>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Settled</p>
-                  <p className="text-white text-2xl font-bold">{mockGroup.settledBets}</p>
+                <div className="bg-background border-2 border-text p-4">
+                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Settled</p>
+                  <p className="text-text text-2xl font-display font-bold">{mockGroup.settledBets}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Members List */}
           <Card>
             <CardContent>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-white text-xl font-bold">Members</h2>
-                <div className="text-sm text-white/50">
+                <h2 className="text-text text-xl font-display font-bold">Members</h2>
+                <div className="text-sm text-accent font-mono">
                   Sorted by P&L
                 </div>
               </div>
@@ -134,12 +133,12 @@ export default function GroupPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="text-left text-white/50 text-xs uppercase tracking-wider font-medium p-4 pl-0">Member</th>
-                      <th className="text-right text-white/50 text-xs uppercase tracking-wider font-medium p-4">P&L</th>
-                      <th className="text-right text-white/50 text-xs uppercase tracking-wider font-medium p-4 hidden sm:table-cell">Bets</th>
-                      <th className="text-right text-white/50 text-xs uppercase tracking-wider font-medium p-4 hidden sm:table-cell">Win Rate</th>
-                      <th className="text-right text-white/50 text-xs uppercase tracking-wider font-medium p-4 pr-0">Status</th>
+                    <tr className="border-b-2 border-text">
+                      <th className="text-left text-accent text-xs font-mono uppercase tracking-wider font-bold p-4 pl-0">Member</th>
+                      <th className="text-right text-accent text-xs font-mono uppercase tracking-wider font-bold p-4">P&L</th>
+                      <th className="text-right text-accent text-xs font-mono uppercase tracking-wider font-bold p-4 hidden sm:table-cell">Bets</th>
+                      <th className="text-right text-accent text-xs font-mono uppercase tracking-wider font-bold p-4 hidden sm:table-cell">Win Rate</th>
+                      <th className="text-right text-accent text-xs font-mono uppercase tracking-wider font-bold p-4 pr-0">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -148,8 +147,8 @@ export default function GroupPage() {
                       .map((member, index) => (
                       <tr 
                         key={member.id}
-                        className={`border-b border-white/5 hover:bg-white/5 transition-colors ${
-                          member.isYou ? 'bg-[#7311d4]/10' : ''
+                        className={`border-b-2 border-text/20 hover:bg-primary/10 transition-colors ${
+                          member.isYou ? 'bg-primary/20' : ''
                         }`}
                       >
                         <td className="p-4 pl-0">
@@ -158,14 +157,14 @@ export default function GroupPage() {
                               <img 
                                 src={getAvatarUrl(member.avatar)} 
                                 alt={member.name}
-                                className="w-10 h-10 rounded-full ring-2 ring-white/10"
+                                className="w-10 h-10 border-2 border-text"
                               />
                               {member.isOnline && (
-                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#10B981] ring-2 ring-[#191022]" />
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-surface" />
                               )}
                             </div>
                             <div>
-                              <span className={`font-medium ${member.isYou ? 'text-[#7311d4]' : 'text-white'}`}>
+                              <span className={`font-mono font-bold ${member.isYou ? 'text-primary' : 'text-text'}`}>
                                 {member.name}
                               </span>
                               {index === 0 && (
@@ -175,29 +174,29 @@ export default function GroupPage() {
                           </div>
                         </td>
                         <td className="p-4 text-right">
-                          <span className={`font-bold ${
-                            member.pnl > 0 ? 'text-[#10B981]' : member.pnl < 0 ? 'text-[#E42575]' : 'text-white/50'
+                          <span className={`font-display font-bold ${
+                            member.pnl > 0 ? 'text-green-600' : member.pnl < 0 ? 'text-secondary' : 'text-accent'
                           }`}>
                             {member.pnl > 0 ? '+' : ''}{member.pnl.toLocaleString()}
                           </span>
-                          <span className="text-white/40 text-sm ml-1">USDC</span>
+                          <span className="text-accent text-sm font-mono ml-1">USDC</span>
                         </td>
                         <td className="p-4 text-right hidden sm:table-cell">
-                          <span className="text-white">{member.bets}</span>
+                          <span className="text-text font-mono">{member.bets}</span>
                         </td>
                         <td className="p-4 text-right hidden sm:table-cell">
-                          <span className={`font-medium ${
-                            member.winRate >= 60 ? 'text-[#10B981]' : 
-                            member.winRate >= 50 ? 'text-yellow-400' : 'text-[#E42575]'
+                          <span className={`font-mono font-bold ${
+                            member.winRate >= 60 ? 'text-green-600' : 
+                            member.winRate >= 50 ? 'text-primary' : 'text-secondary'
                           }`}>
                             {member.winRate}%
                           </span>
                         </td>
                         <td className="p-4 pr-0 text-right">
                           {member.isOnline ? (
-                            <span className="text-[#10B981] text-xs font-medium">Online</span>
+                            <span className="text-green-600 text-xs font-mono font-bold uppercase">Online</span>
                           ) : (
-                            <span className="text-white/30 text-xs">Offline</span>
+                            <span className="text-accent/50 text-xs font-mono uppercase">Offline</span>
                           )}
                         </td>
                       </tr>
@@ -206,18 +205,17 @@ export default function GroupPage() {
                 </table>
               </div>
 
-              {/* Summary */}
-              <div className="mt-6 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+              <div className="mt-6 pt-6 border-t-2 border-text flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-6">
                   <div>
-                    <p className="text-white/50 text-xs">Total Group P&L</p>
-                    <p className={`font-bold text-lg ${totalPnl >= 0 ? 'text-[#10B981]' : 'text-[#E42575]'}`}>
+                    <p className="text-accent text-xs font-mono uppercase tracking-wider">Total Group P&L</p>
+                    <p className={`font-display font-bold text-lg ${totalPnl >= 0 ? 'text-green-600' : 'text-secondary'}`}>
                       {totalPnl >= 0 ? '+' : ''}{totalPnl.toLocaleString()} USDC
                     </p>
                   </div>
                   <div>
-                    <p className="text-white/50 text-xs">Avg Win Rate</p>
-                    <p className="text-white font-bold text-lg">
+                    <p className="text-accent text-xs font-mono uppercase tracking-wider">Avg Win Rate</p>
+                    <p className="text-text font-display font-bold text-lg">
                       {Math.round(mockMembers.reduce((sum, m) => sum + m.winRate, 0) / mockMembers.length)}%
                     </p>
                   </div>
@@ -237,4 +235,3 @@ export default function GroupPage() {
     </div>
   );
 }
-

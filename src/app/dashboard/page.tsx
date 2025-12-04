@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 
 // Prefetch these routes
-const ROUTES_TO_PREFETCH = ['/bets/create', '/groups/create', '/groups/join', '/leaderboard', '/bets'];
+const ROUTES_TO_PREFETCH = ['/bets/create', '/groups/create', '/groups/join', '/leaderboard', '/bets', '/expenses', '/accountability'];
 
 // Mock data for demonstration
 const mockBets = [
@@ -44,6 +44,13 @@ const dApps = [
     icon: 'casino',
     description: 'Create and wager on predictions with friends',
     status: 'active',
+  },
+  {
+    id: 'expenses',
+    name: 'Split Expenses',
+    icon: 'receipt_long',
+    description: 'On-chain shared expense ledger',
+    status: 'coming_soon',
   },
   {
     id: 'accountability',
@@ -83,8 +90,13 @@ export default function DashboardPage() {
 
   if (!ready || !authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#7311d4] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="brutalist-spinner">
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+        </div>
       </div>
     );
   }
@@ -92,17 +104,17 @@ export default function DashboardPage() {
   // Show group selection if no group is selected
   if (!hasGroup) {
     return (
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen bg-background">
         <Sidebar />
         
         <main className="flex-1 mobile-content p-4 sm:p-8 flex items-center justify-center">
           <div className="max-w-md text-center">
-            <div className="mb-6 p-4 bg-[#7311d4]/20 rounded-full w-fit mx-auto">
-              <span className="material-symbols-outlined text-[#7311d4] text-4xl sm:text-5xl">group_add</span>
+            <div className="mb-6 p-4 bg-primary border-2 border-text w-fit mx-auto">
+              <span className="material-symbols-outlined text-text text-4xl sm:text-5xl">group_add</span>
             </div>
             
-            <h1 className="text-white text-2xl sm:text-3xl font-bold mb-4">Welcome to Friend-Fi!</h1>
-            <p className="text-white/70 mb-8 text-sm sm:text-base">
+            <h1 className="text-text text-2xl sm:text-3xl font-display font-bold mb-4">Welcome to Friend-Fi!</h1>
+            <p className="text-accent mb-8 text-sm sm:text-base font-mono">
               To get started, create a new group or join an existing one.
             </p>
             
@@ -127,15 +139,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content lg:p-0">
-        <div className="p-4 lg:p-8">
+      <main className="flex-1 mobile-content lg:p-0 lg:py-16">
+        <div className="p-4 pt-6 pb-8 lg:p-8 lg:pt-0 lg:pb-0">
           {/* dApp Selector */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-white/40 text-xs uppercase tracking-wider font-semibold">Select App</span>
+              <span className="text-accent text-xs uppercase tracking-wider font-mono font-bold">Select App</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
               {dApps.map((dapp) => (
@@ -143,25 +155,25 @@ export default function DashboardPage() {
                   key={dapp.id}
                   onClick={() => dapp.status === 'active' && setActiveDApp(dapp.id)}
                   disabled={dapp.status !== 'active'}
-                  className={`flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 ${
+                  className={`flex-shrink-0 flex items-center gap-3 px-4 py-3 border-2 transition-all duration-200 ${
                     activeDApp === dapp.id
-                      ? 'bg-[#7311d4]/20 border-[#7311d4]/50 text-white'
+                      ? 'bg-primary border-text text-text'
                       : dapp.status === 'active'
-                      ? 'bg-[#191022]/50 border-white/10 text-white/70 hover:border-white/20 hover:text-white'
-                      : 'bg-[#191022]/30 border-white/5 text-white/40 cursor-not-allowed'
+                      ? 'bg-surface border-text text-text hover:bg-primary/20'
+                      : 'bg-surface/50 border-text/30 text-text/50 cursor-not-allowed'
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    activeDApp === dapp.id ? 'bg-[#7311d4]/30' : 'bg-white/10'
+                  <div className={`w-10 h-10 flex items-center justify-center border-2 ${
+                    activeDApp === dapp.id ? 'bg-surface border-text' : 'bg-background border-text'
                   }`}>
                     <span className="material-symbols-outlined text-xl">{dapp.icon}</span>
                   </div>
                   <div className="text-left">
-                    <div className="font-semibold text-sm">{dapp.name}</div>
+                    <div className="font-mono font-bold text-sm uppercase tracking-wider">{dapp.name}</div>
                     {dapp.status === 'coming_soon' ? (
-                      <div className="text-[10px] text-[#7311d4] font-medium">Coming Soon</div>
+                      <div className="text-[10px] text-primary font-mono font-bold uppercase">Coming Soon</div>
                     ) : (
-                      <div className="text-xs text-white/40">{dapp.description}</div>
+                      <div className="text-xs font-mono opacity-70">{dapp.description}</div>
                     )}
                   </div>
                 </button>
@@ -172,22 +184,22 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="flex flex-col gap-4 mb-6">
             <div>
-              <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+              <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight">
                 Crypto Degens
               </h1>
-              <p className="text-neutral-400 text-sm sm:text-base mt-1">
+              <p className="text-accent text-sm sm:text-base mt-1 font-mono">
                 Total Wagered: 12,500 USDC
               </p>
             </div>
             
-            {/* Search - Full width on mobile */}
+            {/* Search */}
             <div className="w-full lg:max-w-xs">
-              <div className="flex items-center h-10 sm:h-12 rounded-lg bg-[#191022]/50 border border-white/10">
-                <span className="material-symbols-outlined text-neutral-400 pl-3 text-lg">search</span>
+              <div className="flex items-center h-10 sm:h-12 bg-surface border-2 border-text">
+                <span className="material-symbols-outlined text-accent pl-3 text-lg">search</span>
                 <input
                   type="text"
                   placeholder="Search bets..."
-                  className="flex-1 bg-transparent border-none text-white placeholder:text-neutral-400 px-2 focus:outline-none text-sm"
+                  className="flex-1 bg-transparent border-none text-text placeholder:text-accent px-2 focus:outline-none text-sm font-mono"
                 />
               </div>
             </div>
@@ -196,7 +208,7 @@ export default function DashboardPage() {
           {/* Mobile: Group Members Summary */}
           <div className="lg:hidden mb-6">
             <Link href="/groups/crypto-degens">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-[#191022]/50 border border-white/10">
+              <div className="flex items-center justify-between p-4 bg-surface border-2 border-text hover:bg-primary/20 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="flex -space-x-2">
                     {mockMembers.slice(0, 3).map((avatar, i) => (
@@ -204,13 +216,13 @@ export default function DashboardPage() {
                         key={i}
                         src={avatar}
                         alt={`Member ${i + 1}`}
-                        className="w-8 h-8 rounded-full ring-2 ring-[#191022]"
+                        className="w-8 h-8 border-2 border-text"
                       />
                     ))}
                   </div>
-                  <span className="text-white text-sm font-medium">7 members</span>
+                  <span className="text-text text-sm font-mono font-bold">7 members</span>
                 </div>
-                <span className="material-symbols-outlined text-white/50">chevron_right</span>
+                <span className="material-symbols-outlined text-accent">chevron_right</span>
               </div>
             </Link>
           </div>
@@ -221,23 +233,23 @@ export default function DashboardPage() {
               {/* Main Content */}
               <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
                 {/* Tabs */}
-                <div className="flex border-b border-white/10 gap-6 sm:gap-8">
+                <div className="flex border-b-2 border-text">
                   <button
                     onClick={() => setActiveTab('active')}
-                    className={`pb-3 pt-2 text-sm font-bold tracking-wide border-b-[3px] transition-colors ${
+                    className={`pb-3 pt-2 px-4 text-sm font-mono font-bold uppercase tracking-wider border-b-4 transition-colors ${
                       activeTab === 'active'
-                        ? 'border-[#7311d4] text-white'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-primary text-text'
+                        : 'border-transparent text-accent hover:text-text'
                     }`}
                   >
                     Active Bets
                   </button>
                   <button
                     onClick={() => setActiveTab('past')}
-                    className={`pb-3 pt-2 text-sm font-bold tracking-wide border-b-[3px] transition-colors ${
+                    className={`pb-3 pt-2 px-4 text-sm font-mono font-bold uppercase tracking-wider border-b-4 transition-colors ${
                       activeTab === 'past'
-                        ? 'border-[#7311d4] text-white'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-primary text-text'
+                        : 'border-transparent text-accent hover:text-text'
                     }`}
                   >
                     Past Bets
@@ -248,11 +260,11 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-3 sm:gap-4">
                   {mockBets.map((bet, index) => (
                     <Link key={bet.id} href={`/bets/${bet.id}`}>
-                      <Card hover className={index === 0 ? 'border-l-4 border-l-[#7311d4]' : ''}>
+                      <Card hover className={index === 0 ? 'border-l-4 border-l-primary' : ''}>
                         <CardContent className="p-4 sm:p-6">
                           <div className="flex justify-between items-start gap-2 mb-3 sm:mb-4">
-                            <h3 className="text-base sm:text-lg font-bold text-white leading-tight">{bet.question}</h3>
-                            <span className="flex-shrink-0 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-blue-400 bg-blue-500/20 px-2 py-1 rounded-full">
+                            <h3 className="text-base sm:text-lg font-display font-bold text-text leading-tight">{bet.question}</h3>
+                            <span className="flex-shrink-0 text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-2 py-1 border-2 border-blue-600">
                               Active
                             </span>
                           </div>
@@ -260,16 +272,16 @@ export default function DashboardPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4 sm:gap-6">
                               <div>
-                                <span className="text-neutral-400 text-xs sm:text-sm">Pool</span>
-                                <p className="text-white font-bold text-base sm:text-lg">{bet.pool.toLocaleString()}</p>
+                                <span className="text-accent text-xs sm:text-sm font-mono uppercase">Pool</span>
+                                <p className="text-text font-display font-bold text-base sm:text-lg">{bet.pool.toLocaleString()}</p>
                               </div>
                               <div>
-                                <span className="text-neutral-400 text-xs sm:text-sm">Ends</span>
-                                <p className="text-white font-bold text-base sm:text-lg">{bet.endsAt}</p>
+                                <span className="text-accent text-xs sm:text-sm font-mono uppercase">Ends</span>
+                                <p className="text-text font-display font-bold text-base sm:text-lg">{bet.endsAt}</p>
                               </div>
                             </div>
                             
-                            <span className="material-symbols-outlined text-white/40">chevron_right</span>
+                            <span className="material-symbols-outlined text-accent">chevron_right</span>
                           </div>
                         </CardContent>
                       </Card>
@@ -284,8 +296,8 @@ export default function DashboardPage() {
                 <Card>
                   <CardContent>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-bold text-white">Group Members</h3>
-                      <Link href="/groups/crypto-degens" className="text-[#7311d4] text-sm hover:underline">
+                      <h3 className="text-lg font-display font-bold text-text">Group Members</h3>
+                      <Link href="/groups/crypto-degens" className="text-primary text-sm font-mono font-bold uppercase tracking-wider hover:underline">
                         View all
                       </Link>
                     </div>
@@ -295,10 +307,10 @@ export default function DashboardPage() {
                           key={i}
                           src={avatar}
                           alt={`Member ${i + 1}`}
-                          className="w-11 h-11 rounded-full ring-2 ring-[#191022] bg-[#7311d4]/20"
+                          className="w-11 h-11 border-2 border-text"
                         />
                       ))}
-                      <button className="w-11 h-11 rounded-full bg-neutral-700 text-sm font-bold text-white ring-2 ring-[#191022] hover:bg-neutral-600 transition-colors">
+                      <button className="w-11 h-11 bg-surface text-sm font-mono font-bold text-text border-2 border-text hover:bg-primary/20 transition-colors">
                         +3
                       </button>
                     </div>
@@ -308,13 +320,13 @@ export default function DashboardPage() {
                 {/* Quick Create Bet */}
                 <Card className="sticky top-8">
                   <CardContent>
-                    <h3 className="text-lg font-bold text-white mb-4">Quick Create</h3>
+                    <h3 className="text-lg font-display font-bold text-text mb-4">Quick Create</h3>
                     
                     <div className="space-y-4">
                       <input
                         type="text"
                         placeholder='e.g., "Will BTC hit $100k?"'
-                        className="w-full h-11 rounded-lg border-none bg-[#191022] text-white placeholder:text-neutral-400 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-[#7311d4]"
+                        className="w-full h-11 border-2 border-text bg-background text-text placeholder:text-accent px-4 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
                       />
 
                       <Link href="/bets/create" className="block">
@@ -329,25 +341,54 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {activeDApp === 'accountability' && (
+          {activeDApp === 'expenses' && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-4xl text-white/40">fitness_center</span>
+              <div className="w-20 h-20 bg-surface border-2 border-text flex items-center justify-center mb-6">
+                <span className="material-symbols-outlined text-4xl text-accent">receipt_long</span>
               </div>
-              <h2 className="text-white text-2xl font-bold mb-3">Accountability Tracker</h2>
-              <p className="text-white/60 max-w-md mb-6">
-                Put your money where your mouth is. Wager on habits with friends—hit the gym 3x/week or lose your stake.
+              <h2 className="text-text text-2xl font-display font-bold mb-3">Split Expenses</h2>
+              <p className="text-accent max-w-md mb-6 font-mono">
+                On-chain shared expense ledger with rolling balances between group members. 
+                Everyone can see who owes what—full accountability.
               </p>
               <div className="flex flex-wrap gap-3 justify-center mb-8">
-                {['Daily check-ins', 'Photo proof', 'Stake commitment'].map((feature) => (
-                  <span key={feature} className="px-3 py-1 rounded-full bg-white/10 text-white/60 text-sm">
+                {['Shared ledger', 'Rolling balances', 'USDC settlements', 'Full transparency'].map((feature) => (
+                  <span key={feature} className="px-3 py-1 border-2 border-text bg-surface text-accent text-sm font-mono">
                     {feature}
                   </span>
                 ))}
               </div>
-              <div className="px-4 py-2 rounded-full bg-[#7311d4]/20 text-[#7311d4] text-sm font-semibold">
-                Coming Q1 2025
+              <Link href="/expenses">
+                <Button>
+                  <span className="material-symbols-outlined">visibility</span>
+                  View Preview
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {activeDApp === 'accountability' && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-20 h-20 bg-surface border-2 border-text flex items-center justify-center mb-6">
+                <span className="material-symbols-outlined text-4xl text-accent">fitness_center</span>
               </div>
+              <h2 className="text-text text-2xl font-display font-bold mb-3">Accountability Tracker</h2>
+              <p className="text-accent max-w-md mb-6 font-mono">
+                Put your money where your mouth is. Wager on habits with friends—hit the gym 3x/week or lose your stake.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center mb-8">
+                {['Daily check-ins', 'Photo proof', 'Stake commitment'].map((feature) => (
+                  <span key={feature} className="px-3 py-1 border-2 border-text bg-surface text-accent text-sm font-mono">
+                    {feature}
+                  </span>
+                ))}
+              </div>
+              <Link href="/accountability">
+                <Button>
+                  <span className="material-symbols-outlined">visibility</span>
+                  View Preview
+                </Button>
+              </Link>
             </div>
           )}
         </div>

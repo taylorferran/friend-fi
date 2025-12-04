@@ -26,8 +26,8 @@ export function MobileNav() {
   };
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0510]/95 backdrop-blur-lg border-t border-white/10 safe-area-pb">
-      <div className="flex items-center justify-around px-2 py-2">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t-2 border-text safe-area-pb">
+      <div className="flex items-center justify-around">
         {navItems.map((item) => {
           const active = isActive(item.href);
           const isCreate = item.href === '/bets/create';
@@ -36,19 +36,19 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-1 py-3 px-3 transition-all font-mono ${
                 isCreate 
-                  ? 'bg-[#7311d4] text-white -mt-4 shadow-lg shadow-[#7311d4]/30' 
+                  ? 'bg-primary text-text -mt-4 border-2 border-text shadow-[2px_2px_0_theme(colors.text)]' 
                   : active 
-                    ? 'text-[#7311d4]' 
-                    : 'text-white/50'
+                    ? 'text-primary' 
+                    : 'text-accent'
               }`}
             >
               <span className={`material-symbols-outlined ${isCreate ? 'text-2xl' : 'text-xl'}`}>
                 {item.icon}
               </span>
               {!isCreate && (
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
               )}
             </Link>
           );
@@ -57,4 +57,3 @@ export function MobileNav() {
     </nav>
   );
 }
-

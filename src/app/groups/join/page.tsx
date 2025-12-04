@@ -7,18 +7,21 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { getGroupsCount } from '@/lib/contract';
 
 export default function JoinGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = usePrivy();
+  const { wallet, balance, joinGroup } = useMoveWallet();
   
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
   if (ready && !authenticated) {
     router.push('/login');
     return null;
@@ -27,56 +30,125 @@ export default function JoinGroupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setTxHash(null);
+
+    if (!wallet) {
+      setError('Wallet not initialized');
+      return;
+    }
+
+    if (balance === 0) {
+      setError('Your wallet has no MOVE tokens. Please fund it first via Settings.');
+      return;
+    }
+
+    const groupIdNum = parseInt(groupId, 10);
+    if (isNaN(groupIdNum) || groupIdNum < 0) {
+      setError('Invalid Group ID. Please enter a valid number.');
+      return;
+    }
+
+    // Check if group exists
+    const groupCount = await getGroupsCount();
+    if (groupIdNum >= groupCount) {
+      setError(`Group ID ${groupIdNum} does not exist. There are ${groupCount} groups.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // TODO: Validate group ID and password against smart contract
-      // TODO: Verify password can decrypt group data
-      
-      // Store group in session for current context
+      const result = await joinGroup(groupIdNum, password);
+      setTxHash(result.hash);
+
+      // Store group info locally
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
-        id: groupId,
-        name: 'Joined Group', // This would come from contract
-        password: password, // Used for encryption/decryption
+        id: groupIdNum,
+        name: `Group #${groupIdNum}`,
+        password: password,
       }));
 
       // Show success and redirect
-      router.push('/dashboard');
-    } catch (err) {
-      setError('Invalid Group ID or Password. Please check and try again.');
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to join group. Please check the password.';
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      {/* Decorative background */}
-      <div className="fixed top-40 left-20 w-80 h-80 bg-[#7311d4]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="fixed bottom-40 right-20 w-64 h-64 bg-purple-900/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center p-4 lg:py-12 bg-background">
+      <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Header */}
+        <Link 
+          href="/dashboard" 
+          className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
+        >
+          <span className="material-symbols-outlined">arrow_back</span>
+          <span>Back to Dashboard</span>
+        </Link>
+
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 p-4 bg-[#7311d4]/20 rounded-full w-fit">
-            <span className="material-symbols-outlined text-[#7311d4] text-4xl">group</span>
+          <div className="mx-auto mb-4 p-4 bg-primary border-2 border-text w-fit">
+            <span className="material-symbols-outlined text-text text-4xl">group</span>
           </div>
-          <h1 className="text-white text-3xl font-black mb-2">Join a Private Prediction Group</h1>
-          <p className="text-[#ad92c9]">Enter the Group ID and password shared by the group creator.</p>
+          <h1 className="text-text text-3xl font-display font-bold mb-2">Join a Group</h1>
+          <p className="text-accent font-mono">Enter the Group ID and password shared by the group creator.</p>
         </div>
 
-        {/* Form */}
+        {/* Wallet status banner */}
+        {wallet && balance === 0 && (
+          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary">warning</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
+                <p className="text-accent text-xs font-mono mt-1">
+                  Your Move wallet has no MOVE tokens. Go to{' '}
+                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
+                  {' '}to copy your address and fund it from the faucet.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {txHash && (
+          <div className="mb-6 p-4 border-2 border-green-600 bg-green-600/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-green-600">check_circle</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">Successfully joined group!</p>
+                <a 
+                  href={`https://explorer.movementnetwork.xyz/txn/${txHash}?network=testnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary text-xs font-mono hover:underline flex items-center gap-1 mt-1"
+                >
+                  View transaction <span className="material-symbols-outlined text-xs">open_in_new</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <Input
                 label="Group ID"
-                placeholder="e.g., cosmic-crew-2024"
+                placeholder="e.g., 0"
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
                 required
                 className="font-mono"
-                icon={<span className="material-symbols-outlined">group</span>}
+                icon={<span className="material-symbols-outlined">tag</span>}
+                hint="The numeric ID of the group (0, 1, 2, etc.)"
               />
 
               <div className="relative">
@@ -92,7 +164,7 @@ export default function JoinGroupPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-[calc(50%+8px)] -translate-y-1/2 text-[#ad92c9] hover:text-white transition-colors"
+                  className="absolute right-4 top-[calc(50%+8px)] -translate-y-1/2 text-accent hover:text-text transition-colors"
                 >
                   <span className="material-symbols-outlined">
                     {showPassword ? 'visibility_off' : 'visibility'}
@@ -100,14 +172,14 @@ export default function JoinGroupPage() {
                 </button>
               </div>
 
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} disabled={balance === 0}>
                 <span className="material-symbols-outlined">login</span>
                 Join Group
               </Button>
 
-              <p className="text-[#ad92c9] text-sm text-center">
+              <p className="text-accent text-sm text-center font-mono">
                 Or,{' '}
-                <Link href="/groups/create" className="text-[#7311d4] hover:underline font-medium">
+                <Link href="/groups/create" className="text-primary hover:underline font-bold">
                   create a new group
                 </Link>
               </p>
@@ -115,9 +187,8 @@ export default function JoinGroupPage() {
           </CardContent>
         </Card>
 
-        {/* Help Text */}
         <div className="mt-6 text-center">
-          <p className="text-white/40 text-sm">
+          <p className="text-accent text-sm font-mono">
             The group password is used to decrypt all group data. Make sure you have the correct password from your group admin.
           </p>
         </div>
@@ -125,4 +196,3 @@ export default function JoinGroupPage() {
     </div>
   );
 }
-

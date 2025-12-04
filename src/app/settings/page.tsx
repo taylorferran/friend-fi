@@ -7,8 +7,9 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { CONTRACT_ADDRESS } from '@/lib/contract';
+import { useMoveWallet } from '@/hooks/useMoveWallet';
 
-// Avatar options - DiceBear avatars with different seeds
 const AVATAR_OPTIONS = [
   { id: 1, seed: 'felix', style: 'adventurer' },
   { id: 2, seed: 'luna', style: 'adventurer' },
@@ -33,19 +34,28 @@ const AVATAR_OPTIONS = [
 ];
 
 function getAvatarUrl(seed: string, style: string = 'adventurer') {
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=7311d4,E42575,10B981&backgroundType=gradientLinear`;
+  return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
 }
 
 export default function SettingsPage() {
   const router = useRouter();
   const { authenticated, ready, user, logout } = usePrivy();
+  const { wallet: moveWallet, balance, refreshBalance } = useMoveWallet();
   
   const [username, setUsername] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[0]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  // Load saved settings
+  const copyAddress = async () => {
+    if (moveWallet?.address) {
+      await navigator.clipboard.writeText(moveWallet.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   useEffect(() => {
     const savedSettings = sessionStorage.getItem('friendfi_user_settings');
     if (savedSettings) {
@@ -56,7 +66,6 @@ export default function SettingsPage() {
     }
   }, []);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (ready && !authenticated) {
       router.push('/login');
@@ -66,14 +75,12 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     
-    // Save to session storage (would be on-chain in production)
     sessionStorage.setItem('friendfi_user_settings', JSON.stringify({
       username,
       avatarId: selectedAvatar.id,
       avatarUrl: getAvatarUrl(selectedAvatar.seed, selectedAvatar.style),
     }));
 
-    // Simulate save delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
     setSaving(false);
@@ -83,48 +90,49 @@ export default function SettingsPage() {
 
   if (!ready || !authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#7311d4] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="brutalist-spinner">
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 lg:p-8 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
         <div className="max-w-2xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
-            <h1 className="text-white text-3xl lg:text-4xl font-black tracking-tight mb-2">Settings</h1>
-            <p className="text-white/60">Customize your profile and preferences.</p>
+            <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Settings</h1>
+            <p className="text-accent font-mono">Customize your profile and preferences.</p>
           </div>
 
-          {/* Profile Section */}
           <Card className="mb-6">
             <CardContent>
-              <h2 className="text-white text-xl font-bold mb-6">Profile</h2>
+              <h2 className="text-text text-xl font-display font-bold mb-6">Profile</h2>
 
-              {/* Current Avatar Preview */}
-              <div className="flex items-center gap-4 mb-8 p-4 rounded-xl bg-white/5">
+              <div className="flex items-center gap-4 mb-8 p-4 border-2 border-text bg-background">
                 <img 
                   src={getAvatarUrl(selectedAvatar.seed, selectedAvatar.style)} 
                   alt="Your avatar"
-                  className="w-20 h-20 rounded-full ring-4 ring-[#7311d4]/30"
+                  className="w-20 h-20 border-4 border-primary"
                 />
                 <div>
-                  <p className="text-white font-bold text-lg">{username || 'Anonymous'}</p>
-                  <p className="text-white/50 text-sm">{user?.email?.address}</p>
+                  <p className="text-text font-display font-bold text-lg">{username || 'Anonymous'}</p>
+                  <p className="text-accent text-sm font-mono">{user?.email?.address}</p>
                   {user?.wallet && (
-                    <p className="text-white/30 text-xs font-mono mt-1">
+                    <p className="text-accent/60 text-xs font-mono mt-1">
                       {user.wallet.address.slice(0, 6)}...{user.wallet.address.slice(-4)}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Username */}
               <div className="mb-8">
                 <Input
                   label="Display Name"
@@ -135,9 +143,8 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Avatar Selection */}
               <div>
-                <label className="text-white text-base font-medium block mb-4">
+                <label className="text-text text-base font-bold font-mono uppercase tracking-wider block mb-4">
                   Choose Avatar
                 </label>
                 <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
@@ -145,10 +152,10 @@ export default function SettingsPage() {
                     <button
                       key={avatar.id}
                       onClick={() => setSelectedAvatar(avatar)}
-                      className={`relative w-12 h-12 rounded-full overflow-hidden transition-all duration-200 ${
+                      className={`relative w-12 h-12 overflow-hidden transition-all duration-200 border-2 ${
                         selectedAvatar.id === avatar.id
-                          ? 'ring-3 ring-[#7311d4] scale-110'
-                          : 'ring-2 ring-white/10 hover:ring-white/30 hover:scale-105'
+                          ? 'border-primary scale-110 shadow-[2px_2px_0_theme(colors.primary)]'
+                          : 'border-text hover:border-primary hover:scale-105'
                       }`}
                     >
                       <img 
@@ -157,8 +164,8 @@ export default function SettingsPage() {
                         className="w-full h-full object-cover"
                       />
                       {selectedAvatar.id === avatar.id && (
-                        <div className="absolute inset-0 bg-[#7311d4]/20 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-white text-sm">check</span>
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-text text-sm">check</span>
                         </div>
                       )}
                     </button>
@@ -168,45 +175,84 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Account Section */}
           <Card className="mb-6">
             <CardContent>
-              <h2 className="text-white text-xl font-bold mb-6">Account</h2>
+              <h2 className="text-text text-xl font-display font-bold mb-6">Account</h2>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5">
+                <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
                   <div>
-                    <p className="text-white font-medium">Email</p>
-                    <p className="text-white/50 text-sm">{user?.email?.address || 'Not connected'}</p>
+                    <p className="text-text font-mono font-bold">Email</p>
+                    <p className="text-accent text-sm font-mono">{user?.email?.address || 'Not connected'}</p>
                   </div>
-                  <span className="material-symbols-outlined text-[#10B981]">verified</span>
+                  <span className="material-symbols-outlined text-green-600">verified</span>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5">
+                {/* Move Wallet Address - Copyable */}
+                <div className="p-4 border-2 border-primary bg-primary/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-text font-mono font-bold">Move Wallet</p>
+                      <span className="text-[10px] font-mono font-bold uppercase bg-primary text-text px-2 py-0.5">
+                        For Transactions
+                      </span>
+                    </div>
+                    <button
+                      onClick={copyAddress}
+                      className="flex items-center gap-1 text-primary hover:text-text transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        {copied ? 'check' : 'content_copy'}
+                      </span>
+                      <span className="text-xs font-mono font-bold uppercase">
+                        {copied ? 'Copied!' : 'Copy'}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-accent text-xs font-mono break-all select-all bg-surface p-2 border border-text/20">
+                    {moveWallet?.address || 'Loading...'}
+                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-accent/60 text-xs font-mono">
+                      Send MOVE tokens to this address for gas fees
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-text font-mono font-bold text-sm">{balance.toFixed(4)} MOVE</span>
+                      <button onClick={refreshBalance} className="text-primary hover:text-text">
+                        <span className="material-symbols-outlined text-sm">refresh</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
                   <div>
-                    <p className="text-white font-medium">Wallet</p>
-                    <p className="text-white/50 text-sm font-mono">
-                      {user?.wallet?.address 
-                        ? `${user.wallet.address.slice(0, 10)}...${user.wallet.address.slice(-8)}`
-                        : 'Not connected'
-                      }
+                    <p className="text-text font-mono font-bold">Network</p>
+                    <p className="text-accent text-sm font-mono">Movement Testnet</p>
+                  </div>
+                  <span className="w-3 h-3 bg-green-500 animate-pulse" />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
+                  <div>
+                    <p className="text-text font-mono font-bold">Contract</p>
+                    <p className="text-accent text-[10px] font-mono break-all">
+                      {CONTRACT_ADDRESS}
                     </p>
                   </div>
-                  <span className="material-symbols-outlined text-[#7311d4]">account_balance_wallet</span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white/5">
-                  <div>
-                    <p className="text-white font-medium">Network</p>
-                    <p className="text-white/50 text-sm">Movement Testnet</p>
-                  </div>
-                  <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+                  <a 
+                    href={`https://explorer.movementnetwork.xyz/account/${CONTRACT_ADDRESS}?network=testnet`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-text transition-colors"
+                  >
+                    <span className="material-symbols-outlined">open_in_new</span>
+                  </a>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button 
               onClick={handleSave} 
@@ -227,9 +273,8 @@ export default function SettingsPage() {
             </Button>
             
             <Button 
-              variant="ghost" 
+              variant="danger" 
               onClick={() => logout()}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
             >
               <span className="material-symbols-outlined">logout</span>
               Sign Out
@@ -240,4 +285,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
