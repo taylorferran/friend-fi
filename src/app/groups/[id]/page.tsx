@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getGroupMembers, getGroupBets, getProfiles } from '@/lib/contract';
-import { getAvatarById, getAvatarUrl } from '@/app/settings/page';
+import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 // NOTE: Indexer imports removed - event queries take 29+ seconds
 // import { getGroupBetsFromIndexer, getAllGroups } from '@/lib/indexer';
 
@@ -108,11 +108,11 @@ export default function GroupPage() {
   if (!ready || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner">
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
+        <div className="brutalist-spinner-instant">
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
         </div>
       </div>
     );
@@ -136,11 +136,11 @@ export default function GroupPage() {
           {loading ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <div className="brutalist-spinner mx-auto">
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
+                <div className="brutalist-spinner-instant mx-auto">
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
                 </div>
                 <p className="text-accent text-sm font-mono mt-4">Loading group...</p>
               </CardContent>

@@ -13,11 +13,11 @@ export default function BetsPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="brutalist-spinner">
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
+      <div className="brutalist-spinner-instant">
+        <div className="brutalist-spinner-box-instant"></div>
+        <div className="brutalist-spinner-box-instant"></div>
+        <div className="brutalist-spinner-box-instant"></div>
+        <div className="brutalist-spinner-box-instant"></div>
       </div>
     </div>
   );

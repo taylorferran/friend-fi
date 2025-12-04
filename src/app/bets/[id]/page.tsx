@@ -10,10 +10,9 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getBetData, getUserWager, getProfiles, type BetData } from '@/lib/contract';
-// NOTE: Indexer imports removed - event queries take 60+ seconds
-// import { getCompleteBetInfo, getBetDetailsFromIndexer } from '@/lib/indexer';
+import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 
-// Placeholder type since we're not using indexer
+// Placeholder type since we're not using indexer (event queries take 60+ seconds)
 interface BettorInfo {
   address: string;
   outcomeIndex: number;
@@ -21,7 +20,6 @@ interface BettorInfo {
   payout?: number;
   isWinner?: boolean;
 }
-import { getAvatarById, getAvatarUrl } from '@/app/settings/page';
 
 // Extended bettor info with profile data
 interface BettorWithProfile extends BettorInfo {
@@ -175,11 +173,11 @@ export default function ViewBetPage() {
   if (!ready || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner">
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
+        <div className="brutalist-spinner-instant">
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
         </div>
       </div>
     );
@@ -202,11 +200,11 @@ export default function ViewBetPage() {
           {loading ? (
             <Card>
               <CardContent className="p-12 text-center">
-                <div className="brutalist-spinner mx-auto mb-4">
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
+                <div className="brutalist-spinner-instant mx-auto mb-4">
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
                 </div>
                 <p className="text-accent font-mono text-sm">Loading bet from blockchain...</p>
               </CardContent>
@@ -483,11 +481,11 @@ export default function ViewBetPage() {
                       {/* Individual bettors */}
                       {loadingBettors ? (
                         <div className="text-center py-8">
-                          <div className="brutalist-spinner mx-auto mb-2 scale-75">
-                            <div className="brutalist-spinner-box"></div>
-                            <div className="brutalist-spinner-box"></div>
-                            <div className="brutalist-spinner-box"></div>
-                            <div className="brutalist-spinner-box"></div>
+                          <div className="brutalist-spinner-instant mx-auto mb-2 scale-75">
+                            <div className="brutalist-spinner-box-instant"></div>
+                            <div className="brutalist-spinner-box-instant"></div>
+                            <div className="brutalist-spinner-box-instant"></div>
+                            <div className="brutalist-spinner-box-instant"></div>
                           </div>
                           <p className="text-accent text-xs font-mono">Loading bettors from indexer...</p>
                         </div>

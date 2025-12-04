@@ -47,12 +47,7 @@ export default function DashboardPage() {
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/login');
-    }
-  }, [ready, authenticated, router]);
+  // Auth redirect is handled by AuthWrapper - no need here
 
   // Load user's groups - PARALLEL queries for speed
   useEffect(() => {
@@ -143,11 +138,11 @@ export default function DashboardPage() {
   if (!ready || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner">
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
+        <div className="brutalist-spinner-instant">
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
         </div>
       </div>
     );
@@ -221,11 +216,11 @@ export default function DashboardPage() {
               {isLoading ? (
                 <Card>
                   <CardContent className="p-12 text-center">
-                    <div className="brutalist-spinner mx-auto mb-4">
-                      <div className="brutalist-spinner-box"></div>
-                      <div className="brutalist-spinner-box"></div>
-                      <div className="brutalist-spinner-box"></div>
-                      <div className="brutalist-spinner-box"></div>
+                    <div className="brutalist-spinner-instant mx-auto mb-4">
+                      <div className="brutalist-spinner-box-instant" />
+                      <div className="brutalist-spinner-box-instant" />
+                      <div className="brutalist-spinner-box-instant" />
+                      <div className="brutalist-spinner-box-instant" />
                     </div>
                     <p className="text-accent font-mono text-sm">Loading your groups from the blockchain...</p>
                   </CardContent>

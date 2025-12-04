@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getGroupsCount, getGroupMembers, checkIfMemberInGroup, getProfiles } from '@/lib/contract';
-import { getAvatarById, getAvatarUrl } from '@/app/settings/page';
+import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 
 interface LeaderboardEntry {
   address: string;
@@ -82,11 +82,11 @@ export default function LeaderboardPage() {
   if (!ready || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner">
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
+        <div className="brutalist-spinner-instant">
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
+          <div className="brutalist-spinner-box-instant"></div>
         </div>
       </div>
     );
@@ -106,11 +106,11 @@ export default function LeaderboardPage() {
           {loading ? (
             <Card>
               <CardContent className="p-12 text-center">
-                <div className="brutalist-spinner mx-auto mb-4">
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
-                  <div className="brutalist-spinner-box"></div>
+                <div className="brutalist-spinner-instant mx-auto mb-4">
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
+                  <div className="brutalist-spinner-box-instant"></div>
                 </div>
                 <p className="text-accent font-mono text-sm">Loading leaderboard...</p>
               </CardContent>

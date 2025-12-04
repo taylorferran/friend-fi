@@ -563,3 +563,70 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .animate-slide-in {
   animation: slide-in-right 0.3s ease-out forwards;
 }
+
+/* ===== OPTIMIZED INSTANT SPINNER (no layout shift) ===== */
+.brutalist-spinner-instant {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  will-change: transform;
+}
+
+.brutalist-spinner-box-instant {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: var(--primary);
+  border: 2px solid var(--text);
+  will-change: transform, background-color;
+  animation: brutalistSpinInstant 1s ease-in-out infinite;
+}
+
+.brutalist-spinner-box-instant:nth-child(1) {
+  top: 0;
+  left: 0;
+  animation-delay: 0s;
+}
+
+.brutalist-spinner-box-instant:nth-child(2) {
+  top: 0;
+  right: 0;
+  animation-delay: 0.1s;
+}
+
+.brutalist-spinner-box-instant:nth-child(3) {
+  bottom: 0;
+  right: 0;
+  animation-delay: 0.2s;
+}
+
+.brutalist-spinner-box-instant:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  animation-delay: 0.3s;
+}
+
+@keyframes brutalistSpinInstant {
+  0%, 100% {
+    transform: scale(1);
+    background-color: var(--primary);
+  }
+  50% {
+    transform: scale(0.7);
+    background-color: var(--secondary);
+  }
+}
+
+/* Slow pulse for branding */
+.animate-pulse-slow {
+  animation: pulseSlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

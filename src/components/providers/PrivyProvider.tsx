@@ -2,20 +2,14 @@
 
 import dynamic from 'next/dynamic';
 import { privyConfig } from '@/lib/privy-config';
+import { AuthWrapper } from './AuthWrapper';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
-// Loading component shown while Privy loads
+// Simple solid background while Privy loads - content fades in over this
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F3F0E9]">
-      <div className="brutalist-spinner">
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
-        <div className="brutalist-spinner-box"></div>
-      </div>
-    </div>
+    <div className="fixed inset-0 z-[9999] bg-[#F3F0E9]" />
   );
 }
 
@@ -47,7 +41,7 @@ const PrivyProviderNoSSR = dynamic(
   () => import('@privy-io/react-auth').then((mod) => {
     const { PrivyProvider } = mod;
     
-    // Return a component that wraps PrivyProvider
+    // Return a component that wraps PrivyProvider with AuthWrapper
     return function PrivyWrapper({ children }: { children: React.ReactNode }) {
       if (!PRIVY_APP_ID) {
         return <SetupInstructions />;
@@ -55,7 +49,9 @@ const PrivyProviderNoSSR = dynamic(
       
       return (
         <PrivyProvider appId={PRIVY_APP_ID} config={privyConfig}>
-          {children}
+          <AuthWrapper>
+            {children}
+          </AuthWrapper>
         </PrivyProvider>
       );
     };

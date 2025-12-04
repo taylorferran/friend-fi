@@ -1,25 +1,39 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
-import { getAppUrl } from '@/lib/app-url';
 
 // Preload routes in the background
-const ROUTES_TO_PRELOAD = ['/login', '/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
+const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
 
 export default function SplashPage() {
-  const { authenticated } = usePrivy();
+  const { authenticated, login } = usePrivy();
   const router = useRouter();
-  const [isLoaded, setIsLoaded] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
   const [showHeader, setShowHeader] = useState(false);
   const [titleComplete, setTitleComplete] = useState(false);
+
+  // Handle "Go to App" click - either login or go to dashboard
+  const handleGoToApp = useCallback(() => {
+    if (authenticated) {
+      router.push('/dashboard');
+    } else {
+      login();
+    }
+  }, [authenticated, login, router]);
+
+  // Redirect to dashboard after successful login
+  useEffect(() => {
+    if (authenticated) {
+      // Pre-fetch dashboard for faster navigation
+      router.prefetch('/dashboard');
+    }
+  }, [authenticated, router]);
 
   // Refs for scroll animations
   const appsRef = useRef<HTMLElement>(null);
@@ -48,14 +62,10 @@ export default function SplashPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Staggered animation trigger
+  // Start content animation immediately (PrivyProvider handles initial loading)
   useEffect(() => {
-    const timer1 = setTimeout(() => setIsLoaded(true), 100);
-    const timer2 = setTimeout(() => setShowContent(true), 400);
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
+    const timer = setTimeout(() => setShowContent(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   // Word animation - slower for 3 words
@@ -103,22 +113,8 @@ export default function SplashPage() {
       {/* Grid pattern background */}
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
-      {/* Initial loading overlay */}
-      <div 
-        className={`fixed inset-0 z-50 bg-background flex items-center justify-center transition-opacity duration-500 ${
-          isLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-      >
-        <div className="brutalist-spinner">
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-          <div className="brutalist-spinner-box"></div>
-        </div>
-      </div>
-
       {/* Main Content */}
-      <div className={`relative z-10 transition-opacity duration-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`relative z-10 transition-opacity duration-300 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
         {/* Fixed Navigation - Hidden until scroll */}
         <header className={`fixed top-0 left-0 right-0 z-40 bg-background border-b-2 border-text transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
           <div className="flex items-center justify-between mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -132,9 +128,9 @@ export default function SplashPage() {
               <a href="#features" className="px-4 py-2 hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">Features</a>
               <a href="#how-it-works" className="px-4 py-2 hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
               <div className="ml-4">
-                <a href={getAppUrl('/login')}>
-                  <Button size="sm">{authenticated ? 'Go to App' : 'Go to App'}</Button>
-                </a>
+                <Button size="sm" onClick={handleGoToApp}>
+                  {authenticated ? 'Go to App' : 'Sign In'}
+                </Button>
               </div>
             </nav>
 
@@ -157,9 +153,9 @@ export default function SplashPage() {
                 <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-6 py-4 border-b-2 border-text hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">Features</a>
                 <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-6 py-4 border-b-2 border-text hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
                 <div className="p-4">
-                    <a href={getAppUrl('/login')}>
-                      <Button className="w-full">Go to App</Button>
-                    </a>
+                  <Button className="w-full" onClick={handleGoToApp}>
+                    {authenticated ? 'Go to App' : 'Sign In'}
+                  </Button>
                 </div>
               </nav>
             </div>
@@ -311,12 +307,10 @@ export default function SplashPage() {
               <div className={`flex flex-col items-center gap-4 transition-all duration-700 delay-200 ${
                 titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}>
-                <a href={getAppUrl('/login')}>
-                  <Button variant="secondary" size="lg" className="text-lg px-12 py-5">
-                    Go to App
-                    <span className="material-symbols-outlined text-2xl">arrow_forward</span>
-                  </Button>
-                </a>
+                <Button variant="secondary" size="lg" className="text-lg px-12 py-5" onClick={handleGoToApp}>
+                  {authenticated ? 'Go to App' : 'Sign In'}
+                  <span className="material-symbols-outlined text-2xl">arrow_forward</span>
+                </Button>
                 
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-text bg-primary/80">
                   <span className="w-2 h-2 bg-green-500 animate-pulse" />
@@ -377,12 +371,10 @@ export default function SplashPage() {
                 </ul>
                 
                 <div className="mt-auto">
-                  <a href={getAppUrl('/login')}>
-                    <Button className="w-full">
-                      Go to App
-                      <span className="material-symbols-outlined">arrow_forward</span>
-                    </Button>
-                  </a>
+                  <Button className="w-full" onClick={handleGoToApp}>
+                    {authenticated ? 'Go to App' : 'Sign In'}
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </Button>
                 </div>
               </div>
 
@@ -558,12 +550,10 @@ export default function SplashPage() {
                   Create your first private group and invite your friends. It&apos;s free to get started.
                 </p>
                 
-              <a href={getAppUrl('/login')}>
-                <Button size="lg" className="bg-white text-secondary border-white hover:bg-white/90">
-                  Go to App
-                  <span className="material-symbols-outlined">arrow_forward</span>
-                </Button>
-              </a>
+              <Button size="lg" className="bg-white text-secondary border-white hover:bg-white/90" onClick={handleGoToApp}>
+                {authenticated ? 'Go to App' : 'Sign In'}
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </Button>
             </div>
           </div>
         </section>
