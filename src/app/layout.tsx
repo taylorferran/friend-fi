@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Libre_Baskerville, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { PrivyProviderWrapper } from "@/components/providers/PrivyProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const libreBaskerville = Libre_Baskerville({
   variable: "--font-display",
@@ -42,7 +43,9 @@ export default function RootLayout({
       </head>
       <body className={`${libreBaskerville.variable} ${spaceMono.variable} font-mono antialiased`} suppressHydrationWarning>
         <PrivyProviderWrapper>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </PrivyProviderWrapper>
       </body>
     </html>

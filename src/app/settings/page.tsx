@@ -7,64 +7,94 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { CONTRACT_ADDRESS } from '@/lib/contract';
+import { useToast } from '@/components/ui/Toast';
+import { CONTRACT_ADDRESS, getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 
 const AVATAR_OPTIONS = [
-  { id: 1, seed: 'felix', style: 'adventurer' },
-  { id: 2, seed: 'luna', style: 'adventurer' },
-  { id: 3, seed: 'max', style: 'adventurer' },
-  { id: 4, seed: 'bella', style: 'adventurer' },
-  { id: 5, seed: 'charlie', style: 'adventurer' },
-  { id: 6, seed: 'mia', style: 'adventurer' },
-  { id: 7, seed: 'leo', style: 'adventurer' },
-  { id: 8, seed: 'nova', style: 'adventurer' },
-  { id: 9, seed: 'oscar', style: 'adventurer' },
-  { id: 10, seed: 'ruby', style: 'adventurer' },
-  { id: 11, seed: 'theo', style: 'adventurer' },
-  { id: 12, seed: 'ivy', style: 'adventurer' },
-  { id: 13, seed: 'milo', style: 'adventurer' },
-  { id: 14, seed: 'daisy', style: 'adventurer' },
-  { id: 15, seed: 'finn', style: 'adventurer' },
-  { id: 16, seed: 'coco', style: 'adventurer' },
-  { id: 17, seed: 'archie', style: 'adventurer' },
-  { id: 18, seed: 'willow', style: 'adventurer' },
-  { id: 19, seed: 'jack', style: 'adventurer' },
-  { id: 20, seed: 'penny', style: 'adventurer' },
+  { id: 0, seed: 'felix', style: 'adventurer' },
+  { id: 1, seed: 'luna', style: 'adventurer' },
+  { id: 2, seed: 'max', style: 'adventurer' },
+  { id: 3, seed: 'bella', style: 'adventurer' },
+  { id: 4, seed: 'charlie', style: 'adventurer' },
+  { id: 5, seed: 'mia', style: 'adventurer' },
+  { id: 6, seed: 'leo', style: 'adventurer' },
+  { id: 7, seed: 'nova', style: 'adventurer' },
+  { id: 8, seed: 'oscar', style: 'adventurer' },
+  { id: 9, seed: 'ruby', style: 'adventurer' },
+  { id: 10, seed: 'theo', style: 'adventurer' },
+  { id: 11, seed: 'ivy', style: 'adventurer' },
+  { id: 12, seed: 'milo', style: 'adventurer' },
+  { id: 13, seed: 'daisy', style: 'adventurer' },
+  { id: 14, seed: 'finn', style: 'adventurer' },
+  { id: 15, seed: 'coco', style: 'adventurer' },
+  { id: 16, seed: 'archie', style: 'adventurer' },
+  { id: 17, seed: 'willow', style: 'adventurer' },
+  { id: 18, seed: 'jack', style: 'adventurer' },
+  { id: 19, seed: 'penny', style: 'adventurer' },
 ];
 
-function getAvatarUrl(seed: string, style: string = 'adventurer') {
+export function getAvatarUrl(seed: string, style: string = 'adventurer') {
   return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
+}
+
+export function getAvatarById(avatarId: number) {
+  return AVATAR_OPTIONS[avatarId] || AVATAR_OPTIONS[0];
 }
 
 export default function SettingsPage() {
   const router = useRouter();
   const { authenticated, ready, user, logout } = usePrivy();
-  const { wallet: moveWallet, balance, refreshBalance } = useMoveWallet();
+  const { wallet: moveWallet, balance, refreshBalance, setProfile } = useMoveWallet();
+  const { showToast } = useToast();
   
   const [username, setUsername] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[0]);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [hasOnChainProfile, setHasOnChainProfile] = useState(false);
 
   const copyAddress = async () => {
     if (moveWallet?.address) {
       await navigator.clipboard.writeText(moveWallet.address);
       setCopied(true);
+      showToast({ type: 'info', title: 'Address copied!' });
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
+  // Load on-chain profile
   useEffect(() => {
-    const savedSettings = sessionStorage.getItem('friendfi_user_settings');
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-      setUsername(settings.username || '');
-      const avatar = AVATAR_OPTIONS.find(a => a.id === settings.avatarId);
-      if (avatar) setSelectedAvatar(avatar);
+    async function loadProfile() {
+      if (!moveWallet?.address) return;
+      
+      try {
+        const profile = await getProfile(moveWallet.address);
+        if (profile.exists) {
+          setUsername(profile.name);
+          const avatar = AVATAR_OPTIONS.find(a => a.id === profile.avatarId);
+          if (avatar) setSelectedAvatar(avatar);
+          setHasOnChainProfile(true);
+        } else {
+          // Fall back to session storage
+          const savedSettings = sessionStorage.getItem('friendfi_user_settings');
+          if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            setUsername(settings.username || '');
+            const avatar = AVATAR_OPTIONS.find(a => a.id === settings.avatarId);
+            if (avatar) setSelectedAvatar(avatar);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoadingProfile(false);
+      }
     }
-  }, []);
+
+    loadProfile();
+  }, [moveWallet?.address]);
 
   useEffect(() => {
     if (ready && !authenticated) {
@@ -73,19 +103,40 @@ export default function SettingsPage() {
   }, [ready, authenticated, router]);
 
   const handleSave = async () => {
+    if (!username.trim()) {
+      showToast({ type: 'error', title: 'Username required', message: 'Please enter a display name' });
+      return;
+    }
+
     setSaving(true);
     
-    sessionStorage.setItem('friendfi_user_settings', JSON.stringify({
-      username,
-      avatarId: selectedAvatar.id,
-      avatarUrl: getAvatarUrl(selectedAvatar.seed, selectedAvatar.style),
-    }));
+    try {
+      // Save to blockchain
+      const result = await setProfile(username, selectedAvatar.id);
+      
+      // Also save to session storage for immediate UI updates
+      const settings = {
+        username,
+        avatarId: selectedAvatar.id,
+        avatarUrl: getAvatarUrl(selectedAvatar.seed, selectedAvatar.style),
+      };
+      sessionStorage.setItem('friendfi_user_settings', JSON.stringify(settings));
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+      // Dispatch event to trigger sidebar refresh
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: settings }));
+
+      setHasOnChainProfile(true);
+      showToast({ 
+        type: 'success', 
+        title: 'Profile saved on-chain!', 
+        txHash: result.hash 
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save profile';
+      showToast({ type: 'error', title: 'Transaction failed', message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!ready || !authenticated) {
@@ -105,77 +156,112 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
-        <div className="max-w-2xl mx-auto">
+      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Settings</h1>
             <p className="text-accent font-mono">Customize your profile and preferences.</p>
           </div>
 
-          <Card className="mb-6">
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Left Column - Profile */}
+            <div>
+          {/* Profile Section */}
+          <Card>
             <CardContent>
-              <h2 className="text-text text-xl font-display font-bold mb-6">Profile</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-text text-xl font-display font-bold">Profile</h2>
+                {hasOnChainProfile && (
+                  <span className="px-2 py-1 bg-green-600/20 border border-green-600 text-green-600 text-xs font-mono font-bold uppercase flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">verified</span>
+                    On-chain
+                  </span>
+                )}
+              </div>
 
-              <div className="flex items-center gap-4 mb-8 p-4 border-2 border-text bg-background">
-                <img 
-                  src={getAvatarUrl(selectedAvatar.seed, selectedAvatar.style)} 
-                  alt="Your avatar"
-                  className="w-20 h-20 border-4 border-primary"
-                />
-                <div>
-                  <p className="text-text font-display font-bold text-lg">{username || 'Anonymous'}</p>
-                  <p className="text-accent text-sm font-mono">{user?.email?.address}</p>
-                  {user?.wallet && (
-                    <p className="text-accent/60 text-xs font-mono mt-1">
-                      {user.wallet.address.slice(0, 6)}...{user.wallet.address.slice(-4)}
-                    </p>
-                  )}
+              {loadingProfile ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="brutalist-spinner">
+                    <div className="brutalist-spinner-box"></div>
+                    <div className="brutalist-spinner-box"></div>
+                    <div className="brutalist-spinner-box"></div>
+                    <div className="brutalist-spinner-box"></div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4 mb-8 p-4 border-2 border-text bg-background">
+                    <img 
+                      src={getAvatarUrl(selectedAvatar.seed, selectedAvatar.style)} 
+                      alt="Your avatar"
+                      className="w-20 h-20 border-4 border-primary"
+                    />
+                    <div>
+                      <p className="text-text font-display font-bold text-lg">{username || 'Anonymous'}</p>
+                      <p className="text-accent text-sm font-mono">{user?.email?.address}</p>
+                    </div>
+                  </div>
 
-              <div className="mb-8">
-                <Input
-                  label="Display Name"
-                  placeholder="Enter your display name"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  hint="This is how other group members will see you"
-                />
-              </div>
+                  <div className="mb-8">
+                    <Input
+                      label="Display Name"
+                      placeholder="Enter your display name"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      hint="This will be stored on-chain and visible to other users"
+                    />
+                  </div>
 
-              <div>
-                <label className="text-text text-base font-bold font-mono uppercase tracking-wider block mb-4">
-                  Choose Avatar
-                </label>
-                <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-                  {AVATAR_OPTIONS.map((avatar) => (
-                    <button
-                      key={avatar.id}
-                      onClick={() => setSelectedAvatar(avatar)}
-                      className={`relative w-12 h-12 overflow-hidden transition-all duration-200 border-2 ${
-                        selectedAvatar.id === avatar.id
-                          ? 'border-primary scale-110 shadow-[2px_2px_0_theme(colors.primary)]'
-                          : 'border-text hover:border-primary hover:scale-105'
-                      }`}
-                    >
-                      <img 
-                        src={getAvatarUrl(avatar.seed, avatar.style)} 
-                        alt={`Avatar ${avatar.id}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {selectedAvatar.id === avatar.id && (
-                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-text text-sm">check</span>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  <div className="mb-6">
+                    <label className="text-text text-base font-bold font-mono uppercase tracking-wider block mb-4">
+                      Choose Avatar
+                    </label>
+                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                      {AVATAR_OPTIONS.map((avatar) => (
+                        <button
+                          key={avatar.id}
+                          onClick={() => setSelectedAvatar(avatar)}
+                          className={`relative w-12 h-12 overflow-hidden transition-all duration-200 border-2 ${
+                            selectedAvatar.id === avatar.id
+                              ? 'border-primary scale-110 shadow-[2px_2px_0_theme(colors.primary)]'
+                              : 'border-text hover:border-primary hover:scale-105'
+                          }`}
+                        >
+                          <img 
+                            src={getAvatarUrl(avatar.seed, avatar.style)} 
+                            alt={`Avatar ${avatar.id}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {selectedAvatar.id === avatar.id && (
+                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-text text-sm">check</span>
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Save Button - Right after profile editing */}
+                  <Button 
+                    onClick={handleSave} 
+                    loading={saving}
+                    className="w-full"
+                    disabled={loadingProfile}
+                  >
+                    <span className="material-symbols-outlined">save</span>
+                    Save to Blockchain
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
+            </div>
 
-          <Card className="mb-6">
+            {/* Right Column - Account */}
+            <div className="space-y-6">
+          {/* Account Section */}
+          <Card>
             <CardContent>
               <h2 className="text-text text-xl font-display font-bold mb-6">Account</h2>
 
@@ -253,32 +339,16 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              onClick={handleSave} 
-              loading={saving}
-              className="flex-1"
-            >
-              {saved ? (
-                <>
-                  <span className="material-symbols-outlined">check</span>
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined">save</span>
-                  Save Changes
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              variant="danger" 
-              onClick={() => logout()}
-            >
-              <span className="material-symbols-outlined">logout</span>
-              Sign Out
-            </Button>
+          {/* Sign Out Button */}
+          <Button 
+            variant="danger" 
+            onClick={() => logout()}
+            className="w-full"
+          >
+            <span className="material-symbols-outlined">logout</span>
+            Sign Out
+          </Button>
+            </div>
           </div>
         </div>
       </main>

@@ -1,366 +1,701 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useToast } from '@/components/ui/Toast';
+import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { getBetData, getUserWager, getProfiles, type BetData } from '@/lib/contract';
+// NOTE: Indexer imports removed - event queries take 60+ seconds
+// import { getCompleteBetInfo, getBetDetailsFromIndexer } from '@/lib/indexer';
 
-const mockBet = {
-  id: '1',
-  question: 'Will Alice and Bob follow through with the wedding?',
-  creator: 'David',
-  groupName: 'Crypto Degens',
-  status: 'active',
-  resolveDate: 'June 15, 2024',
-  totalPool: 2450,
-  yesPool: 1592.50,
-  noPool: 857.50,
-  yesBets: 8,
-  noBets: 4,
-  userBet: { choice: 'yes', amount: 50 },
-  isAdmin: true,
-};
+// Placeholder type since we're not using indexer
+interface BettorInfo {
+  address: string;
+  outcomeIndex: number;
+  amount: number;
+  payout?: number;
+  isWinner?: boolean;
+}
+import { getAvatarById, getAvatarUrl } from '@/app/settings/page';
 
-const mockWagers = [
-  { id: '1', user: 'Sarah', choice: 'yes', amount: 50, time: '2 hours ago', isYou: true },
-  { id: '2', user: 'Michael', choice: 'yes', amount: 200, time: '5 hours ago', isYou: false },
-  { id: '3', user: 'David', choice: 'no', amount: 350, time: '1 day ago', isYou: false },
-  { id: '4', user: 'Emma', choice: 'yes', amount: 100, time: '2 days ago', isYou: false },
-];
+// Extended bettor info with profile data
+interface BettorWithProfile extends BettorInfo {
+  name?: string;
+  avatarId?: number;
+}
 
 export default function ViewBetPage() {
   const router = useRouter();
+  const params = useParams();
   const { authenticated, ready } = usePrivy();
-  
-  const [prediction, setPrediction] = useState<'yes' | 'no'>('yes');
+  const { wallet, placeWager, resolveBet } = useMoveWallet();
+  const betId = parseInt(params.id as string, 10);
+
+  const { showToast } = useToast();
+
+  const [bet, setBet] = useState<BetData | null>(null);
+  const [betDescription, setBetDescription] = useState<string>('');
+  const [userWager, setUserWager] = useState<number>(0);
+  const [userOutcomeIndex, setUserOutcomeIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedOutcome, setSelectedOutcome] = useState<number | null>(null);
   const [wagerAmount, setWagerAmount] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Bettor data from indexer
+  const [bettors, setBettors] = useState<BettorWithProfile[]>([]);
+  const [loadingBettors, setLoadingBettors] = useState(false);
+  const [indexerError, setIndexerError] = useState(false);
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (ready && !authenticated) {
+      router.push('/login');
+    }
+  }, [ready, authenticated, router]);
 
-  const yesPercentage = (mockBet.yesPool / mockBet.totalPool) * 100;
-  const noPercentage = (mockBet.noPool / mockBet.totalPool) * 100;
+  // NOTE: loadBettors disabled - indexer event queries take 60+ seconds
+  // Individual bettor details won't be shown until indexer is faster
+  const loadBettors = useCallback(async () => {
+    // Skip the slow indexer query - just show that data isn't available
+    setLoadingBettors(false);
+    setIndexerError(true); // This will show "Indexer Unavailable" message
+  }, []);
 
-  const calculatePotentialReturn = () => {
-    const amount = parseFloat(wagerAmount) || 0;
-    if (amount <= 0) return 0;
+  // Load bet data - FAST on-chain first, indexer enhancements in background
+  useEffect(() => {
+    async function loadBet() {
+      if (isNaN(betId)) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Load bet data from on-chain (fast, parallel)
+        const betData = await getBetData(betId);
+        setBet(betData);
+
+        // Get user's wager if wallet is connected
+        if (wallet?.address && betData) {
+          getUserWager(betId, wallet.address)
+            .then(wager => setUserWager(wager))
+            .catch(() => setUserWager(0));
+        }
+
+        // NOTE: Skipping getBetDetailsFromIndexer - event queries take 29+ seconds
+        // Bet description will show as "Bet #X" until we fix the indexer query
+
+      } catch (error) {
+        console.error('Error loading bet:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBet();
+    loadBettors();
+  }, [betId, wallet?.address, loadBettors]);
+
+  const handlePlaceWager = async () => {
+    if (selectedOutcome === null || !wagerAmount) return;
     
-    if (prediction === 'yes') {
-      const yourShare = amount / (mockBet.yesPool + amount);
-      return amount + (mockBet.noPool * yourShare * 0.95);
-    } else {
-      const yourShare = amount / (mockBet.noPool + amount);
-      return amount + (mockBet.yesPool * yourShare * 0.95);
-    }
-  };
+    setSubmitting(true);
 
-  const handlePlaceBet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!wagerAmount || parseFloat(wagerAmount) <= 0) {
-      alert('Please enter a wager amount');
-      return;
-    }
-
-    setLoading(true);
     try {
-      console.log('Placing bet:', { prediction, amount: wagerAmount });
-      alert(`Bet placed: ${wagerAmount} USDC on ${prediction.toUpperCase()}`);
+      // Amount in USDC smallest units (6 decimals)
+      const amount = Math.floor(parseFloat(wagerAmount) * 1_000_000);
+      const result = await placeWager(betId, selectedOutcome, amount);
+      
+      showToast({
+        type: 'success',
+        title: 'Wager placed!',
+        message: `${wagerAmount} USDC on ${bet?.outcomes[selectedOutcome].label}`,
+        txHash: result.hash,
+      });
+      
+      // Reload bet data
+      const betData = await getBetData(betId);
+      setBet(betData);
+      if (wallet?.address) {
+        const wager = await getUserWager(betId, wallet.address);
+        setUserWager(wager);
+      }
+      
+      setWagerAmount('');
+      setSelectedOutcome(null);
     } catch (err) {
-      console.error('Failed to place bet:', err);
+      const message = err instanceof Error ? err.message : 'Failed to place wager';
+      showToast({ type: 'error', title: 'Transaction failed', message });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleSettle = async (outcome: 'yes' | 'no') => {
-    if (!confirm(`Are you sure you want to settle this bet as ${outcome.toUpperCase()}?`)) return;
-    
+  const handleResolveBet = async (winningIndex: number) => {
+    setSubmitting(true);
+
     try {
-      console.log('Settling bet as:', outcome);
-      alert(`Bet settled as ${outcome.toUpperCase()}`);
-      router.push('/dashboard');
+      const result = await resolveBet(betId, winningIndex);
+      
+      showToast({
+        type: 'success',
+        title: 'Bet resolved!',
+        message: `Winner: ${bet?.outcomes[winningIndex].label}`,
+        txHash: result.hash,
+      });
+      
+      // Reload bet data
+      const betData = await getBetData(betId);
+      setBet(betData);
     } catch (err) {
-      console.error('Failed to settle bet:', err);
+      const message = err instanceof Error ? err.message : 'Failed to resolve bet';
+      showToast({ type: 'error', title: 'Transaction failed', message });
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const isAdmin = wallet?.address && bet?.admin === wallet.address;
+  const formatUSDC = (amount: number) => (amount / 1_000_000).toFixed(2);
+
+  // Calculate potential payout for a wager amount on an outcome
+  const calculatePotentialPayout = (outcomeIndex: number, wagerAmountUSDC: number) => {
+    if (!bet || bet.totalPool === 0) return 0;
+    const wagerAmount = wagerAmountUSDC * 1_000_000;
+    const outcomePool = bet.outcomes[outcomeIndex].pool;
+    const newOutcomePool = outcomePool + wagerAmount;
+    const newTotalPool = bet.totalPool + wagerAmount;
+    return (wagerAmount / newOutcomePool) * newTotalPool;
+  };
+
+  if (!ready || !authenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="brutalist-spinner">
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+          <div className="brutalist-spinner-box"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
           <Link 
             href="/dashboard" 
             className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
           >
             <span className="material-symbols-outlined">arrow_back</span>
-            <span>Back to Group</span>
+            <span>Back to Home</span>
           </Link>
 
-          <Card className="mb-6">
-            <CardContent className="p-6 lg:p-8">
-              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-3 py-1 border-2 border-blue-600 animate-pulse">
-                      Active
-                    </span>
-                    <span className="text-accent text-sm font-mono">{mockBet.groupName}</span>
-                  </div>
-                  <h1 className="text-text text-2xl lg:text-3xl font-display font-bold leading-tight mb-3">
-                    {mockBet.question}
-                  </h1>
-                  <p className="text-accent text-sm font-mono">
-                    Created by <span className="text-text">{mockBet.creator}</span> · 
-                    Resolves on <span className="text-text">{mockBet.resolveDate}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 bg-surface border-2 border-text text-accent hover:bg-primary/20 hover:text-text transition-colors">
-                    <span className="material-symbols-outlined">share</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-background border-2 border-text p-4">
-                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Total Pool</p>
-                  <p className="text-text text-xl font-display font-bold">
-                    {mockBet.totalPool.toLocaleString()} <span className="text-sm font-normal text-accent">USDC</span>
-                  </p>
-                </div>
-                <div className="bg-background border-2 border-text p-4">
-                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Total Bets</p>
-                  <p className="text-text text-xl font-display font-bold">{mockBet.yesBets + mockBet.noBets}</p>
-                </div>
-                <div className="bg-background border-2 border-text p-4">
-                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Your Bet</p>
-                  <p className="text-green-600 text-xl font-display font-bold">
-                    Yes · {mockBet.userBet.amount} <span className="text-sm font-normal">USDC</span>
-                  </p>
-                </div>
-                <div className="bg-background border-2 border-text p-4">
-                  <p className="text-accent text-xs font-mono uppercase tracking-wider mb-1">Potential Win</p>
-                  <p className="text-text text-xl font-display font-bold">
-                    ~87.50 <span className="text-sm font-normal text-accent">USDC</span>
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <Card className="lg:col-span-2">
-              <CardContent>
-                <h3 className="text-text font-display font-bold text-lg mb-4">Betting Distribution</h3>
-                
-                <div className="mb-6">
-                  <div className="flex h-12 overflow-hidden border-2 border-text">
-                    <div 
-                      className="bet-bar-yes flex items-center justify-center text-white font-mono font-bold text-sm transition-all"
-                      style={{ width: `${yesPercentage}%` }}
-                    >
-                      {yesPercentage.toFixed(0)}%
-                    </div>
-                    <div 
-                      className="bet-bar-no flex items-center justify-center text-white font-mono font-bold text-sm transition-all"
-                      style={{ width: `${noPercentage}%` }}
-                    >
-                      {noPercentage.toFixed(0)}%
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="border-2 border-green-600 bg-green-50 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-green-600 font-mono font-bold text-lg uppercase">Yes</span>
-                      <span className="material-symbols-outlined text-green-600">thumb_up</span>
-                    </div>
-                    <p className="text-text text-2xl font-display font-bold">
-                      {mockBet.yesPool.toLocaleString()} <span className="text-sm font-normal text-accent">USDC</span>
-                    </p>
-                    <p className="text-accent text-sm font-mono mt-1">{mockBet.yesBets} bets</p>
-                  </div>
-                  <div className="border-2 border-secondary bg-red-50 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-secondary font-mono font-bold text-lg uppercase">No</span>
-                      <span className="material-symbols-outlined text-secondary">thumb_down</span>
-                    </div>
-                    <p className="text-text text-2xl font-display font-bold">
-                      {mockBet.noPool.toLocaleString()} <span className="text-sm font-normal text-accent">USDC</span>
-                    </p>
-                    <p className="text-accent text-sm font-mono mt-1">{mockBet.noBets} bets</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+          {loading ? (
             <Card>
-              <CardContent>
-                <h3 className="text-text font-display font-bold text-lg mb-4">Place Your Wager</h3>
-                
-                <form onSubmit={handlePlaceBet} className="flex flex-col gap-4">
-                  <div>
-                    <p className="text-accent text-sm font-mono uppercase tracking-wider mb-3">Your prediction</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="prediction" 
-                          value="yes" 
-                          checked={prediction === 'yes'}
-                          onChange={() => setPrediction('yes')}
-                          className="peer sr-only"
-                        />
-                        <div className="peer-checked:border-green-600 peer-checked:bg-green-50 border-2 border-text p-3 text-center transition-all hover:bg-primary/20">
-                          <span className="material-symbols-outlined text-green-600 text-2xl mb-1">thumb_up</span>
-                          <p className="text-text font-mono font-bold uppercase">Yes</p>
-                        </div>
-                      </label>
-                      <label className="cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="prediction" 
-                          value="no"
-                          checked={prediction === 'no'}
-                          onChange={() => setPrediction('no')}
-                          className="peer sr-only"
-                        />
-                        <div className="peer-checked:border-secondary peer-checked:bg-red-50 border-2 border-text p-3 text-center transition-all hover:bg-primary/20">
-                          <span className="material-symbols-outlined text-secondary text-2xl mb-1">thumb_down</span>
-                          <p className="text-text font-mono font-bold uppercase">No</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-accent text-sm font-mono uppercase tracking-wider mb-2 block">Wager amount</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={wagerAmount}
-                        onChange={(e) => setWagerAmount(e.target.value)}
-                        placeholder="0"
-                        min="1"
-                        className="w-full h-14 border-2 border-text bg-surface text-text text-xl font-display font-bold pl-4 pr-20 placeholder:text-accent/30 focus:outline-none focus:ring-2 focus:ring-primary"
-                      />
-                      <span className="absolute inset-y-0 right-4 flex items-center text-sm font-mono font-bold text-accent">USDC</span>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      {[10, 25, 50, 100].map((amount) => (
-                        <button
-                          key={amount}
-                          type="button"
-                          onClick={() => setWagerAmount(amount.toString())}
-                          className="flex-1 py-1 px-2 bg-surface border-2 border-text hover:bg-primary/20 text-text text-xs font-mono font-bold transition-colors"
-                        >
-                          {amount}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-background border-2 border-text p-3">
-                    <div className="flex justify-between text-sm font-mono">
-                      <span className="text-accent">Potential return</span>
-                      <span className="text-text font-bold">~{calculatePotentialReturn().toFixed(2)} USDC</span>
-                    </div>
-                    <p className="text-accent/60 text-xs mt-1 font-mono">Twitch-style payout: lower risk, proportional rewards</p>
-                  </div>
-
-                  <Button type="submit" loading={loading}>
-                    <span className="material-symbols-outlined">casino</span>
-                    Place Wager
-                  </Button>
-
-                  <p className="text-center text-xs text-accent flex items-center justify-center gap-1 font-mono">
-                    <span className="material-symbols-outlined text-sm text-green-600">verified</span>
-                    No gas fees - sponsored by Friend-Fi
-                  </p>
-                </form>
+              <CardContent className="p-12 text-center">
+                <div className="brutalist-spinner mx-auto mb-4">
+                  <div className="brutalist-spinner-box"></div>
+                  <div className="brutalist-spinner-box"></div>
+                  <div className="brutalist-spinner-box"></div>
+                  <div className="brutalist-spinner-box"></div>
+                </div>
+                <p className="text-accent font-mono text-sm">Loading bet from blockchain...</p>
               </CardContent>
             </Card>
-          </div>
-
-          <Card className="mb-6">
-            <CardContent>
-              <h3 className="text-text font-display font-bold text-lg mb-4">All Wagers</h3>
-              
-              <div className="space-y-3">
-                {mockWagers.map((wager) => (
-                  <div 
-                    key={wager.id}
-                    className="flex items-center justify-between p-3 bg-background border-2 border-text hover:bg-primary/10 transition-colors"
-                  >
+          ) : !bet ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="w-16 h-16 bg-surface border-2 border-text flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-accent text-3xl">error</span>
+                </div>
+                <h3 className="text-text text-xl font-display font-bold mb-2">Bet Not Found</h3>
+                <p className="text-accent text-sm font-mono">
+                  This bet doesn&apos;t exist or couldn&apos;t be loaded.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Left Column - Bet Info & Place Bet */}
+              <div className="space-y-6">
+                {/* Bet Header */}
+                <Card>
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 flex items-center justify-center border-2 ${
-                        wager.choice === 'yes' ? 'bg-green-50 border-green-600' : 'bg-red-50 border-secondary'
-                      }`}>
-                        <span className={`material-symbols-outlined ${
-                          wager.choice === 'yes' ? 'text-green-600' : 'text-secondary'
-                        }`}>
-                          {wager.choice === 'yes' ? 'thumb_up' : 'thumb_down'}
+                      <div className={`w-12 h-12 border-2 border-text flex items-center justify-center flex-shrink-0 ${bet.resolved ? 'bg-green-600' : 'bg-primary'}`}>
+                        <span className="material-symbols-outlined text-text text-2xl">
+                          {bet.resolved ? 'check_circle' : 'casino'}
                         </span>
                       </div>
-                      <div>
-                        <p className="text-text font-mono font-bold">
-                          {wager.user} {wager.isYou && <span className="text-accent text-sm">(You)</span>}
+                      <div className="min-w-0">
+                        <h1 className="text-text text-xl font-display font-bold truncate">
+                          {betDescription || `Bet #${betId}`}
+                        </h1>
+                        <p className={`text-xs font-mono font-bold uppercase tracking-wider ${bet.resolved ? 'text-green-600' : 'text-primary'}`}>
+                          {bet.resolved ? 'Settled' : 'Active'} · #{betId}
                         </p>
-                        <p className="text-accent text-xs font-mono">{wager.time}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-mono font-bold uppercase ${wager.choice === 'yes' ? 'text-green-600' : 'text-secondary'}`}>
-                        {wager.choice.charAt(0).toUpperCase() + wager.choice.slice(1)}
-                      </p>
-                      <p className="text-text text-sm font-mono">{wager.amount} USDC</p>
-                    </div>
+                    {isAdmin && (
+                      <span className={`px-2 py-1 border text-xs font-mono font-bold uppercase flex-shrink-0 ${
+                        bet.resolved 
+                          ? 'bg-green-600/20 border-green-600 text-green-600' 
+                          : 'bg-secondary/20 border-secondary text-secondary'
+                      }`}>
+                        {bet.resolved ? 'You Settled' : 'Admin'}
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
-          {mockBet.isAdmin && (
-            <Card className="border-primary bg-primary/10">
-              <CardContent>
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-text text-2xl">admin_panel_settings</span>
-                  <div className="flex-1">
-                    <h3 className="text-text font-display font-bold text-lg mb-1">Admin Controls</h3>
-                    <p className="text-accent text-sm font-mono mb-4">
-                      You are the designated resolver for this bet. Once the outcome is known, settle the bet to distribute winnings.
-                    </p>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button 
-                        onClick={() => handleSettle('yes')}
-                        className="bg-green-600 border-text hover:bg-green-700"
-                      >
-                        <span className="material-symbols-outlined">check_circle</span>
-                        Settle as YES
-                      </Button>
-                      <Button 
-                        onClick={() => handleSettle('no')}
-                        variant="danger"
-                      >
-                        <span className="material-symbols-outlined">cancel</span>
-                        Settle as NO
-                      </Button>
+                  <div className="p-4 bg-background border-2 border-text">
+                    <div className="flex justify-between items-center">
+                      <span className="text-accent font-mono text-sm">Total Pool</span>
+                      <span className="text-text font-mono font-bold text-lg">{formatUSDC(bet.totalPool)} USDC</span>
                     </div>
+                    {userWager > 0 && (
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-text/20">
+                        <span className="text-accent font-mono text-sm">Your Wager</span>
+                        <span className="text-primary font-mono font-bold">{formatUSDC(userWager)} USDC</span>
+                      </div>
+                    )}
+                    {bet.resolved && (
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-text/20">
+                        <span className="text-accent font-mono text-sm">Winner</span>
+                        <span className="text-green-600 font-mono font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">emoji_events</span>
+                          {bet.outcomes[bet.winningOutcomeIndex].label}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Outcomes / Results */}
+              <Card>
+                <CardContent>
+                  <h2 className="text-text text-lg font-display font-bold mb-4">
+                    {bet.resolved ? 'Final Results' : 'Place Your Bet'}
+                  </h2>
+
+                  <div className="space-y-3">
+                    {bet.outcomes.map((outcome, index) => {
+                      const hasPool = bet.totalPool >= 10000;
+                      const percentage = hasPool ? (outcome.pool / bet.totalPool) * 100 : 0;
+                      const isWinner = bet.resolved && bet.winningOutcomeIndex === index;
+                      const isLoser = bet.resolved && bet.winningOutcomeIndex !== index;
+                      const isSelected = selectedOutcome === index;
+
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => !bet.resolved && setSelectedOutcome(index)}
+                          className={`
+                            relative p-4 border-2 transition-all overflow-hidden
+                            ${isWinner ? 'border-green-600 bg-green-600/10' : ''}
+                            ${isLoser ? 'border-text/30 bg-background opacity-60' : ''}
+                            ${!bet.resolved && !isWinner && !isLoser ? 'border-text' : ''}
+                            ${!bet.resolved ? 'cursor-pointer hover:bg-primary/10' : ''}
+                            ${isSelected ? 'bg-primary/20 border-primary' : ''}
+                            ${!isWinner && !isLoser && !isSelected ? 'bg-background' : ''}
+                          `}
+                        >
+                          {/* Progress bar background */}
+                          {hasPool && (
+                            <div 
+                              className={`absolute inset-y-0 left-0 ${isWinner ? 'bg-green-600/20' : 'bg-primary/10'}`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          )}
+                          
+                          <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {!bet.resolved && (
+                                <div className={`w-5 h-5 border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary' : 'border-text'}`}>
+                                  {isSelected && <span className="material-symbols-outlined text-text text-sm">check</span>}
+                                </div>
+                              )}
+                              {isWinner && (
+                                <span className="material-symbols-outlined text-green-600">emoji_events</span>
+                              )}
+                              {isLoser && (
+                                <span className="material-symbols-outlined text-accent/50">close</span>
+                              )}
+                              <span className={`font-mono font-bold ${isLoser ? 'text-accent/50' : 'text-text'}`}>
+                                {outcome.label}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-mono font-bold ${isLoser ? 'text-accent/50' : 'text-text'}`}>
+                                {formatUSDC(outcome.pool)} USDC
+                              </p>
+                              {hasPool && (
+                                <p className="text-accent font-mono text-xs">{percentage.toFixed(1)}%</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Wager Input - Only show if not resolved */}
+                  {!bet.resolved && (
+                    <div className="mt-6 pt-6 border-t-2 border-text">
+                      <label className="text-text font-mono font-bold text-sm uppercase tracking-wider block mb-2">
+                        Wager Amount (USDC)
+                      </label>
+                      <div className="flex gap-3">
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            value={wagerAmount}
+                            onChange={(e) => setWagerAmount(e.target.value)}
+                            placeholder="0.00"
+                            step="0.01"
+                            className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <Button
+                          onClick={handlePlaceWager}
+                          disabled={selectedOutcome === null || !wagerAmount || submitting}
+                          loading={submitting}
+                        >
+                          Place Bet
+                        </Button>
+                      </div>
+                      {selectedOutcome !== null && wagerAmount && (
+                        <div className="mt-2 p-3 bg-primary/10 border border-primary">
+                          <p className="text-accent text-xs font-mono">
+                            Betting <span className="text-text font-bold">{wagerAmount} USDC</span> on{' '}
+                            <span className="text-text font-bold">{bet.outcomes[selectedOutcome].label}</span>
+                          </p>
+                          <p className="text-accent text-xs font-mono mt-1">
+                            Potential payout: <span className="text-green-600 font-bold">
+                              {formatUSDC(calculatePotentialPayout(selectedOutcome, parseFloat(wagerAmount) || 0))} USDC
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              </div>
+
+              {/* Right Column - Pool Info, Admin & Summary */}
+              <div className="space-y-6">
+              {/* Bettors Section */}
+              <Card>
+                <CardContent>
+                  <h2 className="text-text text-lg font-display font-bold mb-4">
+                    {bet.resolved ? 'Betting Activity' : 'Who&apos;s Betting'}
+                  </h2>
+
+                  {bet.totalPool === 0 ? (
+                    <div className="text-center py-8 border-2 border-dashed border-text/20">
+                      <span className="material-symbols-outlined text-accent/50 text-4xl mb-2">how_to_vote</span>
+                      <p className="text-accent text-sm font-mono">No bets placed yet</p>
+                      <p className="text-accent/60 text-xs font-mono mt-1">Be the first to wager!</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Pool breakdown by outcome */}
+                      <div className="mb-4">
+                        <p className="text-accent text-xs font-mono uppercase tracking-wider mb-2">Wagers by Outcome</p>
+                        <div className="space-y-2">
+                          {bet.outcomes.map((outcome, index) => {
+                            const isWinner = bet.resolved && bet.winningOutcomeIndex === index;
+                            const percentage = bet.totalPool > 0 ? (outcome.pool / bet.totalPool) * 100 : 0;
+                            // Count bettors for this outcome
+                            const outcomeBettors = bettors.filter(b => b.outcomeIndex === index);
+                            
+                            return (
+                              <div 
+                                key={index}
+                                className={`p-3 border-2 ${
+                                  isWinner ? 'border-green-600 bg-green-600/10' : 'border-text/20 bg-background'
+                                }`}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center gap-2">
+                                    {isWinner && (
+                                      <span className="material-symbols-outlined text-green-600 text-lg">emoji_events</span>
+                                    )}
+                                    <span className={`font-mono font-bold ${isWinner ? 'text-green-600' : 'text-text'}`}>
+                                      {outcome.label}
+                                    </span>
+                                    {outcomeBettors.length > 0 && (
+                                      <span className="text-accent text-xs font-mono">
+                                        ({outcomeBettors.length} bettor{outcomeBettors.length !== 1 ? 's' : ''})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-text font-mono font-bold">{formatUSDC(outcome.pool)} USDC</span>
+                                    <span className="text-accent font-mono text-xs ml-2">({percentage.toFixed(1)}%)</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Your wager info */}
+                      {userWager > 0 && (
+                        <div className="mb-4 p-4 bg-primary/10 border-2 border-primary">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="material-symbols-outlined text-primary text-lg">person</span>
+                            <span className="text-text font-mono font-bold">Your Wager</span>
+                          </div>
+                          <p className="text-text font-mono">{formatUSDC(userWager)} USDC</p>
+                          {userOutcomeIndex !== null && bet.outcomes[userOutcomeIndex] && (
+                            <p className="text-accent text-xs font-mono mt-1">
+                              Betting on: <span className="text-text font-bold">{bet.outcomes[userOutcomeIndex].label}</span>
+                              {bet.resolved && (
+                                userOutcomeIndex === bet.winningOutcomeIndex ? (
+                                  <span className="text-green-600 ml-2">🎉 You won!</span>
+                                ) : (
+                                  <span className="text-accent/50 ml-2">Better luck next time</span>
+                                )
+                              )}
+                            </p>
+                          )}
+                          {bet.resolved && userOutcomeIndex === bet.winningOutcomeIndex && (
+                            <p className="text-green-600 text-sm font-mono font-bold mt-2">
+                              Payout: {formatUSDC((userWager / bet.outcomes[bet.winningOutcomeIndex].pool) * bet.totalPool)} USDC
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Individual bettors */}
+                      {loadingBettors ? (
+                        <div className="text-center py-8">
+                          <div className="brutalist-spinner mx-auto mb-2 scale-75">
+                            <div className="brutalist-spinner-box"></div>
+                            <div className="brutalist-spinner-box"></div>
+                            <div className="brutalist-spinner-box"></div>
+                            <div className="brutalist-spinner-box"></div>
+                          </div>
+                          <p className="text-accent text-xs font-mono">Loading bettors from indexer...</p>
+                        </div>
+                      ) : indexerError ? (
+                        <div className="p-4 border-2 border-dashed border-text/20 text-center">
+                          <span className="material-symbols-outlined text-accent/50 text-3xl mb-2">cloud_off</span>
+                          <p className="text-accent font-mono text-sm font-bold mb-1">Indexer Unavailable</p>
+                          <p className="text-accent/70 text-xs font-mono">
+                            Individual bettor details couldn&apos;t be loaded. The indexer may be syncing.
+                          </p>
+                        </div>
+                      ) : bettors.length === 0 ? (
+                        <div className="p-4 border-2 border-dashed border-text/20 text-center">
+                          <span className="material-symbols-outlined text-accent/50 text-3xl mb-2">hourglass_empty</span>
+                          <p className="text-accent font-mono text-sm font-bold mb-1">Awaiting Indexer</p>
+                          <p className="text-accent/70 text-xs font-mono">
+                            Bettor details will appear once the indexer syncs recent transactions.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-accent text-xs font-mono uppercase tracking-wider mb-2">
+                            All Bettors ({bettors.length})
+                          </p>
+                          {bettors.map((bettor, index) => {
+                            const avatar = bettor.avatarId !== undefined ? getAvatarById(bettor.avatarId) : null;
+                            const avatarUrl = avatar ? getAvatarUrl(avatar.seed, avatar.style) : null;
+                            const isYou = wallet?.address === bettor.address;
+                            const isWinner = bet.resolved && bettor.outcomeIndex === bet.winningOutcomeIndex;
+                            const outcomeLabel = bet.outcomes[bettor.outcomeIndex]?.label || 'Unknown';
+                            
+                            // Calculate potential/actual payout
+                            const payout = bet.resolved && isWinner && bet.outcomes[bet.winningOutcomeIndex].pool > 0
+                              ? (bettor.amount / bet.outcomes[bet.winningOutcomeIndex].pool) * bet.totalPool
+                              : 0;
+                            
+                            return (
+                              <div
+                                key={index}
+                                className={`p-3 border-2 ${
+                                  bet.resolved 
+                                    ? isWinner 
+                                      ? 'border-green-600 bg-green-600/10' 
+                                      : 'border-text/20 bg-background opacity-60'
+                                    : 'border-text/20 bg-background'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    {avatarUrl ? (
+                                      <img 
+                                        src={avatarUrl} 
+                                        alt={bettor.name || 'Bettor'} 
+                                        className="w-8 h-8 border-2 border-text"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 border-2 border-text bg-surface flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-text text-sm">person</span>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <p className="text-text font-mono font-bold text-sm flex items-center gap-2">
+                                        {bettor.name || `${bettor.address.slice(0, 6)}...${bettor.address.slice(-4)}`}
+                                        {isYou && (
+                                          <span className="text-[10px] bg-primary text-text px-2 py-0.5 uppercase tracking-wider">You</span>
+                                        )}
+                                      </p>
+                                      <p className="text-accent text-xs font-mono">
+                                        {formatUSDC(bettor.amount)} USDC on <span className="text-text">{outcomeLabel}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {bet.resolved && (
+                                    <div className="text-right">
+                                      {isWinner ? (
+                                        <>
+                                          <p className="text-green-600 font-mono font-bold text-sm flex items-center gap-1 justify-end">
+                                            <span className="material-symbols-outlined text-sm">emoji_events</span>
+                                            WON
+                                          </p>
+                                          <p className="text-green-600 text-xs font-mono">
+                                            +{formatUSDC(payout)} USDC
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <p className="text-accent/50 font-mono font-bold text-sm">LOST</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Admin Controls */}
+              {isAdmin && !bet.resolved && (
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="material-symbols-outlined text-secondary">admin_panel_settings</span>
+                      <h2 className="text-text text-lg font-display font-bold">Admin: Resolve Bet</h2>
+                    </div>
+                    <p className="text-accent text-sm font-mono mb-4">
+                      Select the winning outcome to settle this bet and pay out winners.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {bet.outcomes.map((outcome, index) => (
+                        <Button
+                          key={index}
+                          variant="secondary"
+                          onClick={() => handleResolveBet(index)}
+                          disabled={submitting}
+                          className="justify-center"
+                        >
+                          <span className="material-symbols-outlined">emoji_events</span>
+                          {outcome.label} Wins
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Resolved Summary */}
+              {bet.resolved && (
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="material-symbols-outlined text-green-600">verified</span>
+                      <h2 className="text-text text-lg font-display font-bold">Settlement Summary</h2>
+                    </div>
+                    
+                    {(() => {
+                      const winningPool = bet.outcomes[bet.winningOutcomeIndex].pool;
+                      const payoutMultiplier = winningPool > 0 ? bet.totalPool / winningPool : 0;
+                      const winners = bettors.filter(b => b.outcomeIndex === bet.winningOutcomeIndex);
+                      const losers = bettors.filter(b => b.outcomeIndex !== bet.winningOutcomeIndex);
+                      
+                      return (
+                        <div className="space-y-3">
+                          {/* Big winner display */}
+                          <div className="p-4 bg-green-600/10 border-2 border-green-600 text-center">
+                            <span className="material-symbols-outlined text-green-600 text-4xl mb-2">emoji_events</span>
+                            <p className="text-green-600 font-display font-bold text-2xl mb-1">
+                              {bet.outcomes[bet.winningOutcomeIndex].label}
+                            </p>
+                            <p className="text-accent font-mono text-sm">Winning Outcome</p>
+                          </div>
+
+                          {/* Stats grid */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-background border-2 border-text">
+                              <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Winning Pool</p>
+                              <p className="text-text font-mono font-bold">{formatUSDC(winningPool)} USDC</p>
+                            </div>
+                            <div className="p-3 bg-background border-2 border-text">
+                              <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Total Pool</p>
+                              <p className="text-text font-mono font-bold">{formatUSDC(bet.totalPool)} USDC</p>
+                            </div>
+                          </div>
+
+                          {/* Payout multiplier */}
+                          <div className="p-3 bg-primary/10 border-2 border-primary">
+                            <div className="flex justify-between items-center">
+                              <span className="text-accent font-mono text-sm">Payout Multiplier</span>
+                              <span className="text-primary font-mono font-bold text-lg">{payoutMultiplier.toFixed(2)}x</span>
+                            </div>
+                            <p className="text-accent/70 font-mono text-xs mt-1">
+                              Winners received {payoutMultiplier.toFixed(2)}x their wager
+                            </p>
+                          </div>
+
+                          {/* Winner/Loser counts from indexer */}
+                          {bettors.length > 0 && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="p-3 bg-green-600/10 border-2 border-green-600">
+                                <p className="text-green-600 font-mono text-xs uppercase tracking-wider mb-1">Winners</p>
+                                <p className="text-green-600 font-mono font-bold text-lg">{winners.length}</p>
+                              </div>
+                              <div className="p-3 bg-background border-2 border-text/30">
+                                <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Losers</p>
+                                <p className="text-accent font-mono font-bold text-lg">{losers.length}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Note if indexer data not available */}
+                          {bettors.length === 0 && !loadingBettors && (
+                            <div className="p-3 bg-surface border border-text/20">
+                              <p className="text-accent font-mono text-xs">
+                                <span className="text-primary font-bold">Note:</span> Winner/loser counts will appear once the indexer syncs.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
+              </div>
+            </div>
           )}
         </div>
       </main>

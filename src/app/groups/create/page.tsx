@@ -7,21 +7,21 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 
 export default function CreateGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = usePrivy();
   const { wallet, balance, createGroup } = useMoveWallet();
+  const { showToast } = useToast();
   
   const [groupName, setGroupName] = useState('');
   const [description, setDescription] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [txHash, setTxHash] = useState<string | null>(null);
 
   if (ready && !authenticated) {
     router.push('/login');
@@ -30,26 +30,24 @@ export default function CreateGroupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setTxHash(null);
 
     if (!wallet) {
-      setError('Wallet not initialized');
+      showToast({ type: 'error', title: 'Wallet not initialized' });
       return;
     }
 
     if (balance === 0) {
-      setError('Your wallet has no MOVE tokens. Please fund it first via Settings.');
+      showToast({ type: 'error', title: 'No MOVE tokens', message: 'Please fund your wallet via Settings' });
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      showToast({ type: 'error', title: 'Passwords do not match' });
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      showToast({ type: 'error', title: 'Password too short', message: 'Must be at least 6 characters' });
       return;
     }
 
@@ -58,8 +56,7 @@ export default function CreateGroupPage() {
     try {
       // Call the smart contract
       const result = await createGroup(groupName, password);
-      setTxHash(result.hash);
-
+      
       // Store group info locally for reference
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
         id: result.groupId,
@@ -67,20 +64,27 @@ export default function CreateGroupPage() {
         password: password,
       }));
 
-      // Show success and redirect
+      showToast({
+        type: 'success',
+        title: 'Group created!',
+        message: groupName,
+        txHash: result.hash,
+      });
+
+      // Redirect after a moment
       setTimeout(() => {
         router.push('/dashboard');
-      }, 2000);
+      }, 1500);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create group. Please try again.';
-      setError(message);
+      const message = err instanceof Error ? err.message : 'Failed to create group';
+      showToast({ type: 'error', title: 'Transaction failed', message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 pt-20 pb-24 lg:pt-4 lg:pb-4 bg-background">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-lg relative z-10">
@@ -112,25 +116,6 @@ export default function CreateGroupPage() {
                   <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
                   {' '}to copy your address and fund it from the faucet.
                 </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {txHash && (
-          <div className="mb-6 p-4 border-2 border-green-600 bg-green-600/10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-green-600">check_circle</span>
-              <div>
-                <p className="text-text font-mono font-bold text-sm">Group created on-chain!</p>
-                <a 
-                  href={`https://explorer.movementnetwork.xyz/txn/${txHash}?network=testnet`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary text-xs font-mono hover:underline flex items-center gap-1 mt-1"
-                >
-                  View transaction <span className="material-symbols-outlined text-xs">open_in_new</span>
-                </a>
               </div>
             </div>
           </div>
@@ -199,7 +184,6 @@ export default function CreateGroupPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                error={error}
               />
 
               <div className="flex items-start gap-3 p-4 bg-primary/20 border-2 border-primary">

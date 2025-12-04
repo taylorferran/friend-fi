@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Redirect to dashboard - bets are now viewed through groups
-export default function BetsPage() {
+// Redirect to dashboard - groups are now shown there
+export default function GroupsPage() {
   const router = useRouter();
 
   useEffect(() => {

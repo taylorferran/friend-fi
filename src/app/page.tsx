@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
+import { getAppUrl } from '@/lib/app-url';
 
 // Preload routes in the background
 const ROUTES_TO_PRELOAD = ['/login', '/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
@@ -131,9 +132,9 @@ export default function SplashPage() {
               <a href="#features" className="px-4 py-2 hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">Features</a>
               <a href="#how-it-works" className="px-4 py-2 hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
               <div className="ml-4">
-                <Link href="/login">
-                  <Button size="sm">{authenticated ? 'Dashboard' : 'Launch App'}</Button>
-                </Link>
+                <a href={getAppUrl('/login')}>
+                  <Button size="sm">{authenticated ? 'Go to App' : 'Go to App'}</Button>
+                </a>
               </div>
             </nav>
 
@@ -156,9 +157,9 @@ export default function SplashPage() {
                 <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-6 py-4 border-b-2 border-text hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">Features</a>
                 <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-6 py-4 border-b-2 border-text hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
                 <div className="p-4">
-                  <Link href="/login">
-                    <Button className="w-full">{authenticated ? 'Dashboard' : 'Launch App'}</Button>
-                  </Link>
+                    <a href={getAppUrl('/login')}>
+                      <Button className="w-full">Go to App</Button>
+                    </a>
                 </div>
               </nav>
             </div>
@@ -278,7 +279,7 @@ export default function SplashPage() {
             <div className="absolute bottom-48 left-16 w-6 h-6 border-4 border-primary/30 animate-spin-slow" style={{ animationDuration: '18s', animationDirection: 'reverse' }} />
             <div className="absolute bottom-36 right-6 w-8 h-8 border-4 border-primary/30 animate-spin-slow" style={{ animationDuration: '28s', animationDirection: 'reverse' }} />
             <div className="absolute bottom-48 right-16 w-6 h-6 border-4 border-secondary/30 animate-spin-slow" style={{ animationDuration: '24s' }} />
-          </div>
+            </div>
 
           <div className="max-w-7xl mx-auto relative z-10 w-full flex-grow flex flex-col justify-center pt-24">
             <div className="text-center">
@@ -297,7 +298,7 @@ export default function SplashPage() {
                     {word}
                   </span>
                 ))}
-              </h1>
+            </h1>
 
               {/* Subheadline - Appears after title animation completes */}
               <p className={`text-xl md:text-2xl lg:text-3xl text-accent max-w-4xl mx-auto mb-12 font-mono leading-relaxed transition-all duration-700 ${
@@ -310,20 +311,20 @@ export default function SplashPage() {
               <div className={`flex flex-col items-center gap-4 transition-all duration-700 delay-200 ${
                 titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}>
-                <Link href="/login">
+                <a href={getAppUrl('/login')}>
                   <Button variant="secondary" size="lg" className="text-lg px-12 py-5">
-                    {authenticated ? 'Dashboard' : 'Get Started'}
+                    Go to App
                     <span className="material-symbols-outlined text-2xl">arrow_forward</span>
                   </Button>
-                </Link>
+                </a>
                 
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-text bg-primary/80">
                   <span className="w-2 h-2 bg-green-500 animate-pulse" />
                   <span className="text-text text-[10px] font-mono uppercase tracking-widest font-bold">Live on Movement Testnet</span>
-                </div>
+              </div>
               </div>
             </div>
-          </div>
+              </div>
 
           {/* Scroll indicator - at bottom - Appears after title animation completes */}
           <div className={`mt-auto pt-8 pb-6 transition-all duration-700 delay-500 ${
@@ -376,12 +377,12 @@ export default function SplashPage() {
                 </ul>
                 
                 <div className="mt-auto">
-                  <Link href="/login">
+                  <a href={getAppUrl('/login')}>
                     <Button className="w-full">
-                      {authenticated ? 'Open App' : 'Get Started'}
+                      Go to App
                       <span className="material-symbols-outlined">arrow_forward</span>
                     </Button>
-                  </Link>
+                  </a>
                 </div>
               </div>
 
@@ -441,9 +442,9 @@ export default function SplashPage() {
                 </ul>
                 
                 <div className="mt-auto">
-                  <Button variant="secondary" className="w-full opacity-50 cursor-not-allowed" disabled>
-                    Coming Q1 2025
-                  </Button>
+                <Button variant="secondary" className="w-full opacity-50 cursor-not-allowed" disabled>
+                  Coming Q1 2025
+                </Button>
                 </div>
               </div>
             </div>
@@ -496,8 +497,8 @@ export default function SplashPage() {
                 >
                   <div className="w-12 h-12 mb-6 flex items-center justify-center bg-primary border-2 border-text">
                     <span className="material-symbols-outlined text-2xl text-text">
-                      {feature.icon}
-                    </span>
+                        {feature.icon}
+                      </span>
                   </div>
                   <h3 className="text-text text-xl font-display font-bold mb-3">{feature.title}</h3>
                   <p className="text-accent font-mono text-sm leading-relaxed">{feature.desc}</p>
@@ -530,12 +531,12 @@ export default function SplashPage() {
                 >
                   <div className="w-16 h-16 mx-auto mb-6 bg-primary border-2 border-text flex items-center justify-center">
                     <span className="material-symbols-outlined text-text text-3xl">
-                      {item.icon}
-                    </span>
-                  </div>
-                  
+                        {item.icon}
+                      </span>
+                    </div>
+                    
                   <div className="text-primary text-xs font-mono font-bold tracking-wider mb-2">
-                    {item.step}
+                      {item.step}
                   </div>
                   <h3 className="text-text font-display font-bold text-lg mb-2">{item.title}</h3>
                   <p className="text-accent font-mono text-xs leading-relaxed">{item.desc}</p>
@@ -550,19 +551,19 @@ export default function SplashPage() {
           <div className="max-w-3xl mx-auto text-center">
             <div className="scroll-reveal-scale">
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-                Ready to start?
-              </h2>
-              
+                  Ready to start?
+                </h2>
+                
               <p className="text-white/80 text-lg font-mono mb-10">
-                Create your first private group and invite your friends. It&apos;s free to get started.
-              </p>
-              
-              <Link href="/login">
+                  Create your first private group and invite your friends. It&apos;s free to get started.
+                </p>
+                
+              <a href={getAppUrl('/login')}>
                 <Button size="lg" className="bg-white text-secondary border-white hover:bg-white/90">
-                  {authenticated ? 'Go to Dashboard' : 'Get Started Free'}
+                  Go to App
                   <span className="material-symbols-outlined">arrow_forward</span>
                 </Button>
-              </Link>
+              </a>
             </div>
           </div>
         </section>
@@ -571,8 +572,8 @@ export default function SplashPage() {
         <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-background border-t-2 border-text">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Logo size="sm" />
+            <div className="flex items-center gap-4">
+              <Logo size="sm" />
                 <span className="text-accent text-xs font-mono uppercase tracking-wider">Built on Movement Network</span>
               </div>
             </div>

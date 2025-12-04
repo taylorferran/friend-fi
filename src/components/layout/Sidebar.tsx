@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { MobileNav } from './MobileNav';
+import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { useToast } from '@/components/ui/Toast';
+import { getUSDCBalance } from '@/lib/indexer';
 
 interface NavItem {
   href: string;
@@ -14,9 +17,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'grid_view' },
-  { href: '/groups/crypto-degens', label: 'Group', icon: 'groups' },
-  { href: '/bets', label: 'My Bets', icon: 'confirmation_number' },
+  { href: '/dashboard', label: 'Home', icon: 'home' },
   { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard' },
 ];
 
@@ -31,17 +32,66 @@ function getAvatarUrl(seed: string) {
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = usePrivy();
+  const { wallet: moveWallet } = useMoveWallet();
+  const { showToast } = useToast();
   const [userSettings, setUserSettings] = useState<{ username?: string; avatarUrl?: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [usdcBalance, setUsdcBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
-  // Load user settings
-  useEffect(() => {
+  // Load USDC balance from indexer
+  const loadUSDCBalance = useCallback(async () => {
+    if (!moveWallet?.address) return;
+    
+    setLoadingBalance(true);
+    try {
+      const balance = await getUSDCBalance(moveWallet.address);
+      setUsdcBalance(balance);
+    } catch (error) {
+      console.error('Error loading USDC balance:', error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, [moveWallet?.address]);
+
+  // Load user settings and listen for updates
+  const loadSettings = useCallback(() => {
     const saved = sessionStorage.getItem('friendfi_user_settings');
     if (saved) {
       setUserSettings(JSON.parse(saved));
     }
   }, []);
 
-  const isActive = (href: string) => pathname.startsWith(href);
+  useEffect(() => {
+    loadSettings();
+    loadUSDCBalance();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (e: CustomEvent) => {
+      setUserSettings(e.detail);
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdate as EventListener);
+    return () => {
+      window.removeEventListener('profile-updated', handleProfileUpdate as EventListener);
+    };
+  }, [loadSettings, loadUSDCBalance]);
+
+  const copyAddress = async () => {
+    if (moveWallet?.address) {
+      await navigator.clipboard.writeText(moveWallet.address);
+      setCopied(true);
+      showToast({ type: 'info', title: 'Address copied!' });
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === '/dashboard' || pathname.startsWith('/groups') || pathname.startsWith('/bets');
+    }
+    return pathname.startsWith(href);
+  };
 
   const displayName = userSettings?.username || user?.email?.address?.split('@')[0] || 'Anonymous';
   const avatarUrl = userSettings?.avatarUrl || getAvatarUrl('default');
@@ -49,7 +99,7 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-surface border-r-2 border-text h-screen sticky top-0">
+      <aside className="hidden lg:flex w-72 flex-col bg-surface border-r-2 border-text h-screen sticky top-0">
         <div className="flex h-full flex-col justify-between">
           <div className="flex flex-col">
             {/* Logo */}
@@ -59,21 +109,38 @@ export function Sidebar() {
 
             {/* User Info */}
             {user && (
-              <Link href="/settings" className="flex gap-3 px-4 py-4 border-b-2 border-text group hover:bg-primary/20 transition-colors">
-                <img 
-                  src={avatarUrl}
-                  alt="Your avatar"
-                  className="w-10 h-10 border-2 border-text group-hover:border-primary transition-colors"
-                />
-                <div className="flex flex-col overflow-hidden">
-                  <h2 className="text-text text-sm font-bold font-mono truncate group-hover:text-accent transition-colors">
-                    {displayName}
-                  </h2>
-                  <p className="text-accent text-xs font-mono truncate">
-                    {user.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : 'No wallet'}
-                  </p>
-                </div>
-              </Link>
+              <div className="border-b-2 border-text">
+                <Link href="/settings" className="flex gap-3 px-4 py-4 group hover:bg-primary/20 transition-colors">
+                  <img 
+                    src={avatarUrl}
+                    alt="Your avatar"
+                    className="w-12 h-12 border-2 border-text group-hover:border-primary transition-colors"
+                  />
+                  <div className="flex flex-col overflow-hidden flex-1">
+                    <h2 className="text-text text-sm font-bold font-mono truncate group-hover:text-accent transition-colors">
+                      {displayName}
+                    </h2>
+                    <p className="text-accent text-xs font-mono">
+                      {loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)} USDC
+                    </p>
+                  </div>
+                </Link>
+                
+                {/* Full Address with Copy */}
+                {moveWallet?.address && (
+                  <button
+                    onClick={copyAddress}
+                    className="w-full px-4 py-2 bg-background/50 flex items-center justify-between gap-2 hover:bg-primary/10 transition-colors group"
+                  >
+                    <p className="text-accent text-[10px] font-mono truncate flex-1 text-left">
+                      {moveWallet.address}
+                    </p>
+                    <span className="material-symbols-outlined text-accent group-hover:text-primary text-sm flex-shrink-0">
+                      {copied ? 'check' : 'content_copy'}
+                    </span>
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Main Navigation */}
@@ -95,6 +162,27 @@ export function Sidebar() {
                 </Link>
               ))}
             </nav>
+
+            {/* Quick Actions */}
+            <div className="px-4 py-4 border-b-2 border-text">
+              <p className="text-accent text-xs font-mono font-bold uppercase tracking-wider mb-3">Quick Actions</p>
+              <div className="space-y-2">
+                <Link
+                  href="/groups/create"
+                  className="flex items-center gap-2 px-3 py-2 bg-primary/20 border-2 border-text text-text hover:bg-primary transition-colors text-sm font-mono font-bold"
+                >
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  New Group
+                </Link>
+                <Link
+                  href="/groups/join"
+                  className="flex items-center gap-2 px-3 py-2 bg-surface border-2 border-text text-text hover:bg-primary/20 transition-colors text-sm font-mono font-bold"
+                >
+                  <span className="material-symbols-outlined text-lg">group_add</span>
+                  Join Group
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Bottom Navigation */}
@@ -134,7 +222,10 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           <Logo size="sm" />
           {user && (
-            <Link href="/settings">
+            <Link href="/settings" className="flex items-center gap-2">
+              <span className="text-accent text-xs font-mono">
+                {loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)} USDC
+              </span>
               <img 
                 src={avatarUrl}
                 alt="Your avatar"

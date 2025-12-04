@@ -60,7 +60,7 @@ export default function JoinGroupPage() {
     try {
       const result = await joinGroup(groupIdNum, password);
       setTxHash(result.hash);
-
+      
       // Store group info locally
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
         id: groupIdNum,
@@ -70,7 +70,7 @@ export default function JoinGroupPage() {
 
       // Show success and redirect
       setTimeout(() => {
-        router.push('/dashboard');
+      router.push('/dashboard');
       }, 2000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to join group. Please check the password.';
@@ -81,7 +81,7 @@ export default function JoinGroupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 lg:py-12 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 pt-20 pb-24 lg:pt-12 lg:pb-12 bg-background">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-md relative z-10">

@@ -1,8 +1,11 @@
 'use client';
 
-import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
+import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey, AccountAddress } from "@aptos-labs/ts-sdk";
 
 const WALLET_STORAGE_KEY = 'friendfi_move_wallet';
+
+// Enable/disable gasless transactions
+export const GASLESS_ENABLED = true;
 
 // Movement Testnet configuration
 const config = new AptosConfig({
@@ -68,7 +71,7 @@ export async function getWalletBalance(address: string): Promise<number> {
   }
 }
 
-// Sign and submit a transaction
+// Sign and submit a transaction (with optional gasless support)
 export async function signAndSubmitTransaction(
   payload: {
     function: `${string}::${string}::${string}`;
@@ -77,6 +80,11 @@ export async function signAndSubmitTransaction(
   }
 ): Promise<{ hash: string; success: boolean }> {
   const account = getMoveAccount();
+  
+  // Use gasless if enabled
+  if (GASLESS_ENABLED) {
+    return signAndSubmitGaslessTransaction(payload);
+  }
   
   try {
     const transaction = await aptos.transaction.build.simple({
@@ -103,6 +111,76 @@ export async function signAndSubmitTransaction(
     };
   } catch (error) {
     console.error('Transaction failed:', error);
+    throw error;
+  }
+}
+
+// Sign and submit a gasless transaction via Shinami Gas Station
+export async function signAndSubmitGaslessTransaction(
+  payload: {
+    function: `${string}::${string}::${string}`;
+    typeArguments: string[];
+    functionArguments: (string | string[])[];
+  }
+): Promise<{ hash: string; success: boolean }> {
+  const account = getMoveAccount();
+  
+  try {
+    // Step 1: Build a feePayer SimpleTransaction
+    // Set a 5 minute expiration since we're making an API call
+    const FIVE_MINUTES_FROM_NOW = Math.floor(Date.now() / 1000) + (5 * 60);
+    
+    const transaction = await aptos.transaction.build.simple({
+      sender: account.accountAddress,
+      data: {
+        function: payload.function,
+        typeArguments: payload.typeArguments,
+        functionArguments: payload.functionArguments,
+      },
+      withFeePayer: true,
+      options: {
+        expireTimestamp: FIVE_MINUTES_FROM_NOW,
+      },
+    });
+
+    // Step 2: Sign the transaction with our account
+    // The feePayer is set to 0x0 at this point, Shinami will fill it in
+    const senderAuthenticator = aptos.transaction.sign({
+      signer: account,
+      transaction,
+    });
+
+    // Step 3: Send to our backend API to sponsor and submit via Shinami
+    const response = await fetch('/api/sponsor-transaction', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        transaction: transaction.bcsToHex().toString(),
+        senderAuth: senderAuthenticator.bcsToHex().toString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to sponsor transaction');
+    }
+
+    const result = await response.json();
+    const pendingTx = result.pendingTx;
+
+    // Step 4: Wait for the transaction to be confirmed
+    const txResponse = await aptos.waitForTransaction({
+      transactionHash: pendingTx.hash,
+    });
+
+    return {
+      hash: pendingTx.hash,
+      success: txResponse.success,
+    };
+  } catch (error) {
+    console.error('Gasless transaction failed:', error);
     throw error;
   }
 }

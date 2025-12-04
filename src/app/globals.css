@@ -301,16 +301,18 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Mobile content wrapper */
+/* Mobile content wrapper - HACKY but works */
 .mobile-content {
-  padding-top: calc(60px + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  margin-top: 80px !important;
+  margin-bottom: 100px !important;
+  min-height: calc(100vh - 180px);
 }
 
 @media (min-width: 1024px) {
   .mobile-content {
-    padding-top: 0;
-    padding-bottom: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    min-height: auto;
   }
 }
 
@@ -544,4 +546,20 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   80% {
     transform: translate(35px, -10px) rotate(-8deg);
   }
+}
+
+/* Toast animation */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s ease-out forwards;
 }

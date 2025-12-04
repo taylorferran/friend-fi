@@ -7,7 +7,7 @@ import {
   signAndSubmitTransaction,
   type MoveWallet 
 } from '@/lib/move-wallet';
-import { buildCreateGroupPayload, buildJoinGroupPayload, getGroupsCount } from '@/lib/contract';
+import { buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, buildSetProfilePayload, getGroupsCount, getBetsCount } from '@/lib/contract';
 
 export function useMoveWallet() {
   const [wallet, setWallet] = useState<MoveWallet | null>(null);
@@ -92,6 +92,96 @@ export function useMoveWallet() {
     }
   }, [wallet]);
 
+  // Create a bet on-chain
+  const createBet = useCallback(async (groupId: number, description: string, outcomes: string[]) => {
+    if (!wallet) throw new Error('Wallet not initialized');
+    
+    setError(null);
+    try {
+      // The creator is automatically the admin
+      const payload = buildCreateBetPayload(groupId, description, outcomes, wallet.address);
+      const result = await signAndSubmitTransaction(payload);
+      
+      if (!result.success) {
+        throw new Error('Transaction failed');
+      }
+      
+      // Get the new bet ID (it's the count - 1 after creation)
+      const count = await getBetsCount();
+      return {
+        hash: result.hash,
+        betId: count - 1,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create bet';
+      setError(message);
+      throw err;
+    }
+  }, [wallet]);
+
+  // Place a wager on a bet
+  const placeWager = useCallback(async (betId: number, outcomeIndex: number, amount: number) => {
+    if (!wallet) throw new Error('Wallet not initialized');
+    
+    setError(null);
+    try {
+      const payload = buildPlaceWagerPayload(betId, outcomeIndex, amount);
+      const result = await signAndSubmitTransaction(payload);
+      
+      if (!result.success) {
+        throw new Error('Transaction failed');
+      }
+      
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to place wager';
+      setError(message);
+      throw err;
+    }
+  }, [wallet]);
+
+  // Resolve a bet (only admin can do this)
+  const resolveBet = useCallback(async (betId: number, winningOutcomeIndex: number) => {
+    if (!wallet) throw new Error('Wallet not initialized');
+    
+    setError(null);
+    try {
+      const payload = buildResolveBetPayload(betId, winningOutcomeIndex);
+      const result = await signAndSubmitTransaction(payload);
+      
+      if (!result.success) {
+        throw new Error('Transaction failed');
+      }
+      
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to resolve bet';
+      setError(message);
+      throw err;
+    }
+  }, [wallet]);
+
+  // Set user profile on-chain
+  const setProfile = useCallback(async (name: string, avatarId: number) => {
+    if (!wallet) throw new Error('Wallet not initialized');
+    
+    setError(null);
+    try {
+      const payload = buildSetProfilePayload(name, avatarId);
+      const result = await signAndSubmitTransaction(payload);
+      
+      if (!result.success) {
+        throw new Error('Transaction failed');
+      }
+      
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to set profile';
+      setError(message);
+      throw err;
+    }
+  }, [wallet]);
+
   return {
     wallet,
     balance,
@@ -100,6 +190,10 @@ export function useMoveWallet() {
     refreshBalance,
     createGroup,
     joinGroup,
+    createBet,
+    placeWager,
+    resolveBet,
+    setProfile,
   };
 }
 

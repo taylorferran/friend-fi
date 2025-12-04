@@ -1,52 +1,135 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
-
-const groupMembers = [
-  { id: '1', name: 'David' },
-  { id: '2', name: 'Sarah' },
-  { id: '3', name: 'Michael' },
-  { id: '4', name: 'Emma' },
-];
+import { useToast } from '@/components/ui/Toast';
+import { useMoveWallet } from '@/hooks/useMoveWallet';
 
 export default function CreateBetPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authenticated, ready } = usePrivy();
+  const { wallet, balance, createBet } = useMoveWallet();
+  const { showToast } = useToast();
   
   const [question, setQuestion] = useState('');
   const [betType, setBetType] = useState<'yesno' | 'multiple'>('yesno');
-  const [wagerAmount, setWagerAmount] = useState('');
-  const [admin, setAdmin] = useState('');
+  const [options, setOptions] = useState<string[]>(['', '']);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [groupId, setGroupId] = useState<number | null>(null);
+  const [groupName, setGroupName] = useState<string>('');
+
+  // Load current group from URL params or session storage
+  useEffect(() => {
+    // First check URL params
+    const urlGroupId = searchParams.get('groupId');
+    const urlGroupName = searchParams.get('groupName');
+    
+    if (urlGroupId) {
+      const id = parseInt(urlGroupId, 10);
+      if (!isNaN(id)) {
+        setGroupId(id);
+        setGroupName(urlGroupName || `Group ${id}`);
+        return;
+      }
+    }
+    
+    // Fall back to session storage
+    const stored = sessionStorage.getItem('friendfi_current_group');
+    if (stored) {
+      const group = JSON.parse(stored);
+      setGroupId(group.id);
+      setGroupName(group.name);
+    }
+  }, [searchParams]);
 
   if (ready && !authenticated) {
     router.push('/login');
     return null;
   }
 
+  const getOutcomes = (): string[] => {
+    if (betType === 'yesno') {
+      return ['Yes', 'No'];
+    }
+    return options.filter(opt => opt.trim() !== '');
+  };
+
+  const addOption = () => {
+    setOptions([...options, '']);
+  };
+
+  const removeOption = (index: number) => {
+    if (options.length > 2) {
+      setOptions(options.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateOption = (index: number, value: string) => {
+    const newOptions = [...options];
+    newOptions[index] = value;
+    setOptions(newOptions);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    if (!wallet) {
+      showToast({ type: 'error', title: 'Wallet not initialized' });
+      setLoading(false);
+      return;
+    }
+
+    if (balance === 0) {
+      showToast({ type: 'error', title: 'No MOVE tokens', message: 'Please fund your wallet via Settings' });
+      setLoading(false);
+      return;
+    }
+
+    if (groupId === null) {
+      showToast({ type: 'error', title: 'No group selected', message: 'Please join or create a group first' });
+      setLoading(false);
+      return;
+    }
+
+    const outcomes = getOutcomes();
+    if (outcomes.length < 2) {
+      showToast({ type: 'error', title: 'Invalid options', message: 'You need at least 2 options for the bet' });
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('Creating bet:', { question, betType, wagerAmount, admin });
-      alert('Bet created successfully!');
-      router.push('/dashboard');
+      const result = await createBet(groupId, question, outcomes);
+      
+      showToast({
+        type: 'success',
+        title: 'Bet created!',
+        message: question.substring(0, 50) + (question.length > 50 ? '...' : ''),
+        txHash: result.hash,
+      });
+      
+      // Redirect after a moment
+      setTimeout(() => {
+        router.push(`/groups/${groupId}`);
+      }, 1500);
     } catch (err) {
       console.error('Failed to create bet:', err);
+      const message = err instanceof Error ? err.message : 'Failed to create bet';
+      showToast({ type: 'error', title: 'Transaction failed', message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen py-8 lg:py-12 px-4 sm:px-10 md:px-20 lg:px-40 bg-background">
+    <div className="min-h-screen pt-20 pb-24 lg:pt-12 lg:pb-12 px-4 sm:px-10 md:px-20 lg:px-40 bg-background">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="max-w-3xl mx-auto relative z-10">
@@ -58,6 +141,47 @@ export default function CreateBetPage() {
             </button>
           </Link>
         </div>
+
+        {/* Group context */}
+        {groupName ? (
+          <div className="mb-6 p-3 bg-primary/20 border-2 border-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-text">group</span>
+            <span className="text-text font-mono text-sm">Creating bet in: <strong>{groupName}</strong></span>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary">warning</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">No group selected</p>
+                <p className="text-accent text-xs font-mono mt-1">
+                  You need to be in a group to create a bet.{' '}
+                  <Link href="/groups/create" className="text-primary hover:underline font-bold">Create a group</Link>
+                  {' '}or{' '}
+                  <Link href="/groups/join" className="text-primary hover:underline font-bold">join one</Link>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wallet warning */}
+        {wallet && balance === 0 && (
+          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary">warning</span>
+              <div>
+                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
+                <p className="text-accent text-xs font-mono mt-1">
+                  Your Move wallet has no MOVE tokens. Go to{' '}
+                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
+                  {' '}to copy your address and fund it from the faucet.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         <div className="mb-8">
           <div className="flex justify-between mb-2">
@@ -76,85 +200,107 @@ export default function CreateBetPage() {
             <Card className={step === 1 ? '' : 'opacity-60'}>
               <CardContent>
                 <h2 className="text-text text-xl font-display font-bold mb-6">What&apos;s the prediction?</h2>
-                
-                <div className="mb-6">
+              
+              <div className="mb-6">
                   <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-2">Bet Question</label>
-                  <textarea
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="e.g., Will Alice and Bob follow through with the wedding?"
-                    rows={4}
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="e.g., Will Alice and Bob follow through with the wedding?"
+                  rows={4}
                     className="w-full border-2 border-text bg-surface text-text placeholder:text-accent/60 p-4 text-base font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                    required
-                  />
-                </div>
+                  required
+                />
+              </div>
 
-                <div className="mb-6">
+              <div className="mb-6">
                   <p className="text-text text-base font-mono font-bold uppercase tracking-wider mb-3">What are the options?</p>
-                  <div className="flex flex-wrap gap-3">
-                    <label className={`
+                <div className="flex flex-wrap gap-3">
+                  <label className={`
                       flex items-center justify-center border-2 px-6 h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider
-                      ${betType === 'yesno' 
+                    ${betType === 'yesno' 
                         ? 'border-primary bg-primary text-text' 
                         : 'border-text bg-surface text-text hover:bg-primary/20'
-                      }
-                    `}>
-                      <input
-                        type="radio"
-                        name="bet_type"
-                        value="yesno"
-                        checked={betType === 'yesno'}
-                        onChange={() => setBetType('yesno')}
-                        className="sr-only"
-                      />
-                      Yes / No
-                    </label>
-                    <label className={`
-                      flex items-center justify-center border-2 px-6 h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider
-                      ${betType === 'multiple' 
-                        ? 'border-primary bg-primary text-text' 
-                        : 'border-text bg-surface text-text hover:bg-primary/20'
-                      }
-                    `}>
-                      <input
-                        type="radio"
-                        name="bet_type"
-                        value="multiple"
-                        checked={betType === 'multiple'}
-                        onChange={() => setBetType('multiple')}
-                        className="sr-only"
-                      />
-                      Multiple Choice
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-2">Your Wager Amount</label>
-                  <div className="relative max-w-xs">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-accent font-mono">USDC</span>
+                    }
+                  `}>
                     <input
-                      type="number"
-                      value={wagerAmount}
-                      onChange={(e) => setWagerAmount(e.target.value)}
-                      placeholder="25"
-                      className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 pl-16 pr-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-                      required
+                      type="radio"
+                      name="bet_type"
+                      value="yesno"
+                      checked={betType === 'yesno'}
+                      onChange={() => setBetType('yesno')}
+                      className="sr-only"
                     />
-                  </div>
-                  <p className="text-accent text-xs mt-2 font-mono">This is your initial wager. Others can bet different amounts.</p>
+                    Yes / No
+                  </label>
+                  <label className={`
+                      flex items-center justify-center border-2 px-6 h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider
+                    ${betType === 'multiple' 
+                        ? 'border-primary bg-primary text-text' 
+                        : 'border-text bg-surface text-text hover:bg-primary/20'
+                    }
+                  `}>
+                    <input
+                      type="radio"
+                      name="bet_type"
+                      value="multiple"
+                      checked={betType === 'multiple'}
+                      onChange={() => setBetType('multiple')}
+                      className="sr-only"
+                    />
+                    Multiple Choice
+                  </label>
                 </div>
+              </div>
 
-                {step === 1 && (
-                  <Button 
-                    type="button" 
-                    onClick={() => setStep(2)}
-                    disabled={!question || !wagerAmount}
+              {/* Multiple choice options input */}
+              {betType === 'multiple' && (
+                <div className="mb-6">
+                  <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-3">Enter Options</label>
+                  <div className="space-y-3">
+                    {options.map((option, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="text-accent font-mono text-sm w-6">{index + 1}.</span>
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => updateOption(index, e.target.value)}
+                          placeholder={`Option ${index + 1}`}
+                          className="flex-1 h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        {options.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => removeOption(index)}
+                            className="w-10 h-10 flex items-center justify-center border-2 border-text bg-surface text-accent hover:bg-red-600/20 hover:text-red-600 hover:border-red-600 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-xl">close</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addOption}
+                    className="mt-3 flex items-center gap-2 text-primary hover:text-text transition-colors font-mono text-sm font-bold"
                   >
-                    Continue
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </Button>
-                )}
+                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                    Add another option
+                  </button>
+                </div>
+              )}
+
+              {step === 1 && (
+                <Button 
+                  type="button" 
+                  onClick={() => setStep(2)}
+                  disabled={!question || (betType === 'multiple' && getOutcomes().length < 2)}
+                >
+                  Continue
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </Button>
+              )}
               </CardContent>
             </Card>
           )}
@@ -162,66 +308,65 @@ export default function CreateBetPage() {
           {step >= 2 && (
             <Card className="mt-6">
               <CardContent>
-                <h2 className="text-text text-xl font-display font-bold mb-6">Who will settle this bet?</h2>
-                
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className="text-text text-base font-mono font-bold uppercase tracking-wider">Select Admin / Resolver</label>
-                    <div className="group relative">
-                      <span className="material-symbols-outlined text-accent text-base cursor-help">help</span>
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-surface border-2 border-text p-2 text-center text-xs text-accent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-mono">
-                        The admin resolves the bet and declares the winning outcome.
-                      </span>
-                    </div>
+                <h2 className="text-text text-xl font-display font-bold mb-6">Review & Confirm</h2>
+              
+              {/* Admin info */}
+              <div className="mb-6 p-4 bg-primary/20 border-2 border-primary">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-text text-xl">admin_panel_settings</span>
+                  <div>
+                    <p className="text-text font-mono font-bold text-sm uppercase tracking-wider">You are the bet admin</p>
+                    <p className="text-accent text-xs font-mono mt-1">
+                      As the creator, you will be responsible for settling this bet and declaring the winning outcome.
+                    </p>
                   </div>
-                  <select
-                    value={admin}
-                    onChange={(e) => setAdmin(e.target.value)}
-                    className="w-full h-12 border-2 border-text bg-surface text-text px-4 appearance-none font-mono focus:outline-none focus:ring-2 focus:ring-primary"
-                    required
-                  >
-                    <option value="">Select a friend</option>
-                    {groupMembers.map((member) => (
-                      <option key={member.id} value={member.id}>{member.name}</option>
-                    ))}
-                  </select>
-                  <p className="text-accent text-xs mt-2 font-mono">The resolver will determine the final outcome and trigger payouts.</p>
                 </div>
+              </div>
 
                 <div className="p-4 bg-background border-2 border-text mb-6">
                   <h3 className="text-text font-mono font-bold uppercase tracking-wider mb-3">Bet Summary</h3>
                   <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between">
+                  <div className="flex justify-between">
                       <span className="text-accent">Question</span>
                       <span className="text-text text-right max-w-[200px] truncate">{question}</span>
-                    </div>
-                    <div className="flex justify-between">
+                  </div>
+                  <div className="flex justify-between">
                       <span className="text-accent">Type</span>
                       <span className="text-text">{betType === 'yesno' ? 'Yes / No' : 'Multiple Choice'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-accent">Your Wager</span>
-                      <span className="text-text">{wagerAmount} USDC</span>
-                    </div>
                   </div>
+                  <div className="flex justify-between items-start">
+                      <span className="text-accent">Options</span>
+                      <div className="text-text text-right">
+                        {getOutcomes().map((outcome, i) => (
+                          <div key={i}>{outcome}</div>
+                        ))}
+                      </div>
+                  </div>
+                  {groupName && (
+                    <div className="flex justify-between">
+                        <span className="text-accent">Group</span>
+                        <span className="text-text">{groupName}</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t-2 border-text">
                   <p className="text-sm text-green-600 flex items-center gap-2 font-mono">
-                    <span className="material-symbols-outlined text-base">verified</span>
-                    No gas fees for you!
-                  </p>
-                  
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <Button type="button" variant="secondary" onClick={() => setStep(1)}>
-                      <span className="material-symbols-outlined">arrow_back</span>
-                      Back
-                    </Button>
-                    <Button type="submit" loading={loading} disabled={!admin}>
-                      Create Bet
-                    </Button>
-                  </div>
+                  <span className="material-symbols-outlined text-base">verified</span>
+                  No gas fees for you!
+                </p>
+                
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <Button type="button" variant="secondary" onClick={() => setStep(1)}>
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    Back
+                  </Button>
+                  <Button type="submit" loading={loading} disabled={groupId === null}>
+                    Create Bet
+                  </Button>
                 </div>
+              </div>
               </CardContent>
             </Card>
           )}
