@@ -13,7 +13,7 @@ import { getGroupsCount } from '@/lib/contract';
 export default function JoinGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = usePrivy();
-  const { wallet, balance, joinGroup } = useMoveWallet();
+  const { wallet, joinGroup } = useMoveWallet();
   
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
@@ -34,11 +34,6 @@ export default function JoinGroupPage() {
 
     if (!wallet) {
       setError('Wallet not initialized');
-      return;
-    }
-
-    if (balance === 0) {
-      setError('Your wallet has no MOVE tokens. Please fund it first via Settings.');
       return;
     }
 
@@ -101,23 +96,6 @@ export default function JoinGroupPage() {
           <p className="text-accent font-mono">Enter the Group ID and password shared by the group creator.</p>
         </div>
 
-        {/* Wallet status banner */}
-        {wallet && balance === 0 && (
-          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-secondary">warning</span>
-              <div>
-                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
-                <p className="text-accent text-xs font-mono mt-1">
-                  Your Move wallet has no MOVE tokens. Go to{' '}
-                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
-                  {' '}to copy your address and fund it from the faucet.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {txHash && (
           <div className="mb-6 p-4 border-2 border-green-600 bg-green-600/10">
             <div className="flex items-start gap-3">
@@ -172,7 +150,7 @@ export default function JoinGroupPage() {
                 </button>
               </div>
 
-              <Button type="submit" loading={loading} disabled={balance === 0}>
+              <Button type="submit" loading={loading}>
                 <span className="material-symbols-outlined">login</span>
                 Join Group
               </Button>

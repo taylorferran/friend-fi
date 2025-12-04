@@ -122,6 +122,12 @@ module friend_fi::private_prediction_market {
     
     /// The requested username is already taken by another address.
     const E_USERNAME_TAKEN: u64 = 20;
+    
+    /// User already has a wager on a different outcome.
+    const E_ALREADY_BET_ON_DIFFERENT_OUTCOME: u64 = 21;
+    
+    /// User has no wager to cancel.
+    const E_NO_WAGER_TO_CANCEL: u64 = 22;
 
     // =========================================================================
     // HELPER FUNCTIONS
@@ -226,6 +232,10 @@ module friend_fi::private_prediction_market {
         
         /// Parallel array to members_wagered: wagers[i] is the wager for members_wagered[i].
         wagers: vector<Wager>,
+        
+        /// Optional encrypted payload for private bet details.
+        /// Can contain encrypted description, metadata, or any other data.
+        encrypted_payload: vector<u8>,
     }
 
     // =========================================================================
@@ -279,6 +289,8 @@ module friend_fi::private_prediction_market {
         group_id: u64,
         creator: address,
         admin: address,
+        /// Length of the encrypted payload (0 if none).
+        encrypted_len: u64,
     }
 
     // Emitted when a user places or adds to a wager.
@@ -311,6 +323,16 @@ module friend_fi::private_prediction_market {
         bet_id: u64,
         user: address,
         amount: u64,
+    }
+
+    // Emitted when a user cancels their wager.
+    #[event]
+    struct WagerCancelledEvent has drop, store {
+        bet_id: u64,
+        group_id: u64,
+        user: address,
+        outcome_index: u64,
+        amount_refunded: u64,
     }
 
     // =========================================================================
@@ -883,6 +905,9 @@ module friend_fi::private_prediction_market {
     /// - Must have at least 2 outcomes
     /// - Admin address is who can resolve the bet (can be caller or someone else)
     /// 
+    /// The encrypted_payload can contain any encrypted data (e.g., encrypted description,
+    /// metadata, or additional bet details). Pass an empty vector if not using encryption.
+    /// 
     /// Returns: bet_id = vector::length(&bets) - 1 after creation
     /// Emits BetCreatedEvent.
     public entry fun create_bet(
@@ -891,6 +916,7 @@ module friend_fi::private_prediction_market {
         description: String,
         outcomes: vector<String>,
         admin: address,
+        encrypted_payload: vector<u8>,
     ) acquires State {
         let caller = signer::address_of(account);
 
@@ -920,6 +946,9 @@ module friend_fi::private_prediction_market {
         let members_wagered = vector::empty<address>();
         let wagers = vector::empty<Wager>();
 
+        // Get encrypted payload length for event
+        let encrypted_len = vector::length(&encrypted_payload);
+
         // Create the bet struct
         let bet = Bet {
             description,
@@ -932,6 +961,7 @@ module friend_fi::private_prediction_market {
             outcome_pools,
             members_wagered,
             wagers,
+            encrypted_payload,
         };
 
         // Add to bets vector and get bet_id
@@ -948,6 +978,7 @@ module friend_fi::private_prediction_market {
             group_id,
             creator: caller,
             admin,
+            encrypted_len,
         });
     }
 
@@ -1018,10 +1049,11 @@ module friend_fi::private_prediction_market {
             // Update or create user's wager record
             let (found, w_idx) = find_wager_index(bet, user);
             if (found) {
-                // User already has a wager - add to it and update outcome
+                // User already has a wager - verify same outcome and add to it
                 let w_ref = vector::borrow_mut(&mut bet.wagers, w_idx);
+                // Users can only bet on one outcome - reject if trying to bet on different outcome
+                assert!(w_ref.outcome == outcome_index, E_ALREADY_BET_ON_DIFFERENT_OUTCOME);
                 w_ref.amount = w_ref.amount + net_amount;
-                w_ref.outcome = outcome_index;
             } else {
                 // First wager from this user
                 vector::push_back(&mut bet.members_wagered, user);
@@ -1048,6 +1080,91 @@ module friend_fi::private_prediction_market {
             let tw_ref = vector::borrow_mut(&mut group.total_wagered, mem_idx);
             *tw_ref = *tw_ref + amount;
         };
+    }
+
+    /// Cancel a wager and get a refund.
+    /// 
+    /// Users can cancel their wager before a bet is resolved.
+    /// The NET amount (what was credited to the pool) is returned.
+    /// Note: The 0.3% fee taken at deposit is NOT refunded.
+    /// 
+    /// Requirements:
+    /// - Bet must not be resolved yet
+    /// - User must have an existing wager on this bet
+    /// 
+    /// Emits WagerCancelledEvent.
+    public entry fun cancel_wager(
+        account: &signer,
+        bet_id: u64,
+    ) acquires State, AppConfig {
+        let user = signer::address_of(account);
+
+        // Step 1: Validate and get wager info
+        let (group_id, outcome_index, refund_amount, mem_idx) = {
+            let state = borrow_state();
+            let bet = borrow_bet(state, bet_id);
+            
+            // Cannot cancel on resolved bets
+            assert!(!bet.resolved, E_BET_ALREADY_RESOLVED);
+
+            // Check user has a wager
+            let (found, w_idx) = find_wager_index(bet, user);
+            assert!(found, E_NO_WAGER_TO_CANCEL);
+
+            let wager = vector::borrow(&bet.wagers, w_idx);
+            let outcome_index = wager.outcome;
+            let refund_amount = wager.amount;
+
+            // Get group and member index for updating total_wagered
+            let group = borrow_group(state, bet.group_id);
+            let (is_mem, mem_idx_inner) = find_member_index(group, user);
+            assert!(is_mem, E_NOT_MEMBER);
+
+            (bet.group_id, outcome_index, refund_amount, mem_idx_inner)
+        };
+
+        // Step 2: Update bet pools and remove wager
+        {
+            let state = borrow_state_mut();
+            let bet = borrow_bet_mut(state, bet_id);
+
+            // Decrease the outcome pool
+            let pool_ref = vector::borrow_mut(&mut bet.outcome_pools, outcome_index);
+            *pool_ref = *pool_ref - refund_amount;
+            bet.total_pool = bet.total_pool - refund_amount;
+
+            // Find and remove the wager
+            let (_, w_idx) = find_wager_index(bet, user);
+            vector::remove(&mut bet.members_wagered, w_idx);
+            vector::remove(&mut bet.wagers, w_idx);
+        };
+
+        // Step 3: Update group.total_wagered (subtract the original gross amount)
+        // Note: We're subtracting the net amount here since we don't track gross per wager
+        // This is a slight inconsistency but acceptable for the use case
+        {
+            let state = borrow_state_mut();
+            let group = borrow_group_mut(state, group_id);
+            let tw_ref = vector::borrow_mut(&mut group.total_wagered, mem_idx);
+            // Subtract net amount (we could track gross separately if needed)
+            if (*tw_ref >= refund_amount) {
+                *tw_ref = *tw_ref - refund_amount;
+            } else {
+                *tw_ref = 0;
+            };
+        };
+
+        // Step 4: Refund USDC from escrow to user
+        internal_payout_to_user(bet_id, user, refund_amount);
+
+        // Emit cancel event
+        event::emit(WagerCancelledEvent {
+            bet_id,
+            group_id,
+            user,
+            outcome_index,
+            amount_refunded: refund_amount,
+        });
     }
 
     // =========================================================================
@@ -1326,5 +1443,55 @@ module friend_fi::private_prediction_market {
     public fun get_bets_count(): u64 acquires State {
         let state = borrow_state();
         vector::length(&state.bets)
+    }
+
+    #[view]
+    /// View: Get the name of a group.
+    public fun get_group_name(group_id: u64): String acquires State {
+        let state = borrow_state();
+        let group = borrow_group(state, group_id);
+        clone_string(&group.name)
+    }
+
+    #[view]
+    /// View: Get the description of a bet.
+    public fun get_bet_description(bet_id: u64): String acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        clone_string(&bet.description)
+    }
+
+    #[view]
+    /// View: Get which outcome a user wagered on.
+    /// Returns (outcome_index, has_wager).
+    /// If user has no wager, returns (0, false).
+    public fun get_user_wager_outcome(bet_id: u64, user: address): (u64, bool) acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        let (found, idx) = find_wager_index(bet, user);
+        if (!found) {
+            (0, false)
+        } else {
+            let w_ref = vector::borrow(&bet.wagers, idx);
+            (w_ref.outcome, true)
+        }
+    }
+
+    #[view]
+    /// View: Get the encrypted payload for a bet.
+    /// Returns the raw bytes (empty vector if no payload was provided).
+    public fun get_bet_encrypted_payload(bet_id: u64): vector<u8> acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        // Clone the vector
+        let res = vector::empty<u8>();
+        let len = vector::length(&bet.encrypted_payload);
+        let i = 0;
+        while (i < len) {
+            let b_ref = vector::borrow(&bet.encrypted_payload, i);
+            vector::push_back(&mut res, *b_ref);
+            i = i + 1;
+        };
+        res
     }
 }

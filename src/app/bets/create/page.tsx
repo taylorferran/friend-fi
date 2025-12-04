@@ -13,7 +13,7 @@ export default function CreateBetPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authenticated, ready } = usePrivy();
-  const { wallet, balance, createBet } = useMoveWallet();
+  const { wallet, createBet } = useMoveWallet();
   const { showToast } = useToast();
   
   const [question, setQuestion] = useState('');
@@ -82,12 +82,6 @@ export default function CreateBetPage() {
 
     if (!wallet) {
       showToast({ type: 'error', title: 'Wallet not initialized' });
-      setLoading(false);
-      return;
-    }
-
-    if (balance === 0) {
-      showToast({ type: 'error', title: 'No MOVE tokens', message: 'Please fund your wallet via Settings' });
       setLoading(false);
       return;
     }
@@ -164,24 +158,6 @@ export default function CreateBetPage() {
             </div>
           </div>
         )}
-
-        {/* Wallet warning */}
-        {wallet && balance === 0 && (
-          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-secondary">warning</span>
-              <div>
-                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
-                <p className="text-accent text-xs font-mono mt-1">
-                  Your Move wallet has no MOVE tokens. Go to{' '}
-                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
-                  {' '}to copy your address and fund it from the faucet.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
 
         <div className="mb-8">
           <div className="flex justify-between mb-2">

@@ -13,7 +13,7 @@ import { useMoveWallet } from '@/hooks/useMoveWallet';
 export default function CreateGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = usePrivy();
-  const { wallet, balance, createGroup } = useMoveWallet();
+  const { wallet, createGroup } = useMoveWallet();
   const { showToast } = useToast();
   
   const [groupName, setGroupName] = useState('');
@@ -33,11 +33,6 @@ export default function CreateGroupPage() {
 
     if (!wallet) {
       showToast({ type: 'error', title: 'Wallet not initialized' });
-      return;
-    }
-
-    if (balance === 0) {
-      showToast({ type: 'error', title: 'No MOVE tokens', message: 'Please fund your wallet via Settings' });
       return;
     }
 
@@ -103,23 +98,6 @@ export default function CreateGroupPage() {
           <h1 className="text-text text-3xl font-display font-bold mb-2">Create a New Group</h1>
           <p className="text-accent font-mono">Set up a private prediction group and invite your friends.</p>
         </div>
-
-        {/* Wallet status banner */}
-        {wallet && balance === 0 && (
-          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-secondary">warning</span>
-              <div>
-                <p className="text-text font-mono font-bold text-sm">Wallet needs funding</p>
-                <p className="text-accent text-xs font-mono mt-1">
-                  Your Move wallet has no MOVE tokens. Go to{' '}
-                  <Link href="/settings" className="text-primary hover:underline font-bold">Settings</Link>
-                  {' '}to copy your address and fund it from the faucet.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <Card>
           <CardContent>

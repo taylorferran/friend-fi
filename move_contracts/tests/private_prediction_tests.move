@@ -323,7 +323,8 @@ module friend_fi::private_prediction_tests {
             0, // group_id
             utf8(b"Will BTC reach 100k?"),
             outcomes,
-            @0x1001 // admin (bet resolver)
+            @0x1001, // admin (bet resolver)
+            vector::empty<u8>() // no encrypted payload
         );
         
         // Verify bet was created
@@ -357,7 +358,8 @@ module friend_fi::private_prediction_tests {
             0,
             utf8(b"Who wins the match?"),
             outcomes,
-            @0x1001
+            @0x1001,
+            vector::empty<u8>()
         );
         
         // Verify outcome count
@@ -386,7 +388,8 @@ module friend_fi::private_prediction_tests {
             0,
             utf8(b"Bad bet"),
             outcomes,
-            @0x1001
+            @0x1001,
+            vector::empty<u8>()
         );
     }
 
@@ -412,7 +415,8 @@ module friend_fi::private_prediction_tests {
             0,
             utf8(b"Unauthorized bet"),
             outcomes,
-            @0x1002
+            @0x1002,
+            vector::empty<u8>()
         );
     }
 
@@ -431,7 +435,8 @@ module friend_fi::private_prediction_tests {
             999, // non-existent group
             utf8(b"Bad bet"),
             outcomes,
-            @0x1001
+            @0x1001,
+            vector::empty<u8>()
         );
     }
 
@@ -456,7 +461,8 @@ module friend_fi::private_prediction_tests {
             0,
             utf8(b"Test bet"),
             outcomes,
-            @0x9999 // Different admin
+            @0x9999, // Different admin
+            vector::empty<u8>()
         );
         
         let bet_admin = private_prediction_market::get_bet_admin(0);
@@ -474,7 +480,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         let pool = private_prediction_market::get_bet_total_pool(0);
         assert!(pool == 0, 0);
@@ -491,7 +497,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         let resolved = private_prediction_market::is_bet_resolved(0);
         assert!(!resolved, 0);
@@ -508,7 +514,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         let pool0 = private_prediction_market::get_bet_outcome_pool(0, 0);
         let pool1 = private_prediction_market::get_bet_outcome_pool(0, 1);
@@ -529,7 +535,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         // Index 2 doesn't exist (only 0 and 1)
         let _ = private_prediction_market::get_bet_outcome(0, 2);
@@ -546,7 +552,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         let wager = private_prediction_market::get_user_wager(0, @0x9999);
         assert!(wager == 0, 0);
@@ -596,9 +602,9 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 1"), outcomes, @0x1001);
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 2"), outcomes, @0x1001);
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 3"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 1"), outcomes, @0x1001, vector::empty<u8>());
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 2"), outcomes, @0x1001, vector::empty<u8>());
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Bet 3"), outcomes, @0x1001, vector::empty<u8>());
         
         let bets_count = private_prediction_market::get_bets_count();
         assert!(bets_count == 3, 0);
@@ -620,10 +626,10 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"No"));
         
         // Create bet in group 0
-        private_prediction_market::create_bet(&user1, 0, utf8(b"Bet in G1"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&user1, 0, utf8(b"Bet in G1"), outcomes, @0x1001, vector::empty<u8>());
         
         // Create bet in group 1
-        private_prediction_market::create_bet(&user2, 1, utf8(b"Bet in G2"), outcomes, @0x1002);
+        private_prediction_market::create_bet(&user2, 1, utf8(b"Bet in G2"), outcomes, @0x1002, vector::empty<u8>());
         
         // Verify each group has its own bet
         let g1_bets = private_prediction_market::get_group_bets(0);
@@ -691,7 +697,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b""), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b""), outcomes, @0x1001, vector::empty<u8>());
         
         let count = private_prediction_market::get_bets_count();
         assert!(count == 1, 0);
@@ -727,7 +733,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Option 9"));
         vector::push_back(&mut outcomes, utf8(b"Option 10"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Many options"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Many options"), outcomes, @0x1001, vector::empty<u8>());
         
         let outcome_count = private_prediction_market::get_bet_outcomes_length(0);
         assert!(outcome_count == 10, 0);
@@ -749,7 +755,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"No"));
         vector::push_back(&mut outcomes, utf8(b"Maybe"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         // Just verify we can retrieve them without error
         let _outcome0 = private_prediction_market::get_bet_outcome(0, 0);
@@ -768,7 +774,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"Yes"));
         vector::push_back(&mut outcomes, utf8(b"No"));
         
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0x1001, vector::empty<u8>());
         
         // Returns 0 by default (even though bet isn't resolved)
         let winning = private_prediction_market::get_winning_outcome(0);
@@ -810,7 +816,7 @@ module friend_fi::private_prediction_tests {
         let outcomes = vector::empty<std::string::String>();
         vector::push_back(&mut outcomes, utf8(b"A"));
         vector::push_back(&mut outcomes, utf8(b"B"));
-        private_prediction_market::create_bet(&admin, 0, utf8(b"Test"), outcomes, @friend_fi);
+        private_prediction_market::create_bet(&admin, 0, utf8(b"Test"), outcomes, @friend_fi, vector::empty<u8>());
         
         let count_after = private_prediction_market::get_bets_count();
         assert!(count_after == 1, 1);
@@ -871,7 +877,7 @@ module friend_fi::private_prediction_tests {
         let outcomes = vector::empty<std::string::String>();
         vector::push_back(&mut outcomes, utf8(b"A"));
         vector::push_back(&mut outcomes, utf8(b"B"));
-        private_prediction_market::create_bet(&admin, 0, utf8(b"Bet"), outcomes, @friend_fi);
+        private_prediction_market::create_bet(&admin, 0, utf8(b"Bet"), outcomes, @friend_fi, vector::empty<u8>());
         
         // Now has 1 bet
         let bets_after = private_prediction_market::get_group_bets(0);
@@ -925,7 +931,7 @@ module friend_fi::private_prediction_tests {
         vector::push_back(&mut outcomes, utf8(b"B"));
         
         // Set bet admin to a specific address
-        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0xABCD);
+        private_prediction_market::create_bet(&creator, 0, utf8(b"Test"), outcomes, @0xABCD, vector::empty<u8>());
         
         // Verify it's stored correctly
         let stored_admin = private_prediction_market::get_bet_admin(0);
