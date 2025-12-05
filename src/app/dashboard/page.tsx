@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount } from '@/lib/contract';
+import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName } from '@/lib/contract';
 
 // Available dApps
 const dApps = [
@@ -87,16 +87,17 @@ export default function DashboardPage() {
           return;
         }
 
-        // Get members + bets for ALL user groups in PARALLEL
+        // Get group name, members + bets for ALL user groups in PARALLEL - now with names!
         const groupDataPromises = userGroupIds.map(async (id) => {
           try {
-            const [members, bets] = await Promise.all([
+            const [name, members, bets] = await Promise.all([
+              getGroupName(id),
               getGroupMembers(id),
               getGroupBets(id),
             ]);
             return {
               id,
-              name: `Group #${id}`,
+              name: name || `Group #${id}`,
               memberCount: members.length,
               betCount: bets.length,
             };
@@ -108,9 +109,6 @@ export default function DashboardPage() {
 
         const groupDataResults = await Promise.all(groupDataPromises);
         const userGroups = groupDataResults.filter((g): g is GroupData => g !== null);
-
-        // NOTE: Skipping getAllGroups() indexer call - takes 29+ seconds
-        // Group names will show as "Group #X" until contract adds get_group_name()
 
         setGroups(userGroups);
       } catch (error) {

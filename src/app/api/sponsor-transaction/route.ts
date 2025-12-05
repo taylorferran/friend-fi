@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Shinami Gas Station API endpoint for Movement Testnet
-// Format: https://api.shinami.com/movement/gas/v1/{api_key}
-const SHINAMI_API_KEY = process.env.SHINAMI_GAS_STATION_API_KEY;
-const SHINAMI_GAS_STATION_URL = `https://api.shinami.com/movement/gas/v1/${SHINAMI_API_KEY}`;
+// us1_ prefix keys use the US East region endpoint
+const SHINAMI_API_KEY = process.env.SHINAMI_GAS_STATION_API_KEY?.trim();
+const SHINAMI_GAS_STATION_URL = 'https://api.us1.shinami.com/movement/gas/v1';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,23 +34,28 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Calling Shinami Gas Station...');
-    console.log('Request body:', JSON.stringify(rpcRequest, null, 2));
     
     const response = await fetch(SHINAMI_GAS_STATION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Api-Key': SHINAMI_API_KEY,
       },
       body: JSON.stringify(rpcRequest),
     });
 
-    console.log('Shinami response status:', response.status);
-    
     const responseText = await response.text();
-    console.log('Shinami response body:', responseText);
 
     if (!response.ok) {
-      throw new Error(`Shinami API returned ${response.status}: ${responseText}`);
+      // Try to parse error details
+      let errorDetails = responseText;
+      try {
+        const errorJson = JSON.parse(responseText);
+        errorDetails = JSON.stringify(errorJson, null, 2);
+      } catch {
+        // Keep as-is if not JSON
+      }
+      throw new Error(`Shinami API returned ${response.status}: ${errorDetails}`);
     }
 
     if (!responseText) {
@@ -63,8 +68,18 @@ export async function POST(request: NextRequest) {
       throw new Error(result.error.message || JSON.stringify(result.error));
     }
 
-    // Return the PendingTransactionResponse
-    return NextResponse.json({ pendingTx: result.result });
+    // Shinami returns { result: { pendingTransaction: { hash, ... } } }
+    const pendingTransaction = result.result?.pendingTransaction;
+    
+    if (!pendingTransaction?.hash) {
+      console.error('Unexpected Shinami response structure:', result);
+      throw new Error('Invalid response from Shinami - missing transaction hash');
+    }
+
+    console.log('Transaction successful! Hash:', pendingTransaction.hash);
+
+    // Return the pending transaction with hash
+    return NextResponse.json({ pendingTx: pendingTransaction });
   } catch (error) {
     console.error('Error sponsoring transaction:', error);
     

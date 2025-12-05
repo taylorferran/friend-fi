@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
-import { CONTRACT_ADDRESS, getProfile } from '@/lib/contract';
+import { getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
 
@@ -135,7 +135,7 @@ export default function SettingsPage() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Left Column - Profile */}
-            <div>
+            <div className="space-y-6">
           {/* Profile Section */}
           <Card>
             <CardContent>
@@ -226,6 +226,16 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Sign Out Button */}
+          <Button 
+            variant="danger" 
+            onClick={() => logout()}
+            className="w-full"
+          >
+            <span className="material-symbols-outlined">logout</span>
+            Sign Out
+          </Button>
             </div>
 
             {/* Right Column - Account */}
@@ -270,7 +280,7 @@ export default function SettingsPage() {
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-accent/60 text-xs font-mono">
-                      Send MOVE tokens to this address for gas fees
+                      Balance
                     </p>
                     <div className="flex items-center gap-2">
                       <span className="text-text font-mono font-bold text-sm">{balance.toFixed(4)} MOVE</span>
@@ -288,36 +298,9 @@ export default function SettingsPage() {
                   </div>
                   <span className="w-3 h-3 bg-green-500 animate-pulse" />
                 </div>
-
-                <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
-                  <div>
-                    <p className="text-text font-mono font-bold">Contract</p>
-                    <p className="text-accent text-[10px] font-mono break-all">
-                      {CONTRACT_ADDRESS}
-                    </p>
-                  </div>
-                  <a 
-                    href={`https://explorer.movementnetwork.xyz/account/${CONTRACT_ADDRESS}?network=testnet`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-text transition-colors"
-                  >
-                    <span className="material-symbols-outlined">open_in_new</span>
-                  </a>
-                </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Sign Out Button */}
-          <Button 
-            variant="danger" 
-            onClick={() => logout()}
-            className="w-full"
-          >
-            <span className="material-symbols-outlined">logout</span>
-            Sign Out
-          </Button>
             </div>
           </div>
         </div>

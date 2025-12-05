@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-friend_fi = "0x9eca6c1a4ff54edb2b6bacfbaa8b070a44d288fff5334942410aad332cc1f7bf"
+friend_fi = "_"
 
 [dev-addresses]
 

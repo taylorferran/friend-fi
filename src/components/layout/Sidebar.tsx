@@ -7,7 +7,6 @@ import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { MobileNav } from './MobileNav';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { useToast } from '@/components/ui/Toast';
 import { getUSDCBalance } from '@/lib/indexer';
 
 interface NavItem {
@@ -33,9 +32,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = usePrivy();
   const { wallet: moveWallet } = useMoveWallet();
-  const { showToast } = useToast();
   const [userSettings, setUserSettings] = useState<{ username?: string; avatarUrl?: string } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(false);
 
@@ -77,15 +74,6 @@ export function Sidebar() {
     };
   }, [loadSettings, loadUSDCBalance]);
 
-  const copyAddress = async () => {
-    if (moveWallet?.address) {
-      await navigator.clipboard.writeText(moveWallet.address);
-      setCopied(true);
-      showToast({ type: 'info', title: 'Address copied!' });
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const isActive = (href: string) => {
     if (href === '/dashboard') {
       return pathname === '/dashboard' || pathname.startsWith('/groups') || pathname.startsWith('/bets');
@@ -125,21 +113,6 @@ export function Sidebar() {
                     </p>
                   </div>
                 </Link>
-                
-                {/* Full Address with Copy */}
-                {moveWallet?.address && (
-                  <button
-                    onClick={copyAddress}
-                    className="w-full px-4 py-2 bg-background/50 flex items-center justify-between gap-2 hover:bg-primary/10 transition-colors group"
-                  >
-                    <p className="text-accent text-[10px] font-mono truncate flex-1 text-left">
-                      {moveWallet.address}
-                    </p>
-                    <span className="material-symbols-outlined text-accent group-hover:text-primary text-sm flex-shrink-0">
-                      {copied ? 'check' : 'content_copy'}
-                    </span>
-                  </button>
-                )}
               </div>
             )}
 

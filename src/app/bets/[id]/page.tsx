@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { getBetData, getUserWager, getProfiles, type BetData } from '@/lib/contract';
+import { getBetData, getUserWager, getUserWagerOutcome, getProfiles, type BetData } from '@/lib/contract';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 
 // Placeholder type since we're not using indexer (event queries take 60+ seconds)
@@ -37,7 +37,6 @@ export default function ViewBetPage() {
   const { showToast } = useToast();
 
   const [bet, setBet] = useState<BetData | null>(null);
-  const [betDescription, setBetDescription] = useState<string>('');
   const [userWager, setUserWager] = useState<number>(0);
   const [userOutcomeIndex, setUserOutcomeIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,19 +72,21 @@ export default function ViewBetPage() {
       }
 
       try {
-        // Load bet data from on-chain (fast, parallel)
+        // Load bet data from on-chain (fast, parallel) - now includes description!
         const betData = await getBetData(betId);
         setBet(betData);
 
-        // Get user's wager if wallet is connected
+        // Get user's wager and outcome if wallet is connected
         if (wallet?.address && betData) {
-          getUserWager(betId, wallet.address)
-            .then(wager => setUserWager(wager))
-            .catch(() => setUserWager(0));
+          const [wager, wagerOutcome] = await Promise.all([
+            getUserWager(betId, wallet.address),
+            getUserWagerOutcome(betId, wallet.address)
+          ]);
+          setUserWager(wager);
+          if (wagerOutcome.hasWager) {
+            setUserOutcomeIndex(wagerOutcome.outcomeIndex);
+          }
         }
-
-        // NOTE: Skipping getBetDetailsFromIndexer - event queries take 29+ seconds
-        // Bet description will show as "Bet #X" until we fix the indexer query
 
       } catch (error) {
         console.error('Error loading bet:', error);
@@ -237,7 +238,7 @@ export default function ViewBetPage() {
                       </div>
                       <div className="min-w-0">
                         <h1 className="text-text text-xl font-display font-bold truncate">
-                          {betDescription || `Bet #${betId}`}
+                          {bet.description || `Bet #${betId}`}
                         </h1>
                         <p className={`text-xs font-mono font-bold uppercase tracking-wider ${bet.resolved ? 'text-green-600' : 'text-primary'}`}>
                           {bet.resolved ? 'Settled' : 'Active'} · #{betId}
@@ -397,7 +398,7 @@ export default function ViewBetPage() {
               <Card>
                 <CardContent>
                   <h2 className="text-text text-lg font-display font-bold mb-4">
-                    {bet.resolved ? 'Betting Activity' : 'Who&apos;s Betting'}
+                    {bet.resolved ? 'Betting Activity' : 'Who\'s Betting'}
                   </h2>
 
                   {bet.totalPool === 0 ? (
@@ -479,33 +480,7 @@ export default function ViewBetPage() {
                       )}
 
                       {/* Individual bettors */}
-                      {loadingBettors ? (
-                        <div className="text-center py-8">
-                          <div className="brutalist-spinner-instant mx-auto mb-2 scale-75">
-                            <div className="brutalist-spinner-box-instant"></div>
-                            <div className="brutalist-spinner-box-instant"></div>
-                            <div className="brutalist-spinner-box-instant"></div>
-                            <div className="brutalist-spinner-box-instant"></div>
-                          </div>
-                          <p className="text-accent text-xs font-mono">Loading bettors from indexer...</p>
-                        </div>
-                      ) : indexerError ? (
-                        <div className="p-4 border-2 border-dashed border-text/20 text-center">
-                          <span className="material-symbols-outlined text-accent/50 text-3xl mb-2">cloud_off</span>
-                          <p className="text-accent font-mono text-sm font-bold mb-1">Indexer Unavailable</p>
-                          <p className="text-accent/70 text-xs font-mono">
-                            Individual bettor details couldn&apos;t be loaded. The indexer may be syncing.
-                          </p>
-                        </div>
-                      ) : bettors.length === 0 ? (
-                        <div className="p-4 border-2 border-dashed border-text/20 text-center">
-                          <span className="material-symbols-outlined text-accent/50 text-3xl mb-2">hourglass_empty</span>
-                          <p className="text-accent font-mono text-sm font-bold mb-1">Awaiting Indexer</p>
-                          <p className="text-accent/70 text-xs font-mono">
-                            Bettor details will appear once the indexer syncs recent transactions.
-                          </p>
-                        </div>
-                      ) : (
+                      {bettors.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-accent text-xs font-mono uppercase tracking-wider mb-2">
                             All Bettors ({bettors.length})

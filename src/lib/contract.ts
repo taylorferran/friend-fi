@@ -1,7 +1,7 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 // Contract configuration
-export const CONTRACT_ADDRESS = "0x9eca6c1a4ff54edb2b6bacfbaa8b070a44d288fff5334942410aad332cc1f7bf";
+export const CONTRACT_ADDRESS = "0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
 export const MODULE_NAME = "private_prediction_market";
 
 // Movement Testnet configuration
@@ -148,12 +148,13 @@ export function buildCreateBetPayload(
   groupId: number,
   description: string,
   outcomes: string[],
-  adminAddress: string
+  adminAddress: string,
+  encryptedPayload: number[] = []
 ) {
   return {
     function: getFunctionId("create_bet"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), description, outcomes, adminAddress],
+    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload],
   };
 }
 
@@ -177,6 +178,14 @@ export function buildResolveBetPayload(
     function: getFunctionId("resolve_bet"),
     typeArguments: [],
     functionArguments: [betId.toString(), winningOutcomeIndex.toString()],
+  };
+}
+
+export function buildCancelWagerPayload(betId: number) {
+  return {
+    function: getFunctionId("cancel_wager"),
+    typeArguments: [],
+    functionArguments: [betId.toString()],
   };
 }
 
@@ -309,9 +318,78 @@ export async function getUserWager(betId: number, userAddress: string): Promise<
   }
 }
 
+// New view functions added in contract update
+export async function getGroupName(groupId: number): Promise<string> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId("get_group_name"),
+        typeArguments: [],
+        functionArguments: [groupId.toString()],
+      },
+    });
+    return result[0] as string;
+  } catch (error) {
+    console.error("Error getting group name:", error);
+    return "";
+  }
+}
+
+export async function getBetDescription(betId: number): Promise<string> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId("get_bet_description"),
+        typeArguments: [],
+        functionArguments: [betId.toString()],
+      },
+    });
+    return result[0] as string;
+  } catch (error) {
+    console.error("Error getting bet description:", error);
+    return "";
+  }
+}
+
+export async function getUserWagerOutcome(betId: number, userAddress: string): Promise<{ outcomeIndex: number; hasWager: boolean }> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId("get_user_wager_outcome"),
+        typeArguments: [],
+        functionArguments: [betId.toString(), userAddress],
+      },
+    });
+    return {
+      outcomeIndex: Number(result[0]),
+      hasWager: result[1] as boolean,
+    };
+  } catch (error) {
+    console.error("Error getting user wager outcome:", error);
+    return { outcomeIndex: 0, hasWager: false };
+  }
+}
+
+export async function getBetEncryptedPayload(betId: number): Promise<number[]> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId("get_bet_encrypted_payload"),
+        typeArguments: [],
+        functionArguments: [betId.toString()],
+      },
+    });
+    return result[0] as number[];
+  } catch (error) {
+    console.error("Error getting bet encrypted payload:", error);
+    return [];
+  }
+}
+
 // Helper to get full bet data
 export interface BetData {
   id: number;
+  description: string;
   admin: string;
   outcomes: { label: string; pool: number }[];
   totalPool: number;
@@ -321,7 +399,8 @@ export interface BetData {
 
 export async function getBetData(betId: number): Promise<BetData | null> {
   try {
-    const [admin, outcomesLength, totalPool, resolved, winningOutcomeIndex] = await Promise.all([
+    const [description, admin, outcomesLength, totalPool, resolved, winningOutcomeIndex] = await Promise.all([
+      getBetDescription(betId),
       getBetAdmin(betId),
       getBetOutcomesLength(betId),
       getBetTotalPool(betId),
@@ -343,6 +422,7 @@ export async function getBetData(betId: number): Promise<BetData | null> {
 
     return {
       id: betId,
+      description,
       admin,
       outcomes: outcomeResults,
       totalPool,
@@ -372,17 +452,18 @@ export interface WagerInfo {
 
 export async function getUserWagerWithProfile(betId: number, userAddress: string): Promise<WagerInfo | null> {
   try {
-    const [wagerAmount, profile] = await Promise.all([
+    const [wagerAmount, wagerOutcome, profile] = await Promise.all([
       getUserWager(betId, userAddress),
+      getUserWagerOutcome(betId, userAddress),
       getProfile(userAddress),
     ]);
     
-    if (wagerAmount === 0) return null;
+    if (wagerAmount === 0 || !wagerOutcome.hasWager) return null;
     
     return {
       address: userAddress,
       amount: wagerAmount,
-      outcomeIndex: 0, // We can't get this from the current contract view functions
+      outcomeIndex: wagerOutcome.outcomeIndex,
       profile: profile.exists ? { name: profile.name, avatarId: profile.avatarId } : undefined,
     };
   } catch (error) {
@@ -409,5 +490,33 @@ export async function getProfiles(addresses: string[]): Promise<Map<string, { na
   );
   
   return profiles;
+}
+
+// Helper to get full group data
+export interface GroupData {
+  id: number;
+  name: string;
+  members: string[];
+  betIds: number[];
+}
+
+export async function getGroupData(groupId: number): Promise<GroupData | null> {
+  try {
+    const [name, members, betIds] = await Promise.all([
+      getGroupName(groupId),
+      getGroupMembers(groupId),
+      getGroupBets(groupId),
+    ]);
+
+    return {
+      id: groupId,
+      name,
+      members,
+      betIds,
+    };
+  } catch (error) {
+    console.error("Error getting group data:", error);
+    return null;
+  }
 }
 

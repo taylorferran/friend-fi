@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { getGroupMembers, getGroupBets, getProfiles } from '@/lib/contract';
+import { getGroupMembers, getGroupBets, getGroupName, getBetDescription, getProfiles } from '@/lib/contract';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 // NOTE: Indexer imports removed - event queries take 29+ seconds
 // import { getGroupBetsFromIndexer, getAllGroups } from '@/lib/indexer';
@@ -65,14 +65,31 @@ export default function GroupPage() {
       }
 
       try {
-        // Load members, bets, and profiles ALL IN PARALLEL
-        const [groupMembers, groupBets] = await Promise.all([
+        // Load group name, members, and bets ALL IN PARALLEL - now using on-chain view functions!
+        const [name, groupMembers, groupBets] = await Promise.all([
+          getGroupName(groupId),
           getGroupMembers(groupId),
           getGroupBets(groupId),
         ]);
 
-        // Set bets immediately (without descriptions for now)
-        setBets(groupBets.map(id => ({ id, description: '' })));
+        // Set group name from contract
+        setGroupName(name || `Group #${groupId}`);
+
+        // Set members without profiles first (fast)
+        setMembers(groupMembers.map(address => ({ address })));
+
+        // Load bet descriptions in parallel
+        Promise.all(
+          groupBets.map(async (id) => {
+            const description = await getBetDescription(id);
+            return { id, description };
+          })
+        ).then(betsWithDescriptions => {
+          setBets(betsWithDescriptions);
+        }).catch(() => {
+          // Fallback: bets without descriptions
+          setBets(groupBets.map(id => ({ id, description: `Bet #${id}` })));
+        });
 
         // Load profiles in parallel (don't block on this)
         getProfiles(groupMembers)
@@ -88,12 +105,6 @@ export default function GroupPage() {
             // Just use addresses without profiles
             setMembers(groupMembers.map(address => ({ address })));
           });
-
-        // Set members without profiles first (fast)
-        setMembers(groupMembers.map(address => ({ address })));
-
-        // NOTE: Skipping indexer calls for group name and bet descriptions
-        // They take 29+ seconds - too slow. Will show "Group #X" and "Bet #X" for now.
 
       } catch (error) {
         console.error('Error loading group data:', error);

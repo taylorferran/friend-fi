@@ -98,8 +98,11 @@ export function useMoveWallet() {
     
     setError(null);
     try {
+      // Get the current wallet from localStorage (in case it was switched)
+      const currentWallet = getOrCreateMoveWallet();
+      
       // The creator is automatically the admin
-      const payload = buildCreateBetPayload(groupId, description, outcomes, wallet.address);
+      const payload = buildCreateBetPayload(groupId, description, outcomes, currentWallet.address);
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {

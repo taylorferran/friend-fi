@@ -185,3 +185,55 @@ export async function signAndSubmitGaslessTransaction(
   }
 }
 
+// Movement Testnet USDC metadata address
+const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
+
+// Transfer USDC from a faucet account to a target address (pays its own gas)
+export async function transferUSDCFromFaucet(
+  faucetPrivateKeyHex: string,
+  toAddress: string,
+  amountUSDC: number
+): Promise<{ hash: string; success: boolean }> {
+  // Create account from faucet private key
+  const privateKey = new Ed25519PrivateKey(faucetPrivateKeyHex);
+  const faucetAccount = Account.fromPrivateKey({ privateKey });
+  
+  // Convert USDC amount to micro-units (6 decimals)
+  const amountMicroUSDC = Math.floor(amountUSDC * 1_000_000);
+  
+  try {
+    // Transfer USDC to the target address
+    const transaction = await aptos.transaction.build.simple({
+      sender: faucetAccount.accountAddress,
+      data: {
+        function: "0x1::primary_fungible_store::transfer",
+        typeArguments: ["0x1::fungible_asset::Metadata"],
+        functionArguments: [
+          USDC_METADATA_ADDR,  // metadata address
+          toAddress,           // recipient
+          amountMicroUSDC.toString()  // amount in micro-USDC
+        ],
+      },
+    });
+
+    // Sign and submit (faucet pays its own gas)
+    const pendingTxn = await aptos.signAndSubmitTransaction({
+      signer: faucetAccount,
+      transaction,
+    });
+
+    // Wait for confirmation
+    const response = await aptos.waitForTransaction({
+      transactionHash: pendingTxn.hash,
+    });
+
+    return {
+      hash: pendingTxn.hash,
+      success: response.success,
+    };
+  } catch (error) {
+    console.error('USDC transfer failed:', error);
+    throw error;
+  }
+}
+
