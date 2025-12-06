@@ -154,7 +154,7 @@ export function buildCreateBetPayload(
   return {
     function: getFunctionId("create_bet"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload],
+    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload.map(n => n.toString())],
   };
 }
 

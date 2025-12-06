@@ -307,10 +307,16 @@ export default function SplashPage() {
               <div className={`flex flex-col items-center gap-4 transition-all duration-700 delay-200 ${
                 titleComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}>
-                <Button variant="secondary" size="lg" className="text-lg px-12 py-5" onClick={handleGoToApp}>
-                  {authenticated ? 'Go to App' : 'Sign In'}
-                  <span className="material-symbols-outlined text-2xl">arrow_forward</span>
-                </Button>
+                <div className="flex items-center gap-4">
+                  <Button variant="secondary" size="lg" className="text-lg px-12 py-5" onClick={handleGoToApp}>
+                    {authenticated ? 'Go to App' : 'Sign In'}
+                    <span className="material-symbols-outlined text-2xl">arrow_forward</span>
+                  </Button>
+                  <Button variant="primary" size="lg" className="text-lg px-8 py-5" onClick={() => router.push('/demo')}>
+                    Demo
+                    <span className="material-symbols-outlined text-2xl">play_arrow</span>
+                  </Button>
+                </div>
                 
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-text bg-primary/80">
                   <span className="w-2 h-2 bg-green-500 animate-pulse" />
