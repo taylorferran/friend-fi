@@ -11,6 +11,9 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getGroupMembers, getGroupBets, getGroupName, getBetDescription, getProfiles } from '@/lib/contract';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
+import { useToast } from '@/components/ui/Toast';
+import { transferUSDCFromFaucet } from '@/lib/move-wallet';
+import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 // NOTE: Indexer imports removed - event queries take 29+ seconds
 // import { getGroupBetsFromIndexer, getAllGroups } from '@/lib/indexer';
 
@@ -32,6 +35,7 @@ export default function GroupPage() {
   const params = useParams();
   const { authenticated, ready } = usePrivy();
   const { wallet } = useMoveWallet();
+  const { showToast } = useToast();
   const groupId = parseInt(params.id as string, 10);
   
   const [groupName, setGroupName] = useState(`Group #${groupId}`);
@@ -39,6 +43,8 @@ export default function GroupPage() {
   const [bets, setBets] = useState<BetInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('bets');
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [sendAmount, setSendAmount] = useState('');
 
   useEffect(() => {
     if (ready && !authenticated) {
@@ -115,6 +121,82 @@ export default function GroupPage() {
 
     loadGroupData();
   }, [groupId]);
+
+  // Handle sending USDC to a group member
+  const handleSendUSDC = async (recipientAddress: string) => {
+    if (!wallet?.privateKeyHex) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      return;
+    }
+
+    const amount = parseFloat(sendAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast({ type: 'error', title: 'Invalid amount' });
+      return;
+    }
+
+    try {
+      showToast({ type: 'info', title: `Sending $${amount}...` });
+      
+      // Movement Testnet USDC metadata address
+      const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
+      
+      const config = new AptosConfig({
+        network: Network.CUSTOM,
+        fullnode: "https://testnet.movementnetwork.xyz/v1",
+        indexer: "https://indexer.testnet.movementnetwork.xyz/v1/graphql",
+      });
+      const aptos = new Aptos(config);
+      
+      // Create account from our wallet
+      const privateKey = new Ed25519PrivateKey(wallet.privateKeyHex);
+      const senderAccount = Account.fromPrivateKey({ privateKey });
+      
+      // Convert amount to micro-units (6 decimals)
+      const amountMicroUSDC = Math.floor(amount * 1_000_000);
+      
+      // Build transfer transaction
+      const transaction = await aptos.transaction.build.simple({
+        sender: senderAccount.accountAddress,
+        data: {
+          function: "0x1::primary_fungible_store::transfer",
+          typeArguments: ["0x1::fungible_asset::Metadata"],
+          functionArguments: [
+            USDC_METADATA_ADDR,
+            recipientAddress,
+            amountMicroUSDC.toString()
+          ],
+        },
+      });
+
+      // Sign and submit
+      const pendingTxn = await aptos.signAndSubmitTransaction({
+        signer: senderAccount,
+        transaction,
+      });
+
+      // Wait for confirmation
+      await aptos.waitForTransaction({
+        transactionHash: pendingTxn.hash,
+      });
+
+      showToast({ 
+        type: 'success', 
+        title: `Sent $${amount}!`,
+        txHash: pendingTxn.hash
+      });
+      
+      setSendingTo(null);
+      setSendAmount('');
+    } catch (error) {
+      console.error('Send failed:', error);
+      showToast({ 
+        type: 'error', 
+        title: 'Send failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  };
 
   if (!ready || !authenticated) {
     return (
@@ -269,6 +351,7 @@ export default function GroupPage() {
                           const isYou = wallet?.address === member.address;
                           const avatar = member.avatarId !== undefined ? getAvatarById(member.avatarId) : null;
                           const avatarUrl = avatar ? getAvatarUrl(avatar.seed, avatar.style) : null;
+                          const isSending = sendingTo === member.address;
                           
                           return (
                             <div
@@ -296,7 +379,52 @@ export default function GroupPage() {
                                   </p>
                                   <p className="text-accent text-xs font-mono truncate">{member.address}</p>
                                 </div>
+                                {!isYou && (
+                                  <button
+                                    onClick={() => setSendingTo(isSending ? null : member.address)}
+                                    className="px-3 py-1.5 border-2 border-text bg-primary hover:bg-primary/80 transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">send</span>
+                                  </button>
+                                )}
                               </div>
+                              
+                              {/* Send USDC Form */}
+                              {isSending && (
+                                <div className="mt-3 pt-3 border-t-2 border-text/20">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="Amount"
+                                      value={sendAmount}
+                                      onChange={(e) => setSendAmount(e.target.value)}
+                                      className="flex-1 px-3 py-2 bg-background border-2 border-text text-text font-mono text-sm focus:outline-none focus:border-primary"
+                                    />
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleSendUSDC(member.address)}
+                                      disabled={!sendAmount || parseFloat(sendAmount) <= 0}
+                                    >
+                                      Send
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setSendingTo(null);
+                                        setSendAmount('');
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                  <p className="text-accent text-xs font-mono mt-2">
+                                    Send USDC to {member.name || 'this member'}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

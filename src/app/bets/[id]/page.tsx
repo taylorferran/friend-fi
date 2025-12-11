@@ -653,14 +653,6 @@ export default function ViewBetPage() {
                             </div>
                           )}
 
-                          {/* Note if indexer data not available */}
-                          {bettors.length === 0 && !loadingBettors && (
-                            <div className="p-3 bg-surface border border-text/20">
-                              <p className="text-accent font-mono text-xs">
-                                <span className="text-primary font-bold">Note:</span> Winner/loser counts will appear once the indexer syncs.
-                              </p>
-                            </div>
-                          )}
                         </div>
                       );
                     })()}

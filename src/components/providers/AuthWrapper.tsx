@@ -5,7 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/'];
+const PUBLIC_ROUTES = ['/', '/demo'];
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { ready, authenticated } = usePrivy();

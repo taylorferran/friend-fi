@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
+import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasOnChainProfile, setHasOnChainProfile] = useState(false);
+  const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const copyAddress = async () => {
     if (moveWallet?.address) {
@@ -106,6 +110,91 @@ export default function SettingsPage() {
       showToast({ type: 'error', title: 'Transaction failed', message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!moveWallet?.privateKeyHex) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      return;
+    }
+
+    if (!withdrawAddress.trim()) {
+      showToast({ type: 'error', title: 'Enter recipient address' });
+      return;
+    }
+
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast({ type: 'error', title: 'Invalid amount' });
+      return;
+    }
+
+    setWithdrawing(true);
+
+    try {
+      showToast({ type: 'info', title: `Withdrawing $${amount}...` });
+      
+      // Movement Testnet USDC metadata address
+      const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
+      
+      const config = new AptosConfig({
+        network: Network.CUSTOM,
+        fullnode: "https://testnet.movementnetwork.xyz/v1",
+        indexer: "https://indexer.testnet.movementnetwork.xyz/v1/graphql",
+      });
+      const aptos = new Aptos(config);
+      
+      // Create account from our wallet
+      const privateKey = new Ed25519PrivateKey(moveWallet.privateKeyHex);
+      const senderAccount = Account.fromPrivateKey({ privateKey });
+      
+      // Convert amount to micro-units (6 decimals)
+      const amountMicroUSDC = Math.floor(amount * 1_000_000);
+      
+      // Build transfer transaction
+      const transaction = await aptos.transaction.build.simple({
+        sender: senderAccount.accountAddress,
+        data: {
+          function: "0x1::primary_fungible_store::transfer",
+          typeArguments: ["0x1::fungible_asset::Metadata"],
+          functionArguments: [
+            USDC_METADATA_ADDR,
+            withdrawAddress,
+            amountMicroUSDC.toString()
+          ],
+        },
+      });
+
+      // Sign and submit
+      const pendingTxn = await aptos.signAndSubmitTransaction({
+        signer: senderAccount,
+        transaction,
+      });
+
+      // Wait for confirmation
+      await aptos.waitForTransaction({
+        transactionHash: pendingTxn.hash,
+      });
+
+      showToast({ 
+        type: 'success', 
+        title: `Withdrawn $${amount}!`,
+        txHash: pendingTxn.hash
+      });
+      
+      setWithdrawAddress('');
+      setWithdrawAmount('');
+      refreshBalance();
+    } catch (error) {
+      console.error('Withdrawal failed:', error);
+      showToast({ 
+        type: 'error', 
+        title: 'Withdrawal failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setWithdrawing(false);
     }
   };
 
@@ -240,6 +329,47 @@ export default function SettingsPage() {
 
             {/* Right Column - Account */}
             <div className="space-y-6">
+          {/* Withdraw Section */}
+          <Card>
+            <CardContent>
+              <h2 className="text-text text-xl font-display font-bold mb-6">Withdraw USDC</h2>
+              <p className="text-accent text-sm font-mono mb-4">
+                Send USDC to any Movement wallet address
+              </p>
+              
+              <div className="space-y-4">
+                <Input
+                  label="Recipient Address"
+                  placeholder="0x..."
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  hint="Movement wallet address to send USDC to"
+                />
+                
+                <Input
+                  label="Amount (USDC)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  hint="Amount in USDC to withdraw"
+                />
+                
+                <Button 
+                  onClick={handleWithdraw}
+                  loading={withdrawing}
+                  disabled={!withdrawAddress || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                  className="w-full"
+                >
+                  <span className="material-symbols-outlined">send</span>
+                  Withdraw USDC
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Account Section */}
           <Card>
             <CardContent>

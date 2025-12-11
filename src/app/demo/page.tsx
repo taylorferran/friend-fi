@@ -6,9 +6,9 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Logo } from '@/components/ui/Logo';
 import { useToast } from '@/components/ui/Toast';
 import { getAvatarById, getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
-import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { transferUSDCFromFaucet } from '@/lib/move-wallet';
-import { Account } from "@aptos-labs/ts-sdk";
+import { transferUSDCFromFaucet, aptos } from '@/lib/move-wallet';
+import { Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
+import { buildSetProfilePayload, buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, getGroupsCount, getBetsCount } from '@/lib/contract';
 
 // USDC Metadata address on Movement testnet
 const USDC_METADATA_ADDR = '0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7';
@@ -83,9 +83,56 @@ function generateBetQuestion(): string {
   return `Will ${subject} reach ${prediction}?`;
 }
 
+// Helper to execute transactions with a specific demo wallet
+async function executeDemoTransaction(
+  walletData: { address: string; privateKeyHex: string },
+  payload: {
+    function: `${string}::${string}::${string}`;
+    typeArguments: string[];
+    functionArguments: (string | string[])[];
+  }
+): Promise<{ hash: string; success: boolean }> {
+  const privateKey = new Ed25519PrivateKey(walletData.privateKeyHex);
+  const account = Account.fromPrivateKey({ privateKey });
+  
+  const transaction = await aptos.transaction.build.simple({
+    sender: account.accountAddress,
+    data: payload,
+    withFeePayer: true,
+  });
+
+  const senderAuthenticator = aptos.transaction.sign({
+    signer: account,
+    transaction,
+  });
+
+  // Use Shinami sponsorship
+  const response = await fetch('/api/sponsor-transaction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transaction: transaction.bcsToHex().toString(),
+      senderAuth: senderAuthenticator.bcsToHex().toString(),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to sponsor transaction');
+  }
+
+  const result = await response.json();
+  const txResponse = await aptos.waitForTransaction({
+    transactionHash: result.pendingTx.hash,
+  });
+
+  return {
+    hash: result.pendingTx.hash,
+    success: txResponse.success,
+  };
+}
+
 export default function DemoPage() {
   const { showToast } = useToast();
-  const { setProfile, createGroup, joinGroup, createBet, placeWager, resolveBet } = useMoveWallet();
   
   const [step, setStep] = useState<DemoStep>('start');
   const [user1, setUser1] = useState<DemoUser>({
@@ -117,6 +164,14 @@ export default function DemoPage() {
   // Transaction history
   const [txHistory, setTxHistory] = useState<TransactionRecord[]>([]);
 
+  // Clean up demo wallet on unmount
+  useEffect(() => {
+    return () => {
+      // Remove any temporary demo wallet keys
+      localStorage.removeItem('friendfi_demo_active_wallet');
+    };
+  }, []);
+
   // Initialize random data
   useEffect(() => {
     setUser1(prev => ({
@@ -133,11 +188,12 @@ export default function DemoPage() {
     setBetQuestion(generateBetQuestion());
   }, []);
 
-  // Helper to switch active wallet in localStorage
+  // Helper to temporarily set a demo wallet for transactions
   const switchToUserWallet = (userNum: 1 | 2) => {
     const wallet = userNum === 1 ? user1Wallet : user2Wallet;
     if (wallet) {
-      localStorage.setItem('friendfi_move_wallet', JSON.stringify(wallet));
+      // Use a temporary key for demo transactions
+      localStorage.setItem('friendfi_demo_active_wallet', JSON.stringify(wallet));
     }
   };
 
@@ -190,8 +246,6 @@ export default function DemoPage() {
           address: walletAddress,
           step: 'Wallet created ✓'
         }));
-        // Store User 1's wallet in localStorage so useMoveWallet can use it
-        localStorage.setItem('friendfi_move_wallet', JSON.stringify(walletData));
         setStep('user1-profile-setup');
       } else {
         setUser2Wallet(walletData);
@@ -225,10 +279,14 @@ export default function DemoPage() {
     setProcessing(true);
     const userName = userNum === 1 ? user1.name : user2.name;
     const avatarId = userNum === 1 ? user1.avatarId : user2.avatarId;
+    const wallet = userNum === 1 ? user1Wallet : user2Wallet;
     const toastPosition = userNum === 2 ? 'left' : 'right';
     
-    // Switch to the correct user's wallet
-    switchToUserWallet(userNum);
+    if (!wallet) {
+      showToast({ type: 'error', title: 'Wallet not found', position: toastPosition });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -237,10 +295,8 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const result = await setProfile(userName, avatarId);
+      const payload = buildSetProfilePayload(userName, avatarId);
+      const result = await executeDemoTransaction(wallet, payload);
       
       recordTransaction('Set Profile', userName, result.hash);
       
@@ -263,7 +319,7 @@ export default function DemoPage() {
         type: 'error', 
         title: 'Failed to save profile',
         message: error instanceof Error ? error.message : 'Unknown error',
-        duration: 0, // Don't auto-dismiss errors
+        duration: 0,
         position: toastPosition
       });
     } finally {
@@ -336,8 +392,11 @@ export default function DemoPage() {
   const createDemoGroup = async () => {
     setProcessing(true);
     
-    // Switch to User 1's wallet
-    switchToUserWallet(1);
+    if (!user1Wallet) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -345,21 +404,22 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const result = await createGroup(groupName, groupPassword);
+      const payload = buildCreateGroupPayload(groupName, groupPassword);
+      const result = await executeDemoTransaction(user1Wallet, payload);
       
       recordTransaction('Create Group', user1.name, result.hash);
       
-      // Use the actual group ID returned from the contract
-      setGroupId(result.groupId);
+      // Get the new group ID
+      const count = await getGroupsCount();
+      const newGroupId = count - 1;
+      
+      setGroupId(newGroupId);
       setUser1(prev => ({ ...prev, step: 'Group created ✓' }));
       setStep('user1-create-bet');
       
       showToast({ 
         type: 'success', 
-        title: `Group created! (ID: ${result.groupId})`,
+        title: `Group created! (ID: ${newGroupId})`,
         txHash: result.hash
       });
     } catch (error) {
@@ -377,8 +437,11 @@ export default function DemoPage() {
   const createDemoBet = async () => {
     setProcessing(true);
     
-    // Switch to User 1's wallet
-    switchToUserWallet(1);
+    if (!user1Wallet) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -386,22 +449,24 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       const outcomes = ['YES', 'NO'];
-      const result = await createBet(groupId!, betQuestion, outcomes);
+      const payload = buildCreateBetPayload(groupId!, betQuestion, outcomes, user1Wallet.address);
+      const result = await executeDemoTransaction(user1Wallet, payload);
       
       recordTransaction('Create Bet', user1.name, result.hash);
       
-      setBetId(result.betId);
-      setBetAdminAddress(user1.address); // Store admin address
+      // Get the new bet ID
+      const count = await getBetsCount();
+      const newBetId = count - 1;
+      
+      setBetId(newBetId);
+      setBetAdminAddress(user1.address);
       setUser1(prev => ({ ...prev, step: 'Bet created ✓' }));
       setStep('user1-place-wager');
       
       showToast({ 
         type: 'success', 
-        title: `Bet created! (ID: ${result.betId})`,
+        title: `Bet created! (ID: ${newBetId})`,
         txHash: result.hash
       });
     } catch (error) {
@@ -419,10 +484,14 @@ export default function DemoPage() {
   const placeDemoWager = async (userNum: 1 | 2, outcome: number) => {
     setProcessing(true);
     const userName = userNum === 1 ? user1.name : user2.name;
+    const wallet = userNum === 1 ? user1Wallet : user2Wallet;
     const toastPosition = userNum === 2 ? 'left' : 'right';
     
-    // Switch to the correct user's wallet
-    switchToUserWallet(userNum);
+    if (!wallet) {
+      showToast({ type: 'error', title: 'Wallet not found', position: toastPosition });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -431,11 +500,9 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       const amount = 10000; // 0.01 USDC (6 decimals)
-      const result = await placeWager(betId!, outcome, amount);
+      const payload = buildPlaceWagerPayload(betId!, outcome, amount);
+      const result = await executeDemoTransaction(wallet, payload);
       
       recordTransaction(`Place Wager (${outcome === 0 ? 'YES' : 'NO'})`, userName, result.hash);
       
@@ -477,8 +544,11 @@ export default function DemoPage() {
   const joinDemoGroup = async () => {
     setProcessing(true);
     
-    // Switch to User 2's wallet
-    switchToUserWallet(2);
+    if (!user2Wallet) {
+      showToast({ type: 'error', title: 'Wallet not found', position: 'left' });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -487,10 +557,8 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const result = await joinGroup(groupId!, groupPassword);
+      const payload = buildJoinGroupPayload(groupId!, groupPassword);
+      const result = await executeDemoTransaction(user2Wallet, payload);
       
       recordTransaction('Join Group', user2.name, result.hash);
       
@@ -519,8 +587,11 @@ export default function DemoPage() {
   const resolveDemoBet = async () => {
     setProcessing(true);
     
-    // Switch to User 1's wallet (the bet admin)
-    switchToUserWallet(1);
+    if (!user1Wallet) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      setProcessing(false);
+      return;
+    }
     
     showToast({ 
       type: 'info', 
@@ -528,16 +599,9 @@ export default function DemoPage() {
     });
     
     try {
-      // Delay to ensure wallet switch takes effect
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Verify we're using the correct wallet
-      const currentWallet = localStorage.getItem('friendfi_move_wallet');
-      console.log('Resolving bet with wallet:', currentWallet ? JSON.parse(currentWallet).address : 'none');
-      console.log('Expected admin address:', betAdminAddress);
-      
       const winningOutcome = 0; // YES wins
-      const result = await resolveBet(betId!, winningOutcome);
+      const payload = buildResolveBetPayload(betId!, winningOutcome);
+      const result = await executeDemoTransaction(user1Wallet, payload);
       
       recordTransaction('Resolve Bet (YES wins)', user1.name, result.hash);
       
@@ -563,6 +627,9 @@ export default function DemoPage() {
   };
 
   const reset = () => {
+    // Clean up any demo wallet
+    localStorage.removeItem('friendfi_demo_active_wallet');
+    
     setStep('start');
     setUser1({
       name: generateRandomName(),

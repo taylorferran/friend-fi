@@ -465,6 +465,88 @@ export async function getUserTotalWinnings(userAddress: string): Promise<number>
 }
 
 /**
+ * Get all wagers for a specific user
+ */
+export async function getWagersForUser(userAddress: string): Promise<Array<{ betId: number; amount: number }>> {
+  const query = `
+    query GetUserWagers($eventType: String!, $bettor: String!) {
+      events(
+        where: {
+          type: {_eq: $eventType},
+          data: {_contains: {bettor: $bettor}}
+        }
+      ) {
+        data
+      }
+    }
+  `;
+
+  try {
+    const data = await executeQuery<{
+      events: Array<{
+        data: { bet_id: string; total_wager: string };
+      }>;
+    }>(query, {
+      eventType: getEventType('WagerPlacedEvent'),
+      bettor: userAddress
+    });
+
+    // Get the highest total_wager for each bet (final wager amount)
+    const betWagers = new Map<number, number>();
+    for (const e of data.events) {
+      const betId = Number(e.data.bet_id);
+      const totalWager = Number(e.data.total_wager);
+      // Keep the highest total_wager for each bet
+      if (!betWagers.has(betId) || totalWager > betWagers.get(betId)!) {
+        betWagers.set(betId, totalWager);
+      }
+    }
+    
+    return Array.from(betWagers.entries()).map(([betId, amount]) => ({ betId, amount }));
+  } catch (error) {
+    console.error('Error fetching user wagers:', error);
+    return [];
+  }
+}
+
+/**
+ * Get all payouts for a specific user
+ */
+export async function getPayoutsForUser(userAddress: string): Promise<Array<{ betId: number; amount: number }>> {
+  const query = `
+    query GetUserPayouts($eventType: String!, $bettor: String!) {
+      events(
+        where: {
+          type: {_eq: $eventType},
+          data: {_contains: {bettor: $bettor}}
+        }
+      ) {
+        data
+      }
+    }
+  `;
+
+  try {
+    const data = await executeQuery<{
+      events: Array<{
+        data: { bet_id: string; payout_amount: string };
+      }>;
+    }>(query, {
+      eventType: getEventType('PayoutPaidEvent'),
+      bettor: userAddress
+    });
+
+    return data.events.map(e => ({
+      betId: Number(e.data.bet_id),
+      amount: Number(e.data.payout_amount),
+    }));
+  } catch (error) {
+    console.error('Error fetching user payouts:', error);
+    return [];
+  }
+}
+
+/**
  * Get user's total wagered across all bets
  */
 export async function getUserTotalWagered(userAddress: string): Promise<number> {

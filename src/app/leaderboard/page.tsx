@@ -8,12 +8,18 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getGroupsCount, getGroupMembers, checkIfMemberInGroup, getProfiles } from '@/lib/contract';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
+import { getWagersForUser, getPayoutsForUser } from '@/lib/indexer';
 
 interface LeaderboardEntry {
   address: string;
   name?: string;
   avatarId?: number;
-  groupCount: number;
+  totalWagered: number;
+  totalWon: number;
+  profitLoss: number;
+  wins: number;
+  totalBets: number;
+  winrate: number;
 }
 
 export default function LeaderboardPage() {
@@ -35,38 +41,58 @@ export default function LeaderboardPage() {
 
       try {
         const groupCount = await getGroupsCount();
-        const memberCounts = new Map<string, number>();
-        const userGroups: number[] = [];
+        const uniqueMembers = new Set<string>();
 
         // Find all groups user is in and collect unique members
         for (let i = 0; i < groupCount; i++) {
           try {
             const isMember = await checkIfMemberInGroup(i, wallet.address);
             if (isMember) {
-              userGroups.push(i);
               const members = await getGroupMembers(i);
-              members.forEach(member => {
-                memberCounts.set(member, (memberCounts.get(member) || 0) + 1);
-              });
+              members.forEach(member => uniqueMembers.add(member));
             }
           } catch (error) {
             console.error(`Error checking group ${i}:`, error);
           }
         }
 
-        // Get profiles for all unique members
-        const uniqueMembers = Array.from(memberCounts.keys());
-        const profiles = await getProfiles(uniqueMembers);
+        // Get profiles and stats for all unique members IN PARALLEL
+        const memberArray = Array.from(uniqueMembers);
+        const [profiles, ...statsResults] = await Promise.all([
+          getProfiles(memberArray),
+          ...memberArray.map(async (address) => {
+            const [wagers, payouts] = await Promise.all([
+              getWagersForUser(address),
+              getPayoutsForUser(address),
+            ]);
 
-        // Create leaderboard entries sorted by group count
-        const leaderboardEntries: LeaderboardEntry[] = uniqueMembers
-          .map(address => ({
-            address,
-            name: profiles.get(address)?.name,
-            avatarId: profiles.get(address)?.avatarId,
-            groupCount: memberCounts.get(address) || 0,
+            const totalWagered = wagers.reduce((sum, w) => sum + w.amount, 0);
+            const totalWon = payouts.reduce((sum, p) => sum + p.amount, 0);
+            const profitLoss = totalWon - totalWagered;
+            const wins = payouts.length;
+            const totalBets = wagers.length;
+            const winrate = totalBets > 0 ? (wins / totalBets) * 100 : 0;
+
+            return {
+              address,
+              totalWagered,
+              totalWon,
+              profitLoss,
+              wins,
+              totalBets,
+              winrate,
+            };
+          }),
+        ]);
+
+        // Create leaderboard entries sorted by P&L
+        const leaderboardEntries: LeaderboardEntry[] = statsResults
+          .map((stats, idx) => ({
+            ...stats,
+            name: profiles.get(stats.address)?.name,
+            avatarId: profiles.get(stats.address)?.avatarId,
           }))
-          .sort((a, b) => b.groupCount - a.groupCount);
+          .sort((a, b) => b.profitLoss - a.profitLoss);
 
         setEntries(leaderboardEntries);
       } catch (error) {
@@ -131,12 +157,11 @@ export default function LeaderboardPage() {
             <Card>
               <CardContent className="p-0">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b-2 border-text bg-background">
-                  <div className="flex items-center gap-4">
-                    <span className="text-accent font-mono text-xs uppercase tracking-wider w-8">#</span>
-                    <span className="text-accent font-mono text-xs uppercase tracking-wider">Player</span>
-                  </div>
-                  <span className="text-accent font-mono text-xs uppercase tracking-wider">Groups</span>
+                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-3 border-b-2 border-text bg-background">
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider w-8">#</span>
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider">Player</span>
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right">P&L</span>
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right">Winrate</span>
                 </div>
 
                 {/* Entries */}
@@ -146,55 +171,66 @@ export default function LeaderboardPage() {
                     const avatar = entry.avatarId !== undefined ? getAvatarById(entry.avatarId) : null;
                     const avatarUrl = avatar ? getAvatarUrl(avatar.seed, avatar.style) : null;
                     const rank = index + 1;
+                    const plColor = entry.profitLoss > 0 ? 'text-green-600' : entry.profitLoss < 0 ? 'text-secondary' : 'text-accent';
                     
                     return (
                       <div
                         key={entry.address}
-                        className={`flex items-center justify-between px-4 py-4 border-b border-text/20 ${
+                        className={`grid grid-cols-[auto_1fr_auto_auto] gap-4 items-center px-4 py-4 border-b border-text/20 ${
                           isYou ? 'bg-primary/10' : ''
                         } ${rank <= 3 ? 'bg-primary/5' : ''}`}
                       >
-                        <div className="flex items-center gap-4">
-                          {/* Rank */}
-                          <div className={`w-8 h-8 flex items-center justify-center font-mono font-bold ${
-                            rank === 1 ? 'text-primary text-lg' :
-                            rank === 2 ? 'text-accent text-lg' :
-                            rank === 3 ? 'text-secondary text-lg' :
-                            'text-accent/60 text-sm'
-                          }`}>
-                            {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
-                          </div>
+                        {/* Rank */}
+                        <div className={`w-8 h-8 flex items-center justify-center font-mono font-bold ${
+                          rank === 1 ? 'text-primary text-lg' :
+                          rank === 2 ? 'text-accent text-lg' :
+                          rank === 3 ? 'text-secondary text-lg' :
+                          'text-accent/60 text-sm'
+                        }`}>
+                          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+                        </div>
 
-                          {/* Avatar & Name */}
-                          <div className="flex items-center gap-3">
-                            {avatarUrl ? (
-                              <img 
-                                src={avatarUrl} 
-                                alt={entry.name || 'Player'} 
-                                className="w-10 h-10 border-2 border-text"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 border-2 border-text bg-surface flex items-center justify-center">
-                                <span className="material-symbols-outlined text-text">person</span>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-text font-mono font-bold text-sm flex items-center gap-2">
-                                {entry.name || `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
-                                {isYou && (
-                                  <span className="text-[10px] bg-primary text-text px-2 py-0.5 uppercase tracking-wider">You</span>
-                                )}
-                              </p>
-                              <p className="text-accent text-xs font-mono">
-                                {entry.address.slice(0, 10)}...{entry.address.slice(-6)}
-                              </p>
+                        {/* Avatar & Name */}
+                        <div className="flex items-center gap-3">
+                          {avatarUrl ? (
+                            <img 
+                              src={avatarUrl} 
+                              alt={entry.name || 'Player'} 
+                              className="w-10 h-10 border-2 border-text"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 border-2 border-text bg-surface flex items-center justify-center">
+                              <span className="material-symbols-outlined text-text">person</span>
                             </div>
+                          )}
+                          <div>
+                            <p className="text-text font-mono font-bold text-sm flex items-center gap-2">
+                              {entry.name || `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
+                              {isYou && (
+                                <span className="text-[10px] bg-primary text-text px-2 py-0.5 uppercase tracking-wider">You</span>
+                              )}
+                            </p>
+                            <p className="text-accent text-xs font-mono">
+                              {entry.totalBets} bet{entry.totalBets !== 1 ? 's' : ''}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Stats */}
+                        {/* P&L */}
                         <div className="text-right">
-                          <p className="text-text font-mono font-bold">{entry.groupCount}</p>
+                          <p className={`font-mono font-bold ${plColor}`}>
+                            ${(entry.profitLoss / 1_000_000).toFixed(2)}
+                          </p>
+                        </div>
+
+                        {/* Winrate */}
+                        <div className="text-right min-w-[60px]">
+                          <p className="text-text font-mono font-bold">
+                            {entry.winrate.toFixed(0)}%
+                          </p>
+                          <p className="text-accent text-xs font-mono">
+                            {entry.wins}W
+                          </p>
                         </div>
                       </div>
                     );
@@ -207,8 +243,7 @@ export default function LeaderboardPage() {
           {/* Info Note */}
           <div className="mt-6 p-4 bg-surface border-2 border-text">
             <p className="text-accent text-xs font-mono">
-              <span className="text-text font-bold">Note:</span> This leaderboard currently shows friends across your groups. 
-              Win/loss tracking and detailed stats coming soon!
+              <span className="text-text font-bold">Note:</span> Leaderboard shows all friends across your groups, sorted by profit & loss.
             </p>
           </div>
         </div>

@@ -8,6 +8,8 @@ import { Logo } from '@/components/ui/Logo';
 import { MobileNav } from './MobileNav';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getUSDCBalance } from '@/lib/indexer';
+import { getProfile } from '@/lib/contract';
+import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 
 interface NavItem {
   href: string;
@@ -23,10 +25,6 @@ const navItems: NavItem[] = [
 const bottomNavItems: NavItem[] = [
   { href: '/settings', label: 'Settings', icon: 'settings' },
 ];
-
-function getAvatarUrl(seed: string) {
-  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
-}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -51,13 +49,37 @@ export function Sidebar() {
     }
   }, [moveWallet?.address]);
 
-  // Load user settings and listen for updates
-  const loadSettings = useCallback(() => {
+  // Load user settings from blockchain and session storage
+  const loadSettings = useCallback(async () => {
+    if (!moveWallet?.address) return;
+    
+    // First, check session storage for immediate display
     const saved = sessionStorage.getItem('friendfi_user_settings');
     if (saved) {
       setUserSettings(JSON.parse(saved));
     }
-  }, []);
+    
+    // Then load from blockchain and update if it exists
+    try {
+      const profile = await getProfile(moveWallet.address);
+      if (profile.exists) {
+        const avatar = getAvatarById(profile.avatarId);
+        const url = avatar ? getAvatarUrl(avatar.seed, avatar.style) : `https://api.dicebear.com/7.x/adventurer/svg?seed=default&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
+        
+        const settings = {
+          username: profile.name,
+          avatarId: profile.avatarId,
+          avatarUrl: url,
+        };
+        
+        // Update session storage
+        sessionStorage.setItem('friendfi_user_settings', JSON.stringify(settings));
+        setUserSettings(settings);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  }, [moveWallet?.address]);
 
   useEffect(() => {
     loadSettings();
@@ -82,7 +104,8 @@ export function Sidebar() {
   };
 
   const displayName = userSettings?.username || user?.email?.address?.split('@')[0] || 'Anonymous';
-  const avatarUrl = userSettings?.avatarUrl || getAvatarUrl('default');
+  const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=default&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
+  const avatarUrl = userSettings?.avatarUrl || fallbackAvatarUrl;
 
   return (
     <>
@@ -109,7 +132,7 @@ export function Sidebar() {
                       {displayName}
                     </h2>
                     <p className="text-accent text-xs font-mono">
-                      {loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)} USDC
+                      ${loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)}
                     </p>
                   </div>
                 </Link>
@@ -197,7 +220,7 @@ export function Sidebar() {
           {user && (
             <Link href="/settings" className="flex items-center gap-2">
               <span className="text-accent text-xs font-mono">
-                {loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)} USDC
+                ${loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)}
               </span>
               <img 
                 src={avatarUrl}

@@ -8,7 +8,10 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName } from '@/lib/contract';
+import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile } from '@/lib/contract';
+import { ProfileSetupModal } from '@/components/ui/ProfileSetupModal';
+import { useToast } from '@/components/ui/Toast';
+import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
 
 // Available dApps
 const dApps = [
@@ -42,10 +45,73 @@ interface GroupData {
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
   const router = useRouter();
-  const { wallet, loading: walletLoading } = useMoveWallet();
+  const { wallet, loading: walletLoading, setProfile } = useMoveWallet();
+  const { showToast } = useToast();
   const [activeDApp, setActiveDApp] = useState('predictions');
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
+
+  // Check if user has a profile on-chain
+  useEffect(() => {
+    async function checkProfile() {
+      if (!wallet?.address || profileChecked) return;
+      
+      try {
+        const profile = await getProfile(wallet.address);
+        if (!profile.exists) {
+          // No profile found, show setup modal
+          setShowProfileSetup(true);
+        }
+        setProfileChecked(true);
+      } catch (error) {
+        console.error('Error checking profile:', error);
+        setProfileChecked(true);
+      }
+    }
+    
+    checkProfile();
+  }, [wallet?.address, profileChecked]);
+
+  // Handle profile setup completion
+  const handleProfileSetup = async (username: string, avatarId: number) => {
+    if (!wallet?.address) return;
+    
+    setSavingProfile(true);
+    try {
+      const result = await setProfile(username, avatarId);
+      
+      // Save to session storage for immediate UI updates
+      const settings = {
+        username,
+        avatarId,
+        avatarUrl: getAvatarUrl(AVATAR_OPTIONS[avatarId].seed, AVATAR_OPTIONS[avatarId].style),
+      };
+      sessionStorage.setItem('friendfi_user_settings', JSON.stringify(settings));
+      
+      // Dispatch event to trigger sidebar refresh
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: settings }));
+      
+      showToast({
+        type: 'success',
+        title: 'Profile created!',
+        message: 'Welcome to Friend-Fi',
+        txHash: result.hash,
+      });
+      
+      setShowProfileSetup(false);
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to create profile',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Auth redirect is handled by AuthWrapper - no need here
 
@@ -150,10 +216,17 @@ export default function DashboardPage() {
   const isLoading = walletLoading || groupsLoading;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
+    <>
+      <ProfileSetupModal 
+        isOpen={showProfileSetup}
+        onComplete={handleProfileSetup}
+        onSaving={savingProfile}
+      />
+      
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
 
-      <main className="flex-1 mobile-content lg:p-0 lg:py-16">
+        <main className="flex-1 mobile-content lg:p-0 lg:py-16">
         <div className="p-4 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
           {/* dApp Tabs */}
           <div className="mb-6">
@@ -343,5 +416,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </>
   );
 }
