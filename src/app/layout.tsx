@@ -21,8 +21,19 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: "Friend-Fi | Social DeFi",
   description: "A suite of social DeFi apps for your inner circle. Wager, compete, and hold each other accountable on Movement Network.",
+  applicationName: "Friend-Fi",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Friend-Fi",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -34,10 +45,22 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* PWA Meta Tags */}
+        <meta name="application-name" content="Friend-Fi" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Friend-Fi" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#F5C301" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        
+        {/* Fonts */}
         <link 
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" 
           rel="stylesheet" 
         />
+        
+        {/* Prefetch */}
         <link rel="prefetch" href="/login" />
         <link rel="prefetch" href="/dashboard" />
       </head>

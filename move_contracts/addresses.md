@@ -5,47 +5,44 @@
 
 ---
 
-## Production Deployment (WITH FEE MONETIZATION)
+## Production Deployment (ALL 4 MODULES - Dec 21, 2024)
+
+**Deployer Account**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370`  
+**Deployment TX**: `0x2bfbf1060572f2d15aad29fee8d5983f31191529cf0dceb19773671a6abe1b1e`  
+**Status**: ✅ **LIVE** - All 4 modules deployed and initialized  
+**CLI Used**: `movement` v7.4.0 (required for Movement testnet compatibility)
+
+All four modules share the same contract address:
+
+```
+0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370
+```
+
+**Deployment Details**:
+- ✅ **groups** - Init TX: [0xd6ef9dc9873e7ca761b174df92c8385d90f823117d89b47ccad9884ee0b597c2](https://explorer.movementnetwork.xyz/txn/0xd6ef9dc9873e7ca761b174df92c8385d90f823117d89b47ccad9884ee0b597c2?network=custom)
+- ✅ **expense_splitting** - Init TX: [0x16ae3f7f1fdfc4da109acb3a281ce1ff1463a8011ecac369265523cc9cc823a1](https://explorer.movementnetwork.xyz/txn/0x16ae3f7f1fdfc4da109acb3a281ce1ff1463a8011ecac369265523cc9cc823a1?network=custom)
+- ✅ **private_prediction_refactored** - Init TX: [0x8f592a69dcb16ac2fce6d0c4588f595fec9447c8689731e74ca635adcc37685d](https://explorer.movementnetwork.xyz/txn/0x8f592a69dcb16ac2fce6d0c4588f595fec9447c8689731e74ca635adcc37685d?network=custom)
+- ✅ **habit_tracker** 🎯 - Init TX: [0x35445e0074ce53f189845a20b50458f525ac68c86a5496d2471a171056d13c8c](https://explorer.movementnetwork.xyz/txn/0x35445e0074ce53f189845a20b50458f525ac68c86a5496d2471a171056d13c8c?network=custom)
+
+**Package Stats**:
+- Total Size: 42.6 KB
+- Gas Used: 22,009
+- All 116 tests passing
+
+---
+
+## Previous Deployment (3 Modules - Deprecated)
 
 **Deployer Account**: `0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f`  
-**Deployment TX**: `0x3cce12bbf55cef6a8dfef2a68698dd79bda9c5357c4b70d252eceb5de476facc`  
-**Status**: ✅ **LIVE** with fee monetization (backward-compatible upgrade)
-
-All three modules share the same contract address:
-
-```
-0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f
-```
-
-**Recent Upgrade (Dec 21, 2024)**:
-- ✅ Added 0.3% fee on all USDC settlements in `expense_splitting` module
-- ✅ Fee accumulates in escrow for gas/service costs
-- ✅ Backward-compatible (no breaking changes)
-- ✅ Added `FeeCollectedEvent` for tracking
-- ✅ Added `get_escrow_balance()` view function
-- ✅ All existing data preserved
-
----
-
-## Demo Deployment (Deprecated)
-
-**Deployer Account**: `0x19ec1ba789dfcc76f7f67c143614825079280e2f7c27a34af822d7e4a8e111f0`  
-**Status**: ⚠️ Not used - switched to upgrading production contract instead
-
----
-
-## USDC Faucet for Demos
-
-**Address**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370`  
-**Purpose**: Funds demo wallets with small USDC amounts  
-**Note**: Private key stored securely in demo page constant
+**Status**: ⚠️ **Superseded** - Use new address above
+**Note**: This deployment had groups, expense_splitting, and predictions only (no habit tracker)
 
 ---
 
 ## Module Addresses
 
 #### 1. **Groups Module** (`groups`)
-- **Full ID**: `0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f::groups`
+- **Full ID**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370::groups`
 - **Purpose**: Shared group and profile management for all apps
 - **Key Functions**:
   - `create_group(signer, name, password, description)`
@@ -54,7 +51,7 @@ All three modules share the same contract address:
   - `is_member(group_id, address): bool`
 
 #### 2. **Expense Splitting Module** (`expense_splitting`)
-- **Full ID**: `0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f::expense_splitting`
+- **Full ID**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370::expense_splitting`
 - **Purpose**: Track and settle shared expenses (SettleUp clone)
 - **Key Functions**:
   - `create_expense_equal(signer, group_id, description, total_amount, participants)`
@@ -65,7 +62,7 @@ All three modules share the same contract address:
   - `get_group_debts(group_id): (vector<address>, vector<address>, vector<u64>)`
 
 #### 3. **Private Prediction Refactored Module** (`private_prediction_refactored`)
-- **Full ID**: `0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f::private_prediction_refactored`
+- **Full ID**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370::private_prediction_refactored`
 - **Purpose**: Parimutuel betting system with USDC escrow
 - **Key Functions**:
   - `create_bet(signer, group_id, description, outcomes, admin, encrypted_payload)`
@@ -73,6 +70,20 @@ All three modules share the same contract address:
   - `resolve_bet(admin_signer, bet_id, winning_outcome_index)`
   - `get_group_bets(group_id): vector<u64>`
   - `get_bet_total_pool(bet_id): u64`
+
+#### 4. **Habit Tracker Module** (`habit_tracker`) 🎯
+- **Full ID**: `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370::habit_tracker`
+- **Purpose**: Two-person accountability system for habit formation (Amigo)
+- **Status**: ✅ **DEPLOYED & INITIALIZED**
+- **Key Functions**:
+  - `create_commitment(signer, group_id, participant_b, weekly_payout, weekly_check_ins_required, duration_weeks, commitment_name)`
+  - `accept_commitment(signer, group_id, commitment_local_id)`
+  - `check_in(signer, group_id, commitment_local_id)`
+  - `process_week(signer, group_id, commitment_local_id, week)`
+  - `get_commitment_details(group_id, commitment_local_id): (address, address, u64, u64, bool, bool, String, u64, u64)`
+  - `get_weekly_check_ins(group_id, commitment_local_id, week, participant): u64`
+  - `get_user_commitments(group_id, user): vector<u64>`
+- **Documentation**: See [HABIT_TRACKER.md](./HABIT_TRACKER.md) for complete guide
 
 ---
 
@@ -105,11 +116,12 @@ All three modules share the same contract address:
 
 ## Test Results
 
-All **85 tests** passed successfully:
+All **116 tests** passed successfully:
 - ✅ 13 tests in `groups_tests.move`
 - ✅ 15 tests in `expense_splitting_tests.move`
 - ✅ 8 tests in `integration_tests.move`
 - ✅ 49 tests in `private_prediction_tests.move`
+- ✅ 33 tests in `habit_tracker_tests.move`
 
 ---
 
@@ -120,12 +132,13 @@ All **85 tests** passed successfully:
 In your frontend code (`src/lib/contract.ts`), update the contract address:
 
 ```typescript
-export const CONTRACT_ADDRESS = '0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f';
+export const CONTRACT_ADDRESS = '0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370';
 
 // Module names
 export const GROUPS_MODULE = 'groups';
 export const EXPENSE_MODULE = 'expense_splitting';
 export const PREDICTION_MODULE = 'private_prediction_refactored';
+export const HABIT_MODULE = 'habit_tracker';
 ```
 
 ### Example Usage
@@ -154,6 +167,12 @@ const payload = {
   function: `${CONTRACT_ADDRESS}::expense_splitting::create_expense_equal`,
   arguments: [0, 'Dinner', 10000000, [addr1, addr2, addr3]]
 };
+
+// Create a habit commitment
+const payload = {
+  function: `${CONTRACT_ADDRESS}::habit_tracker::create_commitment`,
+  arguments: [0, friendAddress, 10000000, 3, 4, 'Gym Challenge']
+};
 ```
 
 ---
@@ -172,22 +191,37 @@ This is already configured in the modules as `USDC_METADATA_ADDR`.
 
 ## Architecture Benefits
 
-✅ **One group, multiple apps** - Create a group once, use it for predictions, expenses, and future features  
+✅ **One group, multiple apps** - Create a group once, use it for predictions, expenses, habits, and future features  
 ✅ **Shared profile system** - Set your username once, it works everywhere  
 ✅ **Clean separation** - Each module has a single responsibility  
 ✅ **Easy extensibility** - Add new apps that reuse the groups module  
 ✅ **Battle-tested** - Comprehensive unit and integration tests
+✅ **Four complete apps** - Expenses, Predictions, Habits, and more coming
 
 ---
 
 ## Next Steps
 
-1. ✅ Modules deployed and initialized
-2. 🔄 Update frontend contract addresses
-3. 🔄 Integrate groups module into UI
-4. 🔄 Integrate expense splitting into UI
-5. 🔄 Update prediction market to use refactored module
-6. 🔄 Update demo page to use all three modules
+1. ✅ All 4 modules deployed and initialized on new address
+2. 🔄 **Update frontend CONTRACT_ADDRESS** to `0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370`
+3. 🔄 Test all 4 applications with the new contract
+4. 🔄 Update USDC faucet logic if needed
+5. 🔄 Add habit tracker UI to frontend
 
-For detailed integration instructions, see [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md).
+For detailed module documentation:
+- **Habit Tracker**: See [HABIT_TRACKER.md](./HABIT_TRACKER.md)
+- **General Integration**: See [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md) (if exists)
+
+---
+
+## Important Notes
+
+### CLI Tool Compatibility
+- ✅ **Use `movement` CLI** (v7.4.0+) for Movement testnet deployments
+- ❌ **Do NOT use `aptos` CLI** - generates incompatible bytecode (`CODE_DESERIALIZATION_ERROR`)
+
+### Private Key Security  
+- The faucet private key has been removed from source code
+- Now uses environment variable: `NEXT_PUBLIC_FAUCET_PRIVATE_KEY`
+- See `.env.example` for setup
 

@@ -204,28 +204,28 @@ export default function DashboardPage() {
         <Sidebar />
 
         <main className="flex-1 mobile-content lg:p-0 lg:py-16">
-        <div className="p-4 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
               <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight">
                 Your Groups
               </h1>
-              <p className="text-accent text-sm mt-1 font-mono">
+              <p className="text-accent text-sm sm:text-base mt-1 font-mono">
                 {isLoading ? 'Loading...' : groups.length === 0 ? 'Get started by creating or joining a group' : `${groups.length} group${groups.length !== 1 ? 's' : ''}`}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Link href="/groups/join">
-                <Button variant="secondary" className="text-sm">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Link href="/groups/join" className="flex-1 sm:flex-none">
+                <Button variant="secondary" className="w-full sm:w-auto text-sm">
                   <span className="material-symbols-outlined text-lg">group_add</span>
-                  Join
+                  <span className="hidden sm:inline">Join</span>
                 </Button>
               </Link>
-              <Link href="/groups/create">
-                <Button className="text-sm">
+              <Link href="/groups/create" className="flex-1 sm:flex-none">
+                <Button className="w-full sm:w-auto text-sm">
                   <span className="material-symbols-outlined text-lg">add</span>
-                  Create
+                  <span className="hidden sm:inline">Create</span>
                 </Button>
               </Link>
             </div>
@@ -271,19 +271,19 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {groups.map((group) => (
                 <Card key={group.id} hover onClick={() => handleGroupClick(group)}>
                   <CardContent className="p-0">
                     {/* Group Header */}
-                    <div className="p-4 border-b-2 border-text">
+                    <div className="p-4 sm:p-5 border-b-2 border-text">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
-                          <span className="material-symbols-outlined text-text text-2xl">groups</span>
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-text text-2xl sm:text-3xl">groups</span>
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="text-text text-lg font-display font-bold truncate">{group.name}</h3>
-                          <p className="text-accent text-xs font-mono uppercase tracking-wider">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-text text-base sm:text-lg font-display font-bold truncate">{group.name}</h3>
+                          <p className="text-accent text-xs sm:text-sm font-mono uppercase tracking-wider">
                             {group.memberCount} member{group.memberCount !== 1 ? 's' : ''}
                           </p>
                         </div>
@@ -291,13 +291,13 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="p-4 flex items-center justify-between">
+                    <div className="p-4 sm:p-5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-accent text-lg">casino</span>
-                        <span className="text-text font-mono font-bold">{group.betCount}</span>
-                        <span className="text-accent text-sm font-mono">bet{group.betCount !== 1 ? 's' : ''}</span>
+                        <span className="material-symbols-outlined text-accent text-lg sm:text-xl">casino</span>
+                        <span className="text-text font-mono font-bold text-sm sm:text-base">{group.betCount}</span>
+                        <span className="text-accent text-xs sm:text-sm font-mono">bet{group.betCount !== 1 ? 's' : ''}</span>
                       </div>
-                      <span className="material-symbols-outlined text-accent">chevron_right</span>
+                      <span className="material-symbols-outlined text-accent text-lg sm:text-xl">chevron_right</span>
                     </div>
                   </CardContent>
                 </Card>

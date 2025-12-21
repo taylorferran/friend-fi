@@ -194,18 +194,18 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b-2 border-text px-4 py-3 safe-area-pt">
-        <div className="flex items-center justify-between">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b-2 border-text safe-area-pt">
+        <div className="flex items-center justify-between px-4 py-3">
           <Logo size="sm" />
           {user && (
-            <Link href="/settings" className="flex items-center gap-2">
-              <span className="text-accent text-xs font-mono">
+            <Link href="/settings" className="flex items-center gap-3 px-3 py-2 -mr-2 active:bg-primary/20 rounded transition-colors">
+              <span className="text-text text-sm font-mono font-bold">
                 ${loadingBalance ? '...' : (usdcBalance / 1_000_000).toFixed(2)}
               </span>
               <img 
                 src={avatarUrl}
                 alt="Your avatar"
-                className="w-8 h-8 border-2 border-text"
+                className="w-10 h-10 border-2 border-text"
               />
             </Link>
           )}

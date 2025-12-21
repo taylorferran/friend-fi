@@ -108,14 +108,14 @@ export default function GroupPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <Link 
             href="/dashboard" 
-            className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
+            className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-4 sm:mb-6 font-mono uppercase text-sm tracking-wider font-bold"
           >
-            <span className="material-symbols-outlined">arrow_back</span>
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
             <span>Back to Dashboard</span>
           </Link>
 
@@ -134,16 +134,16 @@ export default function GroupPage() {
           ) : (
             <>
               {/* Group Header */}
-              <Card className="mb-6">
-                <CardContent className="p-4 lg:p-6">
+              <Card className="mb-4 sm:mb-6">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-text text-2xl">groups</span>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-text text-xl sm:text-2xl">groups</span>
                       </div>
                       <div>
-                        <h1 className="text-text text-xl lg:text-2xl font-display font-bold">{groupName}</h1>
-                        <p className="text-accent text-sm font-mono">
+                        <h1 className="text-text text-lg sm:text-xl lg:text-2xl font-display font-bold">{groupName}</h1>
+                        <p className="text-accent text-xs sm:text-sm font-mono">
                           {members.length} member{members.length !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -153,43 +153,43 @@ export default function GroupPage() {
               </Card>
 
               {/* App Selection */}
-              <div className="mb-6">
-                <h2 className="text-text text-2xl font-display font-bold mb-4">Choose an App</h2>
-                <p className="text-accent font-mono text-sm mb-6">
+              <div className="mb-4 sm:mb-6">
+                <h2 className="text-text text-xl sm:text-2xl font-display font-bold mb-2 sm:mb-4">Choose an App</h2>
+                <p className="text-accent font-mono text-xs sm:text-sm mb-4 sm:mb-6">
                   Select which app you want to use with this group
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {groupApps.map((app) => (
                   <Link key={app.id} href={`/groups/${groupId}/${app.id}`}>
                     <Card hover className="h-full">
                       <CardContent className="p-0">
                         {/* App Header */}
-                        <div className="p-6 border-b-2 border-text">
-                          <div className="flex items-center gap-4 mb-4">
-                            <div className="w-14 h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
-                              <span className="material-symbols-outlined text-text text-2xl">{app.icon}</span>
+                        <div className="p-4 sm:p-6 border-b-2 border-text">
+                          <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
+                              <span className="material-symbols-outlined text-text text-xl sm:text-2xl">{app.icon}</span>
                             </div>
                             <div>
-                              <h3 className="text-text text-xl font-display font-bold">{app.name}</h3>
-                              <div className="inline-flex items-center gap-2 px-2 py-0.5 border-2 border-green-600 text-green-600 text-[10px] font-mono uppercase tracking-wider font-bold mt-1">
+                              <h3 className="text-text text-lg sm:text-xl font-display font-bold">{app.name}</h3>
+                              <div className="inline-flex items-center gap-2 px-2 py-0.5 border-2 border-green-600 text-green-600 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider font-bold mt-1">
                                 <span className="w-1.5 h-1.5 bg-green-600 animate-pulse" />
                                 LIVE
                               </div>
                             </div>
                           </div>
-                          <p className="text-accent font-mono text-sm leading-relaxed">
+                          <p className="text-accent font-mono text-xs sm:text-sm leading-relaxed">
                             {app.description}
                           </p>
                         </div>
 
                         {/* Features */}
-                        <div className="p-6">
+                        <div className="p-4 sm:p-6">
                           <ul className="space-y-2">
                             {app.features.map((feature) => (
-                              <li key={feature} className="flex items-center gap-2 text-text font-mono text-sm">
-                                <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
+                              <li key={feature} className="flex items-center gap-2 text-text font-mono text-xs sm:text-sm">
+                                <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0">check_circle</span>
                                 {feature}
                               </li>
                             ))}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { CONTRACT_ADDRESS, MODULE_NAME } from '@/lib/contract';
+import { CONTRACT_ADDRESS, GROUPS_MODULE } from '@/lib/contract';
 
 const INDEXER_URL = 'https://indexer.testnet.movementnetwork.xyz/v1/graphql';
 
@@ -206,7 +206,7 @@ export default function DebugPage() {
           Testing: {INDEXER_URL}
         </p>
         <p className="text-accent font-mono text-xs mb-6">
-          Contract: {CONTRACT_ADDRESS}::{MODULE_NAME}
+          Contract: {CONTRACT_ADDRESS}::{GROUPS_MODULE}
         </p>
 
         <Button onClick={runAllTests} disabled={running} className="mb-6">

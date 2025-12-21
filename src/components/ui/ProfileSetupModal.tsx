@@ -32,25 +32,25 @@ export function ProfileSetupModal({ isOpen, onComplete, onSaving }: ProfileSetup
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-text/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-text/50 backdrop-blur-sm safe-area-inset">
       <div className="w-full max-w-md bg-background border-4 border-text shadow-[8px_8px_0_theme(colors.text)] max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b-2 border-text bg-primary">
-          <h2 className="text-text text-2xl font-display font-bold mb-2">Welcome to Friend-Fi!</h2>
-          <p className="text-text/80 text-sm font-mono">Set up your profile to get started</p>
+        <div className="p-4 sm:p-6 border-b-2 border-text bg-primary">
+          <h2 className="text-text text-xl sm:text-2xl font-display font-bold mb-2">Welcome to Friend-Fi!</h2>
+          <p className="text-text/80 text-xs sm:text-sm font-mono">Set up your profile to get started</p>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Preview */}
-          <div className="flex items-center gap-4 p-4 border-2 border-text bg-surface">
+          <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 border-2 border-text bg-surface">
             <img 
               src={getAvatarUrl(selectedAvatar.seed, selectedAvatar.style)} 
               alt="Your avatar"
-              className="w-16 h-16 border-2 border-text"
+              className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-text flex-shrink-0"
             />
-            <div className="flex-1">
-              <p className="text-text font-display font-bold text-lg">
+            <div className="flex-1 min-w-0">
+              <p className="text-text font-display font-bold text-base sm:text-lg truncate">
                 {username || 'Anonymous'}
               </p>
               <p className="text-accent text-xs font-mono">Your profile</p>
@@ -69,10 +69,10 @@ export function ProfileSetupModal({ isOpen, onComplete, onSaving }: ProfileSetup
 
           {/* Avatar Grid */}
           <div>
-            <label className="text-text text-sm font-bold font-mono uppercase tracking-wider block mb-3">
+            <label className="text-text text-xs sm:text-sm font-bold font-mono uppercase tracking-wider block mb-2 sm:mb-3">
               Choose Avatar
             </label>
-            <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto border-2 border-text p-2 bg-background">
+            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto border-2 border-text p-2 bg-background">
               {AVATAR_OPTIONS.slice(0, 20).map((avatar) => (
                 <button
                   key={avatar.id}

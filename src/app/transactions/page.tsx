@@ -135,15 +135,15 @@ export default function TransactionsPage() {
       <Sidebar />
 
       <main className="flex-1 mobile-content lg:p-0 lg:py-16">
-        <div className="p-4 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight">
                   Transaction History
                 </h1>
-                <p className="text-accent text-sm mt-1 font-mono">
+                <p className="text-accent text-sm sm:text-base mt-1 font-mono">
                   {loading ? 'Loading...' : `${transactions.length} transaction${transactions.length !== 1 ? 's' : ''} found`}
                 </p>
                 {wallet?.address && (
@@ -213,16 +213,16 @@ export default function TransactionsPage() {
                         href={explorerUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block p-4 hover:bg-primary/5 transition-colors"
+                        className="block p-3 sm:p-4 hover:bg-primary/5 transition-colors"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-3 sm:gap-4">
                           {/* Left: Icon + Details */}
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                             {/* Icon */}
-                            <div className={`w-10 h-10 flex-shrink-0 border-2 border-text flex items-center justify-center ${
+                            <div className={`w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 border-2 border-text flex items-center justify-center ${
                               tx.success ? 'bg-primary' : 'bg-secondary/20'
                             }`}>
-                              <span className={`material-symbols-outlined text-xl ${
+                              <span className={`material-symbols-outlined text-lg sm:text-xl ${
                                 tx.success ? 'text-text' : 'text-secondary'
                               }`}>
                                 {tx.success ? 'check_circle' : 'cancel'}
@@ -231,12 +231,12 @@ export default function TransactionsPage() {
 
                             {/* Details */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-text font-display font-bold truncate">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <h3 className="text-text font-display font-bold text-sm sm:text-base truncate">
                                   {description}
                                 </h3>
                                 {!tx.success && (
-                                  <span className="text-secondary text-xs font-mono font-bold uppercase px-2 py-0.5 border border-secondary">
+                                  <span className="text-secondary text-[10px] sm:text-xs font-mono font-bold uppercase px-1.5 sm:px-2 py-0.5 border border-secondary flex-shrink-0">
                                     Failed
                                   </span>
                                 )}
@@ -244,7 +244,7 @@ export default function TransactionsPage() {
                               
                               <div className="space-y-1">
                                 {/* Transaction Version */}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-accent text-xs font-mono">
                                     Transaction {formatVersion(tx.version)}
                                   </span>

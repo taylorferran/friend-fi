@@ -13,7 +13,7 @@ import { buildSetProfilePayload, buildCreateGroupPayload, buildJoinGroupPayload,
 import { Input } from '@/components/ui/Input';
 
 // Faucet wallet private key
-const FAUCET_PRIVATE_KEY = 'b62aff094a9ab76359c9b7ed7c3e7595831b476f71b8bc6d07e10cf1e19836e0';
+const FAUCET_PRIVATE_KEY = process.env.NEXT_PUBLIC_FAUCET_PRIVATE_KEY || '';
 
 // Random data generators
 const FIRST_NAMES = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack'];
@@ -606,29 +606,30 @@ export default function DemoExpensesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-24">
-      <div className="fixed inset-0 -z-10 grid-pattern" />
-      
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="border-b-4 border-text bg-surface p-6 mb-8">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b-4 border-text bg-surface">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Logo />
               <div>
-                <h1 className="text-text text-2xl font-display font-bold">Expenses Demo</h1>
+                <h1 className="text-3xl font-display font-bold text-text">Expense Splitting Demo</h1>
                 <p className="text-accent font-mono text-sm">Three friends split holiday costs</p>
               </div>
             </div>
             <Link
               href="/demo-selector"
-              className="px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
+              className="flex items-center px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
             >
-              <span className="material-symbols-outlined text-sm mr-2 inline-block">arrow_back</span>
+              <span className="material-symbols-outlined text-sm mr-2">arrow_back</span>
               All Demos
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-12">
 
         {step === 'start' && (
           <Card className="max-w-2xl mx-auto">
@@ -1057,7 +1058,7 @@ function UserPanel({
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 border-2 border-text bg-surface flex items-center justify-center overflow-hidden">
               {user.avatarId > 0 ? (
-                <img src={getAvatarUrl(user.avatarId)} alt={user.name} className="w-full h-full object-cover" />
+                <img src={getAvatarUrl(AVATAR_OPTIONS[user.avatarId].seed, AVATAR_OPTIONS[user.avatarId].style)} alt={user.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="material-symbols-outlined text-accent">person</span>
               )}

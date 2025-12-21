@@ -215,21 +215,21 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Settings</h1>
-            <p className="text-accent font-mono">Customize your profile and preferences.</p>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Settings</h1>
+            <p className="text-accent font-mono text-sm sm:text-base">Customize your profile and preferences.</p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Left Column - Profile */}
             <div className="space-y-6">
           {/* Profile Section */}
           <Card>
-            <CardContent>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-text text-xl font-display font-bold">Profile</h2>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-text text-lg sm:text-xl font-display font-bold">Profile</h2>
                 {hasOnChainProfile && (
                   <span className="px-2 py-1 bg-green-600/20 border border-green-600 text-green-600 text-xs font-mono font-bold uppercase flex items-center gap-1">
                     <span className="material-symbols-outlined text-xs">verified</span>
@@ -249,19 +249,19 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-4 mb-8 p-4 border-2 border-text bg-background">
+                  <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8 p-3 sm:p-4 border-2 border-text bg-background">
                     <img 
                       src={getAvatarUrl(selectedAvatar.seed, selectedAvatar.style)} 
                       alt="Your avatar"
-                      className="w-20 h-20 border-4 border-primary"
+                      className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary flex-shrink-0"
                     />
-                    <div>
-                      <p className="text-text font-display font-bold text-lg">{username || 'Anonymous'}</p>
-                      <p className="text-accent text-sm font-mono">{user?.email?.address}</p>
+                    <div className="min-w-0">
+                      <p className="text-text font-display font-bold text-base sm:text-lg truncate">{username || 'Anonymous'}</p>
+                      <p className="text-accent text-xs sm:text-sm font-mono truncate">{user?.email?.address}</p>
                     </div>
                   </div>
 
-                  <div className="mb-8">
+                  <div className="mb-6 sm:mb-8">
                     <Input
                       label="Display Name"
                       placeholder="Enter your display name"
@@ -272,15 +272,15 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="mb-6">
-                    <label className="text-text text-base font-bold font-mono uppercase tracking-wider block mb-4">
+                    <label className="text-text text-sm sm:text-base font-bold font-mono uppercase tracking-wider block mb-3 sm:mb-4">
                       Choose Avatar
                     </label>
-                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                    <div className="grid grid-cols-5 sm:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
                       {AVATAR_OPTIONS.map((avatar) => (
                         <button
                           key={avatar.id}
                           onClick={() => setSelectedAvatar(avatar)}
-                          className={`relative w-12 h-12 overflow-hidden transition-all duration-200 border-2 ${
+                          className={`relative w-10 h-10 sm:w-12 sm:h-12 overflow-hidden transition-all duration-200 border-2 ${
                             selectedAvatar.id === avatar.id
                               ? 'border-primary scale-110 shadow-[2px_2px_0_theme(colors.primary)]'
                               : 'border-text hover:border-primary hover:scale-105'
@@ -331,8 +331,8 @@ export default function SettingsPage() {
             <div className="space-y-6">
           {/* Withdraw Section */}
           <Card>
-            <CardContent>
-              <h2 className="text-text text-xl font-display font-bold mb-6">Withdraw USDC</h2>
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">Withdraw USDC</h2>
               <p className="text-accent text-sm font-mono mb-4">
                 Send USDC to any Movement wallet address
               </p>
@@ -372,8 +372,8 @@ export default function SettingsPage() {
 
           {/* Account Section */}
           <Card>
-            <CardContent>
-              <h2 className="text-text text-xl font-display font-bold mb-6">Account</h2>
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">Account</h2>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 border-2 border-text bg-background">

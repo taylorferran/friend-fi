@@ -1,12 +1,13 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
-// Contract configuration - NEW MODULAR ARCHITECTURE
-export const CONTRACT_ADDRESS = "0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
+// Contract configuration - NEW MODULAR ARCHITECTURE (ALL 4 MODULES)
+export const CONTRACT_ADDRESS = "0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370";
 
 // Module names
 export const GROUPS_MODULE = "groups";
 export const PREDICTION_MODULE = "private_prediction_refactored";
 export const EXPENSE_MODULE = "expense_splitting";
+export const HABIT_MODULE = "habit_tracker";
 
 // Movement Testnet configuration
 const config = new AptosConfig({
@@ -523,6 +524,184 @@ export function buildMarkDebtSettledPayload(
 }
 
 // ============================================================================
+// HABIT TRACKER MODULE - View Functions
+// ============================================================================
+
+export async function getGroupCommitmentsCount(groupId: number): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "get_group_commitments_count"),
+        typeArguments: [],
+        functionArguments: [groupId.toString()],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting group commitments count:", error);
+    return 0;
+  }
+}
+
+export async function getCommitmentDetails(groupId: number, commitmentLocalId: number): Promise<{
+  participantA: string;
+  participantB: string;
+  weeklyPayout: number;
+  weeklyCheckInsRequired: number;
+  accepted: boolean;
+  valid: boolean;
+  commitmentName: string;
+  startTime: number;
+  durationWeeks: number;
+} | null> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "get_commitment_details"),
+        typeArguments: [],
+        functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+      },
+    });
+    return {
+      participantA: result[0] as string,
+      participantB: result[1] as string,
+      weeklyPayout: Number(result[2]),
+      weeklyCheckInsRequired: Number(result[3]),
+      accepted: result[4] as boolean,
+      valid: result[5] as boolean,
+      commitmentName: result[6] as string,
+      startTime: Number(result[7]),
+      durationWeeks: Number(result[8]),
+    };
+  } catch (error) {
+    console.error("Error getting commitment details:", error);
+    return null;
+  }
+}
+
+export async function getWeeklyCheckIns(groupId: number, commitmentLocalId: number, week: number, participant: string): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "get_weekly_check_ins"),
+        typeArguments: [],
+        functionArguments: [groupId.toString(), commitmentLocalId.toString(), week.toString(), participant],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting weekly check-ins:", error);
+    return 0;
+  }
+}
+
+export async function getCurrentWeek(groupId: number, commitmentLocalId: number): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "get_current_week"),
+        typeArguments: [],
+        functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting current week:", error);
+    return 0;
+  }
+}
+
+export async function getUserCommitments(groupId: number, userAddress: string): Promise<number[]> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "get_user_commitments"),
+        typeArguments: [],
+        functionArguments: [groupId.toString(), userAddress],
+      },
+    });
+    return (result[0] as string[]).map(Number);
+  } catch (error) {
+    console.error("Error getting user commitments:", error);
+    return [];
+  }
+}
+
+export async function isWeekProcessed(groupId: number, commitmentLocalId: number, week: number): Promise<boolean> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(HABIT_MODULE, "is_week_processed"),
+        typeArguments: [],
+        functionArguments: [groupId.toString(), commitmentLocalId.toString(), week.toString()],
+      },
+    });
+    return result[0] as boolean;
+  } catch (error) {
+    console.error("Error checking if week processed:", error);
+    return false;
+  }
+}
+
+// ============================================================================
+// HABIT TRACKER MODULE - Transaction Builders
+// ============================================================================
+
+export function buildCreateCommitmentPayload(
+  groupId: number,
+  participantB: string,
+  weeklyPayout: number,
+  weeklyCheckInsRequired: number,
+  durationWeeks: number,
+  commitmentName: string
+) {
+  return {
+    function: getFunctionId(HABIT_MODULE, "create_commitment"),
+    typeArguments: [],
+    functionArguments: [
+      groupId.toString(),
+      participantB,
+      weeklyPayout.toString(),
+      weeklyCheckInsRequired.toString(),
+      durationWeeks.toString(),
+      commitmentName
+    ],
+  };
+}
+
+export function buildAcceptCommitmentPayload(groupId: number, commitmentLocalId: number) {
+  return {
+    function: getFunctionId(HABIT_MODULE, "accept_commitment"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+  };
+}
+
+export function buildCheckInPayload(groupId: number, commitmentLocalId: number) {
+  return {
+    function: getFunctionId(HABIT_MODULE, "check_in"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+  };
+}
+
+export function buildProcessWeekPayload(groupId: number, commitmentLocalId: number, week: number) {
+  return {
+    function: getFunctionId(HABIT_MODULE, "process_week"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), commitmentLocalId.toString(), week.toString()],
+  };
+}
+
+export function buildDeleteCommitmentPayload(groupId: number, commitmentLocalId: number) {
+  return {
+    function: getFunctionId(HABIT_MODULE, "delete_commitment"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+  };
+}
+
+// ============================================================================
 // HELPER TYPES AND FUNCTIONS
 // ============================================================================
 
@@ -648,6 +827,61 @@ export async function getGroupData(groupId: number): Promise<GroupData | null> {
     };
   } catch (error) {
     console.error("Error getting group data:", error);
+    return null;
+  }
+}
+
+// ============================================================================
+// HABIT TRACKER MODULE - Helper Types and Functions
+// ============================================================================
+
+export interface CommitmentData {
+  id: number;
+  participantA: string;
+  participantB: string;
+  weeklyPayout: number;
+  weeklyCheckInsRequired: number;
+  accepted: boolean;
+  valid: boolean;
+  commitmentName: string;
+  startTime: number;
+  durationWeeks: number;
+  currentWeek: number;
+  participantACheckIns?: number;
+  participantBCheckIns?: number;
+  weekProcessed?: boolean;
+}
+
+export async function getCommitmentData(groupId: number, commitmentLocalId: number): Promise<CommitmentData | null> {
+  try {
+    const details = await getCommitmentDetails(groupId, commitmentLocalId);
+    if (!details) return null;
+
+    const currentWeek = await getCurrentWeek(groupId, commitmentLocalId);
+
+    // Fetch current week check-ins if commitment is accepted
+    let participantACheckIns: number | undefined;
+    let participantBCheckIns: number | undefined;
+    let weekProcessed: boolean | undefined;
+
+    if (details.accepted && currentWeek < details.durationWeeks) {
+      [participantACheckIns, participantBCheckIns, weekProcessed] = await Promise.all([
+        getWeeklyCheckIns(groupId, commitmentLocalId, currentWeek, details.participantA),
+        getWeeklyCheckIns(groupId, commitmentLocalId, currentWeek, details.participantB),
+        isWeekProcessed(groupId, commitmentLocalId, currentWeek),
+      ]);
+    }
+
+    return {
+      id: commitmentLocalId,
+      ...details,
+      currentWeek,
+      participantACheckIns,
+      participantBCheckIns,
+      weekProcessed,
+    };
+  } catch (error) {
+    console.error("Error getting commitment data:", error);
     return null;
   }
 }

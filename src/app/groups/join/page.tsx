@@ -76,7 +76,7 @@ export default function JoinGroupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 pt-20 pb-24 lg:pt-12 lg:pb-12 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 pt-20 pb-24 lg:pt-12 lg:pb-12 bg-background">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-md relative z-10">
@@ -84,16 +84,16 @@ export default function JoinGroupPage() {
           href="/dashboard" 
           className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
         >
-          <span className="material-symbols-outlined">arrow_back</span>
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
           <span>Back to Dashboard</span>
         </Link>
 
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 p-4 bg-primary border-2 border-text w-fit">
-            <span className="material-symbols-outlined text-text text-4xl">group</span>
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="mx-auto mb-4 p-4 sm:p-5 bg-primary border-2 border-text w-fit">
+            <span className="material-symbols-outlined text-text text-3xl sm:text-4xl">group</span>
           </div>
-          <h1 className="text-text text-3xl font-display font-bold mb-2">Join a Group</h1>
-          <p className="text-accent font-mono">Enter the Group ID and password shared by the group creator.</p>
+          <h1 className="text-text text-2xl sm:text-3xl font-display font-bold mb-2">Join a Group</h1>
+          <p className="text-accent font-mono text-sm sm:text-base">Enter the Group ID and password shared by the group creator.</p>
         </div>
 
         {txHash && (
@@ -116,8 +116,8 @@ export default function JoinGroupPage() {
         )}
 
         <Card>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <CardContent className="p-4 sm:p-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
               <Input
                 label="Group ID"
                 placeholder="e.g., 0"

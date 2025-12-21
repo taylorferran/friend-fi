@@ -25,7 +25,7 @@ import {
 } from '@/lib/contract';
 
 // Faucet wallet private key
-const FAUCET_PRIVATE_KEY = 'b62aff094a9ab76359c9b7ed7c3e7595831b476f71b8bc6d07e10cf1e19836e0';
+const FAUCET_PRIVATE_KEY = process.env.NEXT_PUBLIC_FAUCET_PRIVATE_KEY || '';
 
 // Random data generators
 const FIRST_NAMES = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry'];
@@ -430,7 +430,7 @@ export default function DemoPredictionsPage() {
       });
       
       // Calculate fee (rake from contract)
-      const feePercentage = 0.03; // 3% based on contract
+      const feePercentage = 0.003; // 0.3% based on contract (3/1000)
       const feeCollected = Math.floor(totalPool * feePercentage);
       const netPool = totalPool - feeCollected;
       
@@ -485,15 +485,15 @@ export default function DemoPredictionsPage() {
             <div className="flex items-center gap-4">
               <Logo />
               <div>
-                <h1 className="text-2xl font-display font-bold text-text">Predictions Speed Demo</h1>
+                <h1 className="text-3xl font-display font-bold text-text">Prediction Market Speed Demo</h1>
                 <p className="text-accent font-mono text-sm">Watch the full flow in action</p>
               </div>
             </div>
             <Link
               href="/demo-selector"
-              className="px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
+              className="flex items-center px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
             >
-              <span className="material-symbols-outlined text-sm mr-2 inline-block">arrow_back</span>
+              <span className="material-symbols-outlined text-sm mr-2">arrow_back</span>
               All Demos
             </Link>
           </div>
@@ -581,7 +581,7 @@ export default function DemoPredictionsPage() {
                     <li>Each user bets 95% (0.19 USDC) - 3 Yes, 3 No</li>
                     <li>Admin settles bet</li>
                     <li>Winners paid out proportionally</li>
-                    <li>3% platform fee collected</li>
+                    <li>0.3% platform fee collected</li>
                   </ol>
                 </div>
 
@@ -672,7 +672,7 @@ export default function DemoPredictionsPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-mono text-accent">
-                      3% fee on total pool to cover gas and operations
+                      0.3% fee on total pool to cover gas and operations
                     </span>
                     <span className="text-xl font-display font-bold text-primary">
                       ${(betResults.feeCollected / 1_000_000).toFixed(4)} USDC

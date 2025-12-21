@@ -15,7 +15,7 @@ const demos = [
       '7 users with 0.2 USDC each',
       'Each bets 95% (0.19 USDC)',
       'Real-time transaction feed',
-      '3% platform fee collected',
+      '0.3% platform fee collected',
       'Parallel voting execution',
     ],
     color: 'primary',
@@ -49,6 +49,21 @@ const demos = [
       '0.3% settlement fee',
     ],
     color: 'green-600',
+  },
+  {
+    id: 'habits',
+    title: 'Habit Tracker Demo',
+    description: 'Watch 2 users create a gym commitment, compete, and see who wins the stakes',
+    icon: '💪',
+    href: '/demo-habits',
+    features: [
+      '2 users with 0.1 USDC each',
+      'Gym 3x/week challenge',
+      'Check-in tracking',
+      'Winner takes pool',
+      '0.3% platform fee',
+    ],
+    color: 'purple-600',
   },
 ];
 

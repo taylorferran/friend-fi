@@ -122,11 +122,11 @@ export default function LeaderboardPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
+      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Leaderboard</h1>
-            <p className="text-accent font-mono">Friends across your groups</p>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Leaderboard</h1>
+            <p className="text-accent font-mono text-sm sm:text-base">Friends across your groups</p>
           </div>
 
           {loading ? (
@@ -157,11 +157,11 @@ export default function LeaderboardPage() {
             <Card>
               <CardContent className="p-0">
                 {/* Header */}
-                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-3 border-b-2 border-text bg-background">
-                  <span className="text-accent font-mono text-xs uppercase tracking-wider w-8">#</span>
+                <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-4 px-3 sm:px-4 py-3 border-b-2 border-text bg-background">
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider w-6 sm:w-8">#</span>
                   <span className="text-accent font-mono text-xs uppercase tracking-wider">Player</span>
-                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right">P&L</span>
-                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right">Winrate</span>
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right hidden sm:inline">P&L</span>
+                  <span className="text-accent font-mono text-xs uppercase tracking-wider text-right hidden sm:inline">Winrate</span>
                 </div>
 
                 {/* Entries */}
@@ -176,38 +176,38 @@ export default function LeaderboardPage() {
                     return (
                       <div
                         key={entry.address}
-                        className={`grid grid-cols-[auto_1fr_auto_auto] gap-4 items-center px-4 py-4 border-b border-text/20 ${
+                        className={`grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto] gap-2 sm:gap-4 items-center px-3 sm:px-4 py-3 sm:py-4 border-b border-text/20 ${
                           isYou ? 'bg-primary/10' : ''
                         } ${rank <= 3 ? 'bg-primary/5' : ''}`}
                       >
                         {/* Rank */}
-                        <div className={`w-8 h-8 flex items-center justify-center font-mono font-bold ${
-                          rank === 1 ? 'text-primary text-lg' :
-                          rank === 2 ? 'text-accent text-lg' :
-                          rank === 3 ? 'text-secondary text-lg' :
-                          'text-accent/60 text-sm'
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center font-mono font-bold ${
+                          rank === 1 ? 'text-primary text-base sm:text-lg' :
+                          rank === 2 ? 'text-accent text-base sm:text-lg' :
+                          rank === 3 ? 'text-secondary text-base sm:text-lg' :
+                          'text-accent/60 text-xs sm:text-sm'
                         }`}>
                           {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
                         </div>
 
                         {/* Avatar & Name */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           {avatarUrl ? (
                             <img 
                               src={avatarUrl} 
                               alt={entry.name || 'Player'} 
-                              className="w-10 h-10 border-2 border-text"
+                              className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-text flex-shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 border-2 border-text bg-surface flex items-center justify-center">
-                              <span className="material-symbols-outlined text-text">person</span>
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-text bg-surface flex items-center justify-center flex-shrink-0">
+                              <span className="material-symbols-outlined text-text text-sm sm:text-base">person</span>
                             </div>
                           )}
-                          <div>
-                            <p className="text-text font-mono font-bold text-sm flex items-center gap-2">
-                              {entry.name || `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-text font-mono font-bold text-xs sm:text-sm flex items-center gap-1 sm:gap-2 truncate">
+                              <span className="truncate">{entry.name || `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}</span>
                               {isYou && (
-                                <span className="text-[10px] bg-primary text-text px-2 py-0.5 uppercase tracking-wider">You</span>
+                                <span className="text-[9px] sm:text-[10px] bg-primary text-text px-1.5 sm:px-2 py-0.5 uppercase tracking-wider flex-shrink-0">You</span>
                               )}
                             </p>
                             <p className="text-accent text-xs font-mono">
@@ -216,16 +216,19 @@ export default function LeaderboardPage() {
                           </div>
                         </div>
 
-                        {/* P&L */}
-                        <div className="text-right">
-                          <p className={`font-mono font-bold ${plColor}`}>
+                        {/* P&L - Mobile: Combined with winrate */}
+                        <div className="text-right sm:text-right">
+                          <p className={`font-mono font-bold text-xs sm:text-sm ${plColor}`}>
                             ${(entry.profitLoss / 1_000_000).toFixed(2)}
+                          </p>
+                          <p className="text-accent text-[10px] sm:text-xs font-mono sm:hidden">
+                            {entry.winrate.toFixed(0)}% • {entry.wins}W
                           </p>
                         </div>
 
-                        {/* Winrate */}
-                        <div className="text-right min-w-[60px]">
-                          <p className="text-text font-mono font-bold">
+                        {/* Winrate - Desktop only */}
+                        <div className="text-right min-w-[60px] hidden sm:block">
+                          <p className="text-text font-mono font-bold text-sm">
                             {entry.winrate.toFixed(0)}%
                           </p>
                           <p className="text-accent text-xs font-mono">

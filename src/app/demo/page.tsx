@@ -15,7 +15,7 @@ import { buildSetProfilePayload, buildCreateGroupPayload, buildJoinGroupPayload,
 const USDC_METADATA_ADDR = '0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7';
 
 // Faucet wallet private key (loaded with 10 USDC)
-const FAUCET_PRIVATE_KEY = 'b62aff094a9ab76359c9b7ed7c3e7595831b476f71b8bc6d07e10cf1e19836e0';
+const FAUCET_PRIVATE_KEY = process.env.NEXT_PUBLIC_FAUCET_PRIVATE_KEY || '';
 
 // Random words for group and bet names
 const ADJECTIVES = ['Epic', 'Cosmic', 'Wild', 'Mega', 'Super', 'Crazy', 'Lucky', 'Golden', 'Turbo', 'Ultimate'];
@@ -657,26 +657,24 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 lg:p-8">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b-4 border-text bg-surface p-6 mb-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
+      <div className="border-b-4 border-text bg-surface">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Logo size="sm" />
+              <Logo />
               <div>
-                <h1 className="text-text text-3xl font-display font-bold mb-1">Predictions Manual Demo</h1>
-                <p className="text-accent font-mono text-sm">
-                  Step-by-step walkthrough with 2 users
-                </p>
+                <h1 className="text-3xl font-display font-bold text-text">Prediction Market Manual Demo</h1>
+                <p className="text-accent font-mono text-sm">Step-by-step walkthrough with 2 users</p>
               </div>
             </div>
             <div className="flex gap-3">
               <Link
                 href="/demo-selector"
-                className="px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
+                className="flex items-center px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
               >
-                <span className="material-symbols-outlined text-sm mr-2 inline-block">arrow_back</span>
+                <span className="material-symbols-outlined text-sm mr-2">arrow_back</span>
                 All Demos
               </Link>
               <Button onClick={reset} variant="secondary" size="sm">
@@ -688,8 +686,8 @@ export default function DemoPage() {
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
         {step === 'start' ? (
           <Card>
             <CardContent className="text-center py-16">

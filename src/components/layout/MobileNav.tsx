@@ -38,11 +38,11 @@ export function MobileNav() {
       {/* Quick Actions Overlay */}
       {showQuickActions && (
         <div 
-          className="lg:hidden fixed inset-0 z-50 bg-text/50"
+          className="lg:hidden fixed inset-0 z-50 bg-text/50 backdrop-blur-sm"
           onClick={() => setShowQuickActions(false)}
         >
           <div 
-            className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col gap-2 p-4"
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 flex flex-col gap-3 p-4 w-[calc(100%-2rem)] max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
             {isInGroup && currentGroupId ? (
@@ -50,7 +50,7 @@ export function MobileNav() {
                 <Link
                   href={`/bets/create?groupId=${currentGroupId}&groupName=Group%20${currentGroupId}`}
                   onClick={() => setShowQuickActions(false)}
-                  className="flex items-center gap-3 px-6 py-4 bg-primary border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)]"
+                  className="flex items-center justify-center gap-3 px-6 py-4 bg-primary border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
                 >
                   <span className="material-symbols-outlined">casino</span>
                   New Bet
@@ -61,7 +61,7 @@ export function MobileNav() {
                 <Link
                   href="/groups/create"
                   onClick={() => setShowQuickActions(false)}
-                  className="flex items-center gap-3 px-6 py-4 bg-primary border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)]"
+                  className="flex items-center justify-center gap-3 px-6 py-4 bg-primary border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
                 >
                   <span className="material-symbols-outlined">add_circle</span>
                   Create Group
@@ -69,7 +69,7 @@ export function MobileNav() {
                 <Link
                   href="/groups/join"
                   onClick={() => setShowQuickActions(false)}
-                  className="flex items-center gap-3 px-6 py-4 bg-surface border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)]"
+                  className="flex items-center justify-center gap-3 px-6 py-4 bg-surface border-2 border-text text-text font-mono font-bold uppercase tracking-wider shadow-[4px_4px_0_theme(colors.text)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
                 >
                   <span className="material-symbols-outlined">group_add</span>
                   Join Group
@@ -82,30 +82,30 @@ export function MobileNav() {
 
       {/* Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t-2 border-text safe-area-pb">
-        <div className="flex items-center justify-around">
+        <div className="flex items-center justify-around h-20">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 py-3 px-2 transition-all font-mono ${
+              className={`flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 transition-all font-mono ${
                 isActive(item.href) ? 'text-primary' : 'text-accent'
               }`}
             >
-              <span className="material-symbols-outlined text-xl">{item.icon}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+              <span className="material-symbols-outlined text-2xl">{item.icon}</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider">{item.label}</span>
             </Link>
           ))}
 
           {/* Center Create Button */}
           <button
             onClick={() => setShowQuickActions(!showQuickActions)}
-            className={`flex flex-col items-center gap-1 py-3 px-2 -mt-6 transition-all font-mono ${
+            className={`flex flex-col items-center justify-center gap-1 py-3 px-4 flex-1 -mt-8 transition-all font-mono rounded-t-lg ${
               showQuickActions 
                 ? 'bg-secondary text-text border-2 border-text shadow-[2px_2px_0_theme(colors.text)]' 
                 : 'bg-primary text-text border-2 border-text shadow-[2px_2px_0_theme(colors.text)]'
             }`}
           >
-            <span className={`material-symbols-outlined text-2xl transition-transform ${showQuickActions ? 'rotate-45' : ''}`}>
+            <span className={`material-symbols-outlined text-3xl transition-transform ${showQuickActions ? 'rotate-45' : ''}`}>
               add
             </span>
           </button>

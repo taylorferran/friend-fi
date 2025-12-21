@@ -123,31 +123,31 @@ export default function CreateBetPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-24 lg:pt-12 lg:pb-12 px-4 sm:px-10 md:px-20 lg:px-40 bg-background">
+    <div className="min-h-screen pt-20 pb-24 lg:pt-12 lg:pb-12 px-4 sm:px-6 lg:px-8 bg-background">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="max-w-3xl mx-auto relative z-10">
-        <div className="flex flex-wrap justify-between gap-3 items-center mb-8">
-          <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight">Create a New Bet</h1>
+        <div className="flex flex-wrap justify-between gap-3 items-center mb-6 sm:mb-8">
+          <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight">Create a New Bet</h1>
           <Link href="/dashboard">
-            <button className="flex items-center justify-center w-10 h-10 bg-surface border-2 border-text text-text hover:bg-primary/20 transition-colors">
-              <span className="material-symbols-outlined">close</span>
+            <button className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-surface border-2 border-text text-text hover:bg-primary/20 transition-colors">
+              <span className="material-symbols-outlined text-lg sm:text-xl">close</span>
             </button>
           </Link>
         </div>
 
         {/* Group context */}
         {groupName ? (
-          <div className="mb-6 p-3 bg-primary/20 border-2 border-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-text">group</span>
-            <span className="text-text font-mono text-sm">Creating bet in: <strong>{groupName}</strong></span>
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-primary/20 border-2 border-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-text text-lg sm:text-xl">group</span>
+            <span className="text-text font-mono text-xs sm:text-sm">Creating bet in: <strong>{groupName}</strong></span>
           </div>
         ) : (
-          <div className="mb-6 p-4 border-2 border-secondary bg-secondary/10">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-secondary">warning</span>
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 border-2 border-secondary bg-secondary/10">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <span className="material-symbols-outlined text-secondary text-lg sm:text-xl flex-shrink-0">warning</span>
               <div>
-                <p className="text-text font-mono font-bold text-sm">No group selected</p>
+                <p className="text-text font-mono font-bold text-xs sm:text-sm">No group selected</p>
                 <p className="text-accent text-xs font-mono mt-1">
                   You need to be in a group to create a bet.{' '}
                   <Link href="/groups/create" className="text-primary hover:underline font-bold">Create a group</Link>
@@ -159,9 +159,9 @@ export default function CreateBetPage() {
           </div>
         )}
 
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex justify-between mb-2">
-            <p className="text-accent text-base font-mono font-bold uppercase tracking-wider">Step {step} of 2</p>
+            <p className="text-accent text-sm sm:text-base font-mono font-bold uppercase tracking-wider">Step {step} of 2</p>
           </div>
           <div className="bg-surface border-2 border-text overflow-hidden">
             <div 
@@ -174,26 +174,26 @@ export default function CreateBetPage() {
         <form onSubmit={handleSubmit}>
           {step >= 1 && (
             <Card className={step === 1 ? '' : 'opacity-60'}>
-              <CardContent>
-                <h2 className="text-text text-xl font-display font-bold mb-6">What&apos;s the prediction?</h2>
+              <CardContent className="p-4 sm:p-6">
+                <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">What&apos;s the prediction?</h2>
               
-              <div className="mb-6">
-                  <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-2">Bet Question</label>
+              <div className="mb-4 sm:mb-6">
+                  <label className="text-text text-sm sm:text-base font-mono font-bold uppercase tracking-wider block mb-2">Bet Question</label>
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   placeholder="e.g., Will Alice and Bob follow through with the wedding?"
                   rows={4}
-                    className="w-full border-2 border-text bg-surface text-text placeholder:text-accent/60 p-4 text-base font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    className="w-full border-2 border-text bg-surface text-text placeholder:text-accent/60 p-3 sm:p-4 text-base font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   required
                 />
               </div>
 
-              <div className="mb-6">
-                  <p className="text-text text-base font-mono font-bold uppercase tracking-wider mb-3">What are the options?</p>
-                <div className="flex flex-wrap gap-3">
+              <div className="mb-4 sm:mb-6">
+                  <p className="text-text text-sm sm:text-base font-mono font-bold uppercase tracking-wider mb-3">What are the options?</p>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   <label className={`
-                      flex items-center justify-center border-2 px-6 h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider
+                      flex items-center justify-center border-2 px-4 sm:px-6 h-11 sm:h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider text-sm sm:text-base
                     ${betType === 'yesno' 
                         ? 'border-primary bg-primary text-text' 
                         : 'border-text bg-surface text-text hover:bg-primary/20'
@@ -210,7 +210,7 @@ export default function CreateBetPage() {
                     Yes / No
                   </label>
                   <label className={`
-                      flex items-center justify-center border-2 px-6 h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider
+                      flex items-center justify-center border-2 px-4 sm:px-6 h-11 sm:h-12 cursor-pointer transition-all font-mono font-bold uppercase tracking-wider text-sm sm:text-base
                     ${betType === 'multiple' 
                         ? 'border-primary bg-primary text-text' 
                         : 'border-text bg-surface text-text hover:bg-primary/20'

@@ -194,8 +194,13 @@ export async function transferUSDCFromFaucet(
   toAddress: string,
   amountUSDC: number
 ): Promise<{ hash: string; success: boolean }> {
+  // Ensure private key has 0x prefix for AIP-80 compliance
+  const formattedPrivateKey = faucetPrivateKeyHex.startsWith('0x') 
+    ? faucetPrivateKeyHex 
+    : `0x${faucetPrivateKeyHex}`;
+    
   // Create account from faucet private key
-  const privateKey = new Ed25519PrivateKey(faucetPrivateKeyHex);
+  const privateKey = new Ed25519PrivateKey(formattedPrivateKey);
   const faucetAccount = Account.fromPrivateKey({ privateKey });
   
   // Convert USDC amount to micro-units (6 decimals)
@@ -210,7 +215,7 @@ export async function transferUSDCFromFaucet(
         typeArguments: ["0x1::fungible_asset::Metadata"],
         functionArguments: [
           USDC_METADATA_ADDR,  // metadata address
-          toAddress,           // recipient
+          AccountAddress.from(toAddress),  // recipient (wrapped in AccountAddress)
           amountMicroUSDC.toString()  // amount in micro-USDC
         ],
       },
