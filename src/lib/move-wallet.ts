@@ -215,7 +215,11 @@ export async function transferUSDCFromFaucet(
         typeArguments: ["0x1::fungible_asset::Metadata"],
         functionArguments: [
           USDC_METADATA_ADDR,  // metadata address
-          AccountAddress.from(toAddress),  // recipient (wrapped in AccountAddress)
+          AccountAddress.from(
+            toAddress.startsWith('0x') 
+              ? `0x${toAddress.slice(2).padStart(64, '0')}`
+              : `0x${toAddress.padStart(64, '0')}`
+          ),  // recipient (wrapped in AccountAddress, padded to Aptos format)
           amountMicroUSDC.toString()  // amount in micro-USDC
         ],
       },

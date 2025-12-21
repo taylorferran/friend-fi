@@ -1,31 +1,57 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useUnifiedMoveWallet } from '@/hooks/usePrivyMoveWallet';
 import { 
   getOrCreateMoveWallet, 
   getWalletBalance, 
-  signAndSubmitTransaction,
+  signAndSubmitTransaction as signDirectly,
   type MoveWallet 
 } from '@/lib/move-wallet';
 import { buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, buildSetProfilePayload, getGroupsCount, getBetsCount } from '@/lib/contract';
 
 export function useMoveWallet() {
+  const { isPrivyAuth, isBiometricAuth } = useAuth();
+  const { wallet: privyWallet, signAndSubmitTransaction: privySign, isPrivyWallet } = useUnifiedMoveWallet();
   const [wallet, setWallet] = useState<MoveWallet | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize wallet
+  // Initialize wallet - use Privy wallet if available, otherwise use localStorage wallet
   useEffect(() => {
-    try {
-      const w = getOrCreateMoveWallet();
-      setWallet(w);
+    if (isPrivyWallet && privyWallet) {
+      // Use Privy wallet
+      setWallet(privyWallet);
       setLoading(false);
-    } catch (err) {
-      setError('Failed to initialize wallet');
-      setLoading(false);
+    } else if (isBiometricAuth) {
+      // Use biometric wallet from localStorage
+      try {
+        const stored = localStorage.getItem('friendfi_move_wallet');
+        if (stored) {
+          const w = JSON.parse(stored);
+          setWallet(w);
+        } else {
+          setWallet(null);
+        }
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load biometric wallet');
+        setLoading(false);
+      }
+    } else {
+      // Fallback: create/get wallet from localStorage (for demo/backward compatibility)
+      try {
+        const w = getOrCreateMoveWallet();
+        setWallet(w);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to initialize wallet');
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [isPrivyWallet, privyWallet, isBiometricAuth]);
 
   // Refresh balance
   const refreshBalance = useCallback(async () => {
@@ -44,6 +70,20 @@ export function useMoveWallet() {
       refreshBalance();
     }
   }, [wallet, refreshBalance]);
+
+  // Use Privy signing if available, otherwise direct signing
+  const signAndSubmitTransaction = useCallback(async (
+    payload: {
+      function: `${string}::${string}::${string}`;
+      typeArguments: string[];
+      functionArguments: (string | string[])[];
+    }
+  ): Promise<{ hash: string; success: boolean }> => {
+    if (isPrivyWallet && privySign) {
+      return privySign(payload);
+    }
+    return signDirectly(payload);
+  }, [isPrivyWallet, privySign]);
 
   // Create a group on-chain
   const createGroup = useCallback(async (name: string, password: string, description: string = '') => {
@@ -69,7 +109,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   // Join a group on-chain
   const joinGroup = useCallback(async (groupId: number, password: string) => {
@@ -90,7 +130,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   // Create a bet on-chain
   const createBet = useCallback(async (groupId: number, description: string, outcomes: string[]) => {
@@ -120,7 +160,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   // Place a wager on a bet
   const placeWager = useCallback(async (betId: number, outcomeIndex: number, amount: number) => {
@@ -141,7 +181,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   // Resolve a bet (only admin can do this)
   const resolveBet = useCallback(async (betId: number, winningOutcomeIndex: number) => {
@@ -162,7 +202,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   // Set user profile on-chain
   const setProfile = useCallback(async (name: string, avatarId: number) => {
@@ -183,7 +223,7 @@ export function useMoveWallet() {
       setError(message);
       throw err;
     }
-  }, [wallet]);
+  }, [wallet, signAndSubmitTransaction]);
 
   return {
     wallet,

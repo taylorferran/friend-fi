@@ -2,17 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function CreateGroupPage() {
   const router = useRouter();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const { wallet, createGroup } = useMoveWallet();
   const { showToast } = useToast();
   

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import Link from 'next/link';
@@ -31,26 +31,107 @@ export default function DashboardPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
 
+  // Track the last checked address to avoid duplicate checks
+  const lastCheckedAddressRef = useRef<string | null>(null);
+  const checkingRef = useRef(false);
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCheckedRef = useRef(false);
+  
   // Check if user has a profile on-chain
   useEffect(() => {
+    // Only check once per wallet address
+    if (!wallet?.address) {
+      // Reset when wallet is cleared
+      lastCheckedAddressRef.current = null;
+      hasCheckedRef.current = false;
+      setProfileChecked(false);
+      return;
+    }
+    
+    // Skip if we already checked this exact address
+    if (lastCheckedAddressRef.current === wallet.address && hasCheckedRef.current) {
+      console.log('[Dashboard] Skipping - already checked this address:', wallet.address);
+      return;
+    }
+    
+    // Skip if already checking
+    if (checkingRef.current) {
+      console.log('[Dashboard] Skipping - check already in progress');
+      return;
+    }
+    
+    // Clear any pending timeout
+    if (checkTimeoutRef.current) {
+      clearTimeout(checkTimeoutRef.current);
+      checkTimeoutRef.current = null;
+    }
+    
     async function checkProfile() {
-      if (!wallet?.address || profileChecked) return;
+      // Double-check conditions after delay
+      if (!wallet?.address) return;
+      
+      if (lastCheckedAddressRef.current === wallet.address && hasCheckedRef.current) {
+        console.log('[Dashboard] Skipping - already checked after delay');
+        return;
+      }
+      
+      if (checkingRef.current) {
+        console.log('[Dashboard] Skipping - check in progress after delay');
+        return;
+      }
+      
+      checkingRef.current = true;
       
       try {
+        // Log address format for debugging
+        const addressLength = wallet.address.startsWith('0x') 
+          ? wallet.address.length - 2 
+          : wallet.address.length;
+        console.log(
+          '[Dashboard] Starting profile check for address:',
+          wallet.address,
+          `(${addressLength} hex chars${addressLength === 40 ? ' - Ethereum format' : addressLength === 64 ? ' - Aptos format' : ' - Unknown format'})`
+        );
+        
+        // Mark this address as checked IMMEDIATELY to prevent duplicate calls
+        lastCheckedAddressRef.current = wallet.address;
+        hasCheckedRef.current = true;
+        
         const profile = await getProfile(wallet.address);
-        if (!profile.exists) {
+        console.log('[Dashboard] Profile check completed:', profile);
+        
+        if (profile.exists && profile.name) {
+          // Profile exists and has a name, hide modal
+          setShowProfileSetup(false);
+        } else {
           // No profile found, show setup modal
           setShowProfileSetup(true);
         }
         setProfileChecked(true);
       } catch (error) {
-        console.error('Error checking profile:', error);
+        // On error, don't show profile setup - might be a temporary network issue
+        console.error('[Dashboard] Error checking profile:', error);
+        setShowProfileSetup(false); // Don't show modal on error
         setProfileChecked(true);
+      } finally {
+        checkingRef.current = false;
       }
     }
     
-    checkProfile();
-  }, [wallet?.address, profileChecked]);
+    // Add a delay to ensure wallet is fully initialized and stable
+    checkTimeoutRef.current = setTimeout(() => {
+      checkTimeoutRef.current = null;
+      checkProfile();
+    }, 300);
+    
+    // Cleanup function
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current);
+        checkTimeoutRef.current = null;
+      }
+    };
+  }, [wallet?.address]); // Remove profileChecked from dependencies to prevent re-runs
 
   // Handle profile setup completion
   const handleProfileSetup = async (username: string, avatarId: number) => {

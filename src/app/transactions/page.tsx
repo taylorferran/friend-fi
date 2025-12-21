@@ -69,7 +69,7 @@ export default function TransactionsPage() {
       
       try {
         const txs = await getUserTransactions(wallet.address, 50);
-        console.log('Loaded transactions:', txs.length);
+        console.log('Loaded transactions:', txs.length, 'transactions:', txs);
         setTransactions(txs);
       } catch (err) {
         console.error('Error loading transactions:', err);

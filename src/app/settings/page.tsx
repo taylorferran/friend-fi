@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -11,12 +10,13 @@ import { useToast } from '@/components/ui/Toast';
 import { getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { useBiometricWallet } from '@/hooks/useBiometricWallet';
+import { useAuth } from '@/hooks/useAuth';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
 import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { authenticated, ready, user, logout } = usePrivy();
+  const { authenticated, ready, user, logout } = useAuth();
   const { wallet: moveWallet, balance, refreshBalance, setProfile } = useMoveWallet();
   const { isRegistered, register, remove, isRegistering } = useBiometricWallet();
   const { showToast } = useToast();

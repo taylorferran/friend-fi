@@ -93,11 +93,16 @@ export async function getGroupMembers(groupId: number): Promise<string[]> {
 
 export async function checkIfMemberInGroup(groupId: number, memberAddress: string): Promise<boolean> {
   try {
+    // Pad address to Aptos format (64 hex chars) if needed
+    const normalizedAddress = memberAddress.startsWith('0x') 
+      ? `0x${memberAddress.slice(2).padStart(64, '0')}`
+      : `0x${memberAddress.padStart(64, '0')}`;
+    
     const result = await aptos.view({
       payload: {
         function: getFunctionId(GROUPS_MODULE, "check_if_member_in_group"),
         typeArguments: [],
-        functionArguments: [groupId.toString(), memberAddress],
+        functionArguments: [groupId.toString(), normalizedAddress],
       },
     });
     return result[0] as boolean;
@@ -107,24 +112,104 @@ export async function checkIfMemberInGroup(groupId: number, memberAddress: strin
   }
 }
 
+// Cache and mutex for profile lookups to prevent duplicate concurrent calls
+const profileCache = new Map<string, { name: string; avatarId: number; exists: boolean; timestamp: number }>();
+const profileMutex = new Map<string, Promise<{ name: string; avatarId: number; exists: boolean }>>();
+const CACHE_TTL = 10000; // 10 seconds cache
+
+// Normalize address consistently
+function normalizeAddressForProfile(address: string): string {
+  if (!address) return address;
+  return address.startsWith('0x') 
+    ? `0x${address.slice(2).padStart(64, '0')}`
+    : `0x${address.padStart(64, '0')}`;
+}
+
 export async function getProfile(address: string): Promise<{ name: string; avatarId: number; exists: boolean }> {
-  try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "get_profile"),
-        typeArguments: [],
-        functionArguments: [address],
-      },
-    });
-    return {
-      name: result[0] as string,
-      avatarId: Number(result[1]),
-      exists: result[2] as boolean,
-    };
-  } catch (error) {
-    console.error("Error getting profile:", error);
+  if (!address) {
+    console.warn("[getProfile] Called with empty address");
     return { name: "", avatarId: 0, exists: false };
   }
+
+  // Normalize address for cache/mutex key
+  const normalizedAddress = normalizeAddressForProfile(address);
+  
+  // Check cache first (before mutex check)
+  const cached = profileCache.get(normalizedAddress);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[getProfile] Cache hit for ${normalizedAddress.substring(0, 20)}...`);
+    return { name: cached.name, avatarId: cached.avatarId, exists: cached.exists };
+  }
+  
+  // Check if there's already a pending request for this address
+  const pendingRequest = profileMutex.get(normalizedAddress);
+  if (pendingRequest) {
+    console.log(`[getProfile] Reusing pending request for ${normalizedAddress.substring(0, 20)}...`);
+    // Await the pending request - it will return the same result for all concurrent callers
+    const result = await pendingRequest;
+    // After awaiting, check cache again in case it was set while we were waiting
+    const freshCache = profileCache.get(normalizedAddress);
+    if (freshCache && Date.now() - freshCache.timestamp < CACHE_TTL) {
+      console.log(`[getProfile] Using fresh cache after pending request for ${normalizedAddress.substring(0, 20)}...`);
+      return { name: freshCache.name, avatarId: freshCache.avatarId, exists: freshCache.exists };
+    }
+    return result;
+  }
+
+  // Create new request
+  const requestPromise = (async () => {
+    let profile: { name: string; avatarId: number; exists: boolean };
+    
+    try {
+      console.log(`[getProfile] NEW request: original=${address}, normalized=${normalizedAddress.substring(0, 20)}...`);
+      
+      const result = await aptos.view({
+        payload: {
+          function: getFunctionId(GROUPS_MODULE, "get_profile"),
+          typeArguments: [],
+          functionArguments: [normalizedAddress],
+        },
+      });
+      
+      const exists = result[2] as boolean;
+      const name = result[0] as string;
+      const avatarId = Number(result[1]);
+      
+      profile = {
+        name: exists ? name : "",
+        avatarId: exists ? avatarId : 0,
+        exists,
+      };
+      
+      console.log(`[getProfile] Query SUCCESS: exists=${exists}, name="${name}", avatarId=${avatarId} for ${normalizedAddress.substring(0, 20)}...`);
+      
+    } catch (error) {
+      // Log the error but don't throw - return empty profile
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[getProfile] Query ERROR for ${normalizedAddress.substring(0, 20)}...:`, errorMessage, error);
+      
+      profile = { name: "", avatarId: 0, exists: false };
+    }
+    
+    // Cache the result IMMEDIATELY (synchronously) so concurrent requests can use it
+    // This must happen before removing from mutex
+    const cacheEntry = {
+      ...profile,
+      timestamp: Date.now(),
+    };
+    profileCache.set(normalizedAddress, cacheEntry);
+    console.log(`[getProfile] Cached result for ${normalizedAddress.substring(0, 20)}...: exists=${profile.exists}`);
+    
+    // Remove from mutex AFTER caching (so cache is available for concurrent requests)
+    profileMutex.delete(normalizedAddress);
+    
+    return profile;
+  })();
+  
+  // Store in mutex BEFORE returning
+  profileMutex.set(normalizedAddress, requestPromise);
+  
+  return requestPromise;
 }
 
 // ============================================================================
@@ -321,11 +406,16 @@ export async function getWinningOutcome(betId: number): Promise<number> {
 
 export async function getUserWager(betId: number, userAddress: string): Promise<number> {
   try {
+    // Pad address to Aptos format (64 hex chars) if needed
+    const normalizedAddress = userAddress.startsWith('0x') 
+      ? `0x${userAddress.slice(2).padStart(64, '0')}`
+      : `0x${userAddress.padStart(64, '0')}`;
+    
     const result = await aptos.view({
       payload: {
         function: getFunctionId(PREDICTION_MODULE, "get_user_wager"),
         typeArguments: [],
-        functionArguments: [betId.toString(), userAddress],
+        functionArguments: [betId.toString(), normalizedAddress],
       },
     });
     return Number(result[0]);
@@ -337,11 +427,16 @@ export async function getUserWager(betId: number, userAddress: string): Promise<
 
 export async function getUserWagerOutcome(betId: number, userAddress: string): Promise<{ outcomeIndex: number; hasWager: boolean }> {
   try {
+    // Pad address to Aptos format (64 hex chars) if needed
+    const normalizedAddress = userAddress.startsWith('0x') 
+      ? `0x${userAddress.slice(2).padStart(64, '0')}`
+      : `0x${userAddress.padStart(64, '0')}`;
+    
     const result = await aptos.view({
       payload: {
         function: getFunctionId(PREDICTION_MODULE, "get_user_wager_outcome"),
         typeArguments: [],
-        functionArguments: [betId.toString(), userAddress],
+        functionArguments: [betId.toString(), normalizedAddress],
       },
     });
     return {
@@ -365,10 +460,15 @@ export function buildCreateBetPayload(
   adminAddress: string,
   encryptedPayload: number[] = []
 ) {
+  // Pad address to Aptos format (64 hex chars) if needed
+  const normalizedAddress = adminAddress.startsWith('0x') 
+    ? `0x${adminAddress.slice(2).padStart(64, '0')}`
+    : `0x${adminAddress.padStart(64, '0')}`;
+  
   return {
     function: getFunctionId(PREDICTION_MODULE, "create_bet"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload.map(n => n.toString())],
+    functionArguments: [groupId.toString(), description, outcomes, normalizedAddress, encryptedPayload.map(n => n.toString())],
   };
 }
 
@@ -409,11 +509,16 @@ export function buildCancelWagerPayload(betId: number) {
 
 export async function getUserBalance(groupId: number, userAddress: string): Promise<{ balance: number; isOwed: boolean }> {
   try {
+    // Pad address to Aptos format (64 hex chars) if needed
+    const normalizedAddress = userAddress.startsWith('0x') 
+      ? `0x${userAddress.slice(2).padStart(64, '0')}`
+      : `0x${userAddress.padStart(64, '0')}`;
+    
     const result = await aptos.view({
       payload: {
         function: getFunctionId(EXPENSE_MODULE, "get_user_balance"),
         typeArguments: [],
-        functionArguments: [groupId.toString(), userAddress],
+        functionArguments: [groupId.toString(), normalizedAddress],
       },
     });
     return {
@@ -613,11 +718,16 @@ export async function getCurrentWeek(groupId: number, commitmentLocalId: number)
 
 export async function getUserCommitments(groupId: number, userAddress: string): Promise<number[]> {
   try {
+    // Pad address to Aptos format (64 hex chars) if needed
+    const normalizedAddress = userAddress.startsWith('0x') 
+      ? `0x${userAddress.slice(2).padStart(64, '0')}`
+      : `0x${userAddress.padStart(64, '0')}`;
+    
     const result = await aptos.view({
       payload: {
         function: getFunctionId(HABIT_MODULE, "get_user_commitments"),
         typeArguments: [],
-        functionArguments: [groupId.toString(), userAddress],
+        functionArguments: [groupId.toString(), normalizedAddress],
       },
     });
     return (result[0] as string[]).map(Number);
@@ -793,6 +903,7 @@ export async function getProfiles(addresses: string[]): Promise<Map<string, { na
       try {
         const profile = await getProfile(address);
         if (profile.exists) {
+          // Store with original address (not normalized) for lookup
           profiles.set(address, { name: profile.name, avatarId: profile.avatarId });
         }
       } catch (error) {

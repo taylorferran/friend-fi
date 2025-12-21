@@ -11,9 +11,12 @@ import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
 
 export default function SplashPage() {
-  const { authenticated, login } = usePrivy();
+  const { authenticated: privyAuthenticated, login } = usePrivy();
   const router = useRouter();
-  const { isRegistered, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
+  const { isRegistered, isAuthenticated: biometricAuthenticated, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
+  
+  // User is authenticated if either Privy OR biometric auth is active
+  const authenticated = privyAuthenticated || biometricAuthenticated;
   const [showContent, setShowContent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);

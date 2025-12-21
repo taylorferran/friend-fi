@@ -990,6 +990,13 @@ export async function getUserTransactions(
   accountAddress: string,
   limit: number = 50
 ): Promise<AccountTransaction[]> {
+  // Normalize address to Aptos format (64 hex chars) if needed
+  const normalizedAddress = accountAddress.startsWith('0x') 
+    ? `0x${accountAddress.slice(2).padStart(64, '0')}`
+    : `0x${accountAddress.padStart(64, '0')}`;
+  
+  console.log(`Querying transactions: original=${accountAddress}, normalized=${normalizedAddress}`);
+  
   // Simplified approach: Just use account_transactions and user_transactions
   // The Movement indexer has a limited schema compared to standard Aptos
   const query = `
@@ -1009,7 +1016,7 @@ export async function getUserTransactions(
       account_transactions: Array<{
         transaction_version: number;
       }>;
-    }>(query, { account: accountAddress, limit });
+    }>(query, { account: normalizedAddress, limit });
 
     console.log(`Found ${versionsData.account_transactions.length} transaction versions for ${accountAddress}`);
 
