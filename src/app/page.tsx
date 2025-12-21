@@ -13,7 +13,7 @@ const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bet
 export default function SplashPage() {
   const { authenticated, login } = usePrivy();
   const router = useRouter();
-  const { isRegistered, authenticate, isAuthenticating } = useBiometricWallet();
+  const { isRegistered, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
   const [showContent, setShowContent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
@@ -38,14 +38,19 @@ export default function SplashPage() {
       return;
     }
 
-    // On mobile, if biometric is registered, use biometric login
-    if (isMobile && isRegistered) {
-      await authenticate();
+    // On mobile: always use biometric login (register if first time, authenticate if registered)
+    if (isMobile) {
+      if (isRegistered) {
+        await authenticate();
+      } else {
+        // First time: register biometric wallet (this will also import to Privy and log in)
+        await register();
+      }
     } else {
-      // Desktop or first-time mobile: use email login
+      // Desktop: use email login
       login();
     }
-  }, [authenticated, login, router, isMobile, isRegistered, authenticate]);
+  }, [authenticated, login, router, isMobile, isRegistered, register, authenticate]);
 
   // Redirect to dashboard after successful login
   useEffect(() => {
@@ -411,16 +416,16 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating}
+                    disabled={isAuthenticating || isRegistering}
                   >
                     {authenticated 
                       ? 'Go to App' 
-                      : isMobile && isRegistered 
-                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                      : isMobile
+                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
                         : 'Sign In'
                     }
                     <span className="material-symbols-outlined">
-                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                      {isMobile ? 'fingerprint' : 'arrow_forward'}
                     </span>
                   </Button>
                 </div>
@@ -455,16 +460,16 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating}
+                    disabled={isAuthenticating || isRegistering}
                   >
                     {authenticated 
                       ? 'Go to App' 
-                      : isMobile && isRegistered 
-                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                      : isMobile
+                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
                         : 'Sign In'
                     }
                     <span className="material-symbols-outlined">
-                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                      {isMobile ? 'fingerprint' : 'arrow_forward'}
                     </span>
                   </Button>
                 </div>
@@ -499,16 +504,16 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating}
+                    disabled={isAuthenticating || isRegistering}
                   >
                     {authenticated 
                       ? 'Go to App' 
-                      : isMobile && isRegistered 
-                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                      : isMobile
+                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
                         : 'Sign In'
                     }
                     <span className="material-symbols-outlined">
-                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                      {isMobile ? 'fingerprint' : 'arrow_forward'}
                     </span>
                   </Button>
                 </div>
@@ -628,16 +633,16 @@ export default function SplashPage() {
                 size="lg" 
                 className="bg-white text-secondary border-white hover:bg-white/90" 
                 onClick={handleGoToApp}
-                disabled={isAuthenticating}
+                disabled={isAuthenticating || isRegistering}
               >
                 {authenticated 
                   ? 'Go to App' 
-                  : isMobile && isRegistered 
-                    ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                  : isMobile
+                    ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
                     : 'Sign In'
                 }
                 <span className="material-symbols-outlined">
-                  {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                  {isMobile ? 'fingerprint' : 'arrow_forward'}
                 </span>
               </Button>
             </div>

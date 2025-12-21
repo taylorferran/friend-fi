@@ -465,7 +465,10 @@ export default function SettingsPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-accent text-sm font-mono">
-                    Enable biometric login to replace email login on mobile. Your wallet will be secured with Face ID/Touch ID.
+                    Biometric login is the primary login method on mobile. Your wallet is secured with Face ID/Touch ID and stored in your device's secure enclave.
+                  </p>
+                  <p className="text-accent text-xs font-mono">
+                    Note: Biometric login is automatically set up on first login. If you removed it, you can re-enable it here.
                   </p>
                   <Button
                     onClick={register}
@@ -485,7 +488,7 @@ export default function SettingsPage() {
                     ) : (
                       <>
                         <span className="material-symbols-outlined">fingerprint</span>
-                        Enable Biometric Login
+                        Re-enable Biometric Login
                       </>
                     )}
                   </Button>

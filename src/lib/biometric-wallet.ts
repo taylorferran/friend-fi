@@ -40,18 +40,14 @@ function hexToUint8Array(hex: string): Uint8Array {
 }
 
 /**
- * Derive a private key from a seed using HKDF-like derivation
+ * Derive a Move private key (Ed25519) from a seed using HKDF-like derivation
  * This ensures the same seed always produces the same key
  * @param seed - The master seed
- * @param purpose - 'ethereum' for Privy (secp256k1) or 'move' for Move (Ed25519)
  */
-async function derivePrivateKeyFromSeed(seed: Uint8Array, purpose: 'ethereum' | 'move' = 'move'): Promise<string> {
+async function derivePrivateKeyFromSeed(seed: Uint8Array): Promise<string> {
   // Use Web Crypto API to derive a key from the seed
   // We'll use a simple PBKDF2-like approach for deterministic key derivation
   // In production, you might want to use a proper HD wallet derivation (BIP32/BIP44)
-  
-  // Use different salts for different purposes to ensure different keys
-  const salt = new TextEncoder().encode(`friendfi-${purpose}-salt`);
   
   // Ensure seed is a proper Uint8Array (not a generic ArrayBufferLike)
   const seedArray = new Uint8Array(seed);
@@ -67,12 +63,12 @@ async function derivePrivateKeyFromSeed(seed: Uint8Array, purpose: 'ethereum' | 
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt,
+      salt: new TextEncoder().encode('friendfi-move-salt'), // Fixed salt for determinism
       iterations: 100000,
       hash: 'SHA-256'
     },
     keyMaterial,
-    256 // 32 bytes
+    256 // 32 bytes for Ed25519 private key
   );
   
   const derivedArray = new Uint8Array(derivedBits);
@@ -124,8 +120,7 @@ async function decryptSeedWithBiometric(encryptedHex: string, credentialId: stri
  */
 export async function registerBiometricWallet(): Promise<{
   credentialId: string;
-  ethereumPrivateKey: string; // For Privy authentication
-  movePrivateKey: string; // For Move transactions
+  privateKey: string; // Move private key (Ed25519) - works with Privy for Movement network
   address: string;
 }> {
   // Step 1: Generate master seed
@@ -170,12 +165,11 @@ export async function registerBiometricWallet(): Promise<{
   // Step 3: Encrypt seed with biometric credential
   const encryptedSeed = await encryptSeedWithBiometric(seed, credentialId);
   
-  // Step 4: Derive both Ethereum and Move private keys from seed
-  const ethereumPrivateKey = await derivePrivateKeyFromSeed(seed, 'ethereum');
-  const movePrivateKey = await derivePrivateKeyFromSeed(seed, 'move');
+  // Step 4: Derive Move private key (Ed25519) from seed
+  const privateKey = await derivePrivateKeyFromSeed(seed);
   
-  // Step 5: Create Account from Move private key to get address
-  const privateKeyObj = new Ed25519PrivateKey(movePrivateKey);
+  // Step 5: Create Account from private key to get address
+  const privateKeyObj = new Ed25519PrivateKey(privateKey);
   const account = Account.fromPrivateKey({ privateKey: privateKeyObj });
   const address = account.accountAddress.toString();
   
@@ -185,18 +179,16 @@ export async function registerBiometricWallet(): Promise<{
   
   return {
     credentialId,
-    ethereumPrivateKey,
-    movePrivateKey,
+    privateKey,
     address,
   };
 }
 
 /**
- * Authenticate with biometric and derive private keys
+ * Authenticate with biometric and derive private key
  */
 export async function authenticateBiometricWallet(): Promise<{
-  ethereumPrivateKey: string; // For Privy authentication
-  movePrivateKey: string; // For Move transactions
+  privateKey: string; // Move private key (Ed25519) - works with Privy for Movement network
   address: string;
 }> {
   // Step 1: Get stored credential ID
@@ -240,18 +232,16 @@ export async function authenticateBiometricWallet(): Promise<{
 
   const seed = await decryptSeedWithBiometric(encryptedSeed, credentialId);
   
-  // Step 4: Derive both Ethereum and Move private keys from seed
-  const ethereumPrivateKey = await derivePrivateKeyFromSeed(seed, 'ethereum');
-  const movePrivateKey = await derivePrivateKeyFromSeed(seed, 'move');
+  // Step 4: Derive Move private key (Ed25519) from seed
+  const privateKey = await derivePrivateKeyFromSeed(seed);
   
-  // Step 5: Get address from Move private key
-  const privateKeyObj = new Ed25519PrivateKey(movePrivateKey);
+  // Step 5: Get address from private key
+  const privateKeyObj = new Ed25519PrivateKey(privateKey);
   const account = Account.fromPrivateKey({ privateKey: privateKeyObj });
   const address = account.accountAddress.toString();
   
   return {
-    ethereumPrivateKey,
-    movePrivateKey,
+    privateKey,
     address,
   };
 }

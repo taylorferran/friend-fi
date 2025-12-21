@@ -32,21 +32,22 @@ export function useBiometricWallet() {
     setError(null);
 
     try {
-      // Step 1: Register biometric and get both private keys
-      const { ethereumPrivateKey, movePrivateKey, address } = await registerBiometricWallet();
+      // Step 1: Register biometric and get Move private key (Ed25519)
+      const { privateKey, address } = await registerBiometricWallet();
       
-      // Step 2: Import Ethereum wallet into Privy (for authentication)
-      const ethPrivateKey = ethereumPrivateKey.startsWith('0x') ? ethereumPrivateKey.slice(2) : ethereumPrivateKey;
+      // Step 2: Import Move wallet into Privy (Privy supports Movement network with Ed25519)
+      // Remove 0x prefix if present for import
+      const privateKeyForImport = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
       
       await importWallet({
-        privateKey: ethPrivateKey,
+        privateKey: privateKeyForImport,
       });
       
       // Step 3: Store Move wallet in localStorage (for Move transactions)
       // This replaces the existing Move wallet with the biometric-derived one
       const moveWallet = {
         address,
-        privateKeyHex: movePrivateKey,
+        privateKeyHex: privateKey,
       };
       localStorage.setItem('friendfi_move_wallet', JSON.stringify(moveWallet));
 
@@ -54,8 +55,11 @@ export function useBiometricWallet() {
       showToast({
         type: 'success',
         title: 'Biometric wallet created!',
-        message: 'You can now log in with Face ID/Touch ID',
+        message: 'Welcome! You can now log in with Face ID/Touch ID',
       });
+      
+      // Redirect to dashboard after successful registration
+      router.push('/dashboard');
       
       return true;
     } catch (err) {
@@ -78,20 +82,21 @@ export function useBiometricWallet() {
     setError(null);
 
     try {
-      // Step 1: Authenticate biometric and get both private keys
-      const { ethereumPrivateKey, movePrivateKey, address } = await authenticateBiometricWallet();
+      // Step 1: Authenticate biometric and get Move private key (Ed25519)
+      const { privateKey, address } = await authenticateBiometricWallet();
       
-      // Step 2: Import Ethereum wallet into Privy (for authentication)
-      const ethPrivateKey = ethereumPrivateKey.startsWith('0x') ? ethereumPrivateKey.slice(2) : ethereumPrivateKey;
+      // Step 2: Import Move wallet into Privy (Privy supports Movement network with Ed25519)
+      // Remove 0x prefix if present for import
+      const privateKeyForImport = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
       
       await importWallet({
-        privateKey: ethPrivateKey,
+        privateKey: privateKeyForImport,
       });
       
       // Step 3: Store Move wallet in localStorage (for Move transactions)
       const moveWallet = {
         address,
-        privateKeyHex: movePrivateKey,
+        privateKeyHex: privateKey,
       };
       localStorage.setItem('friendfi_move_wallet', JSON.stringify(moveWallet));
 
