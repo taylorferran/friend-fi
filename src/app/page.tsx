@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
+import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 
 // Preload routes in the background
 const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
@@ -12,20 +13,39 @@ const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bet
 export default function SplashPage() {
   const { authenticated, login } = usePrivy();
   const router = useRouter();
+  const { isRegistered, authenticate, isAuthenticating } = useBiometricWallet();
   const [showContent, setShowContent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
   const [showHeader, setShowHeader] = useState(false);
   const [titleComplete, setTitleComplete] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Handle "Go to App" click - either login or go to dashboard
-  const handleGoToApp = useCallback(() => {
+  const handleGoToApp = useCallback(async () => {
     if (authenticated) {
       router.push('/dashboard');
+      return;
+    }
+
+    // On mobile, if biometric is registered, use biometric login
+    if (isMobile && isRegistered) {
+      await authenticate();
     } else {
+      // Desktop or first-time mobile: use email login
       login();
     }
-  }, [authenticated, login, router]);
+  }, [authenticated, login, router, isMobile, isRegistered, authenticate]);
 
   // Redirect to dashboard after successful login
   useEffect(() => {
@@ -164,8 +184,10 @@ export default function SplashPage() {
 
         {/* Hero Section - Text Focused */}
         <section ref={heroRef} className="relative min-h-screen flex flex-col justify-center px-4 sm:px-6 lg:px-8 overflow-hidden py-20">
-          {/* Animated Background Shapes - Even more shapes framing center */}
+          {/* Animated Background Shapes - Reduced on mobile for readability */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Hide most shapes on mobile, show only a few */}
+            <div className="hidden sm:block">
             {/* TOP EDGE - Row 1 (very top) - 16 shapes */}
             <div className="absolute top-1 left-[1%] w-12 h-12 border-4 border-primary bg-primary/10 animate-drift-1" />
             <div className="absolute top-3 left-[5%] w-6 h-6 bg-secondary animate-drift-2" style={{ animationDelay: '-0.5s' }} />
@@ -276,6 +298,15 @@ export default function SplashPage() {
             <div className="absolute bottom-36 right-6 w-8 h-8 border-4 border-primary/30 animate-spin-slow" style={{ animationDuration: '28s', animationDirection: 'reverse' }} />
             <div className="absolute bottom-48 right-16 w-6 h-6 border-4 border-secondary/30 animate-spin-slow" style={{ animationDuration: '24s' }} />
             </div>
+            </div>
+            
+            {/* Mobile: Only show minimal shapes */}
+            <div className="sm:hidden">
+              <div className="absolute top-4 left-4 w-6 h-6 border-2 border-primary/30 animate-drift-1" />
+              <div className="absolute top-8 right-4 w-4 h-4 bg-secondary/20 animate-drift-2" style={{ animationDelay: '-1s' }} />
+              <div className="absolute bottom-20 left-6 w-5 h-5 border-2 border-primary/30 animate-drift-3" style={{ animationDelay: '-2s' }} />
+              <div className="absolute bottom-16 right-6 w-4 h-4 bg-secondary/20 animate-drift-1" style={{ animationDelay: '-3s' }} />
+            </div>
 
           <div className="max-w-7xl mx-auto relative z-10 w-full flex-grow flex flex-col justify-center pt-24">
             <div className="text-center">
@@ -377,9 +408,20 @@ export default function SplashPage() {
                 </ul>
                 
                 <div className="mt-auto">
-                  <Button className="w-full" onClick={handleGoToApp}>
-                    {authenticated ? 'Go to App' : 'Sign In'}
-                    <span className="material-symbols-outlined">arrow_forward</span>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleGoToApp}
+                    disabled={isAuthenticating}
+                  >
+                    {authenticated 
+                      ? 'Go to App' 
+                      : isMobile && isRegistered 
+                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                        : 'Sign In'
+                    }
+                    <span className="material-symbols-outlined">
+                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -410,41 +452,65 @@ export default function SplashPage() {
                 </ul>
                 
                 <div className="mt-auto">
-                  <Button className="w-full" onClick={handleGoToApp}>
-                    {authenticated ? 'Go to App' : 'Sign In'}
-                    <span className="material-symbols-outlined">arrow_forward</span>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleGoToApp}
+                    disabled={isAuthenticating}
+                  >
+                    {authenticated 
+                      ? 'Go to App' 
+                      : isMobile && isRegistered 
+                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                        : 'Sign In'
+                    }
+                    <span className="material-symbols-outlined">
+                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                    </span>
                   </Button>
                 </div>
               </div>
 
-              {/* Accountability Tracker - Coming Soon */}
-              <div className="scroll-reveal-right p-8 bg-background border-2 border-text/30 opacity-70 flex flex-col h-full">
-                <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-text/50 text-text/60 text-xs font-mono uppercase tracking-wider font-bold mb-6 w-fit">
-                  COMING SOON
+              {/* Accountability Tracker - Active */}
+              <div className="scroll-reveal-right p-8 bg-surface border-2 border-text hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[4px_4px_0_theme(colors.text)] transition-all flex flex-col h-full">
+                <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-green-600 text-green-600 text-xs font-mono uppercase tracking-wider font-bold mb-6 w-fit">
+                  <span className="w-2 h-2 bg-green-600 animate-pulse" />
+                  LIVE
                 </div>
                 
-                <div className="w-14 h-14 mb-6 flex items-center justify-center bg-surface border-2 border-text/30">
-                  <span className="material-symbols-outlined text-3xl text-text/50">fitness_center</span>
+                <div className="w-14 h-14 mb-6 flex items-center justify-center bg-primary border-2 border-text">
+                  <span className="material-symbols-outlined text-3xl text-text">fitness_center</span>
                 </div>
                 
-                <h3 className="text-text/70 text-2xl font-display font-bold mb-3">Accountability Tracker</h3>
-                <p className="text-accent/60 text-base font-mono leading-relaxed mb-6">
+                <h3 className="text-text text-2xl font-display font-bold mb-3">Accountability Tracker</h3>
+                <p className="text-accent text-base font-mono leading-relaxed mb-6">
                   Put your money where your mouth is. Wager on habits with friends—hit the gym 3x/week or lose your stake.
                 </p>
                 
                 <ul className="space-y-3 mb-6">
-                  {['Daily/weekly check-ins', 'Photo proof verification', 'Stake your commitment'].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-text/50 font-mono text-sm">
-                      <span className="material-symbols-outlined text-text/30 text-lg">radio_button_unchecked</span>
+                  {['Weekly check-in commitments', 'Stake USDC on goals', 'Winner-takes-pool payouts'].map((feature) => (
+                    <li key={feature} className="flex items-center gap-3 text-text font-mono text-sm">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
                 
                 <div className="mt-auto">
-                <Button variant="secondary" className="w-full opacity-50 cursor-not-allowed" disabled>
-                  Coming Q1 2025
-                </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleGoToApp}
+                    disabled={isAuthenticating}
+                  >
+                    {authenticated 
+                      ? 'Go to App' 
+                      : isMobile && isRegistered 
+                        ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                        : 'Sign In'
+                    }
+                    <span className="material-symbols-outlined">
+                      {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                    </span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -558,9 +624,21 @@ export default function SplashPage() {
                   Create your first private group and invite your friends. It&apos;s free to get started.
                 </p>
                 
-              <Button size="lg" className="bg-white text-secondary border-white hover:bg-white/90" onClick={handleGoToApp}>
-                {authenticated ? 'Go to App' : 'Sign In'}
-                <span className="material-symbols-outlined">arrow_forward</span>
+              <Button 
+                size="lg" 
+                className="bg-white text-secondary border-white hover:bg-white/90" 
+                onClick={handleGoToApp}
+                disabled={isAuthenticating}
+              >
+                {authenticated 
+                  ? 'Go to App' 
+                  : isMobile && isRegistered 
+                    ? (isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
+                    : 'Sign In'
+                }
+                <span className="material-symbols-outlined">
+                  {isMobile && isRegistered ? 'fingerprint' : 'arrow_forward'}
+                </span>
               </Button>
             </div>
           </div>

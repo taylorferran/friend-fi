@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
 import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { authenticated, ready, user, logout } = usePrivy();
   const { wallet: moveWallet, balance, refreshBalance, setProfile } = useMoveWallet();
+  const { isRegistered, register, remove, isRegistering } = useBiometricWallet();
   const { showToast } = useToast();
   
   const [username, setUsername] = useState('');
@@ -429,6 +431,66 @@ export default function SettingsPage() {
                   <span className="w-3 h-3 bg-green-500 animate-pulse" />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Biometric Login Section - Mobile Only */}
+          <Card className="sm:hidden">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4 sm:mb-6">
+                <span className="material-symbols-outlined text-text text-xl">fingerprint</span>
+                <h2 className="text-text text-lg sm:text-xl font-display font-bold">Biometric Login</h2>
+              </div>
+
+              {isRegistered ? (
+                <div className="space-y-4">
+                  <div className="p-4 border-2 border-green-600 bg-green-600/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-green-600">check_circle</span>
+                      <p className="text-text font-mono font-bold">Biometric login enabled</p>
+                    </div>
+                    <p className="text-accent text-xs font-mono">
+                      You can now log in with Face ID/Touch ID on mobile
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={remove}
+                    className="w-full"
+                  >
+                    <span className="material-symbols-outlined">delete</span>
+                    Remove Biometric Login
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-accent text-sm font-mono">
+                    Enable biometric login to replace email login on mobile. Your wallet will be secured with Face ID/Touch ID.
+                  </p>
+                  <Button
+                    onClick={register}
+                    disabled={isRegistering}
+                    className="w-full"
+                  >
+                    {isRegistering ? (
+                      <>
+                        <div className="brutalist-spinner-instant">
+                          <div className="brutalist-spinner-box-instant"></div>
+                          <div className="brutalist-spinner-box-instant"></div>
+                          <div className="brutalist-spinner-box-instant"></div>
+                          <div className="brutalist-spinner-box-instant"></div>
+                        </div>
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined">fingerprint</span>
+                        Enable Biometric Login
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
             </div>

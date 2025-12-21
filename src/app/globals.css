@@ -321,11 +321,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Mobile content wrapper - adjusted for new nav height */
+/* Mobile content wrapper - adjusted for new nav height (no header) */
 .mobile-content {
-  padding-top: 72px !important;
-  padding-bottom: 88px !important;
-  min-height: calc(100vh - 160px);
+  padding-top: 0 !important;
+  padding-bottom: 72px !important;
+  min-height: calc(100vh - 72px);
   padding-left: 1rem;
   padding-right: 1rem;
 }

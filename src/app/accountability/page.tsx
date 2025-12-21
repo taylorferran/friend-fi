@@ -5,6 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export default function AccountabilityPage() {
   const router = useRouter();
@@ -30,24 +31,55 @@ export default function AccountabilityPage() {
           </Link>
 
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-text/50 text-text/60 text-xs font-mono uppercase tracking-wider font-bold mb-4">
-              COMING SOON
+            <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-green-600 text-green-600 text-xs font-mono uppercase tracking-wider font-bold mb-4">
+              <span className="w-2 h-2 bg-green-600 animate-pulse" />
+              LIVE
             </div>
-            <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Accountability Tracker</h1>
-            <p className="text-accent font-mono">Stake money on your habits and goals</p>
+            <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Habit Tracker</h1>
+            <p className="text-accent font-mono">Stake money on your habits and goals with group members</p>
           </div>
 
           <Card>
             <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 bg-surface border-2 border-text flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-accent text-3xl">fitness_center</span>
+              <div className="w-16 h-16 bg-primary border-2 border-text flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-text text-3xl">fitness_center</span>
               </div>
-              <h3 className="text-text text-xl font-display font-bold mb-2">Coming Soon</h3>
+              <h3 className="text-text text-xl font-display font-bold mb-2">Access Through Groups</h3>
               <p className="text-accent text-sm font-mono mb-6">
-                Accountability Tracker will let you wager on habits with friends—hit the gym 3x/week or lose your stake.
+                Habit Tracker is available within your groups. Create or join a group to start making habit commitments with friends.
               </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link href="/dashboard">
+                  <Button variant="secondary">
+                    <span className="material-symbols-outlined">groups</span>
+                    Go to Groups
+                  </Button>
+                </Link>
+                <Link href="/groups/create">
+                  <Button>
+                    <span className="material-symbols-outlined">add</span>
+                    Create Group
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-text text-lg font-display font-bold mb-4">How It Works</h3>
+                <ol className="space-y-3 text-sm text-accent font-mono list-decimal list-inside">
+                  <li>Create or join a group with friends</li>
+                  <li>Navigate to the group and select "Habit Tracker"</li>
+                  <li>Create a commitment (e.g., "Gym 3x this week")</li>
+                  <li>Both participants stake USDC</li>
+                  <li>Check in throughout the week</li>
+                  <li>Winner takes the pool at week's end!</li>
+                </ol>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>

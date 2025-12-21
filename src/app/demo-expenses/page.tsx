@@ -609,27 +609,28 @@ export default function DemoExpensesPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b-4 border-text bg-surface">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <Logo />
               <div>
-                <h1 className="text-3xl font-display font-bold text-text">Expense Splitting Demo</h1>
-                <p className="text-accent font-mono text-sm">Three friends split holiday costs</p>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-bold text-text">Expense Splitting Demo</h1>
+                <p className="text-accent font-mono text-xs sm:text-sm">Three friends split holiday costs</p>
               </div>
             </div>
             <Link
               href="/demo-selector"
-              className="flex items-center px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
+              className="flex items-center px-3 sm:px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold text-sm"
             >
               <span className="material-symbols-outlined text-sm mr-2">arrow_back</span>
-              All Demos
+              <span className="hidden sm:inline">All Demos</span>
+              <span className="sm:hidden">Back</span>
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
 
         {step === 'start' && (
           <Card className="max-w-2xl mx-auto">
@@ -641,7 +642,7 @@ export default function DemoExpensesPage() {
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-display font-bold text-text mb-2">Expense Splitting Demo</h2>
+                  <h2 className="text-xl sm:text-2xl font-display font-bold text-text mb-2">Expense Splitting Demo</h2>
                   <p className="text-accent font-mono">
                     Three friends on holiday will split 4 expenses and settle their debts on-chain
                   </p>
@@ -686,7 +687,7 @@ export default function DemoExpensesPage() {
         )}
 
         {step !== 'start' && step !== 'complete' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* User 1 Panel */}
             <UserPanel
               user={user1}
@@ -733,7 +734,7 @@ export default function DemoExpensesPage() {
         {step.startsWith('add-expense') && (
           <Card className="mt-6">
             <CardContent>
-              <h3 className="text-text text-xl font-display font-bold mb-4 flex items-center gap-2">
+              <h3 className="text-text text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">receipt</span>
                 Adding Expenses
               </h3>
@@ -775,7 +776,7 @@ export default function DemoExpensesPage() {
         {step === 'show-debts' && (
           <Card className="mt-6">
             <CardContent>
-              <h3 className="text-text text-xl font-display font-bold mb-4 flex items-center gap-2">
+              <h3 className="text-text text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">calculate</span>
                 Expense Summary
               </h3>
@@ -804,7 +805,7 @@ export default function DemoExpensesPage() {
         {step === 'settle-debts' && (
           <Card className="mt-6">
             <CardContent>
-              <h3 className="text-text text-xl font-display font-bold mb-4 flex items-center gap-2">
+              <h3 className="text-text text-lg sm:text-xl font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined">paid</span>
                 Settle Debts
               </h3>
@@ -1080,7 +1081,7 @@ function UserPanel({
       {step === `user${userNum}-wallet` && (
         <Card className={isActive(`user${userNum}-wallet`) ? 'border-4 border-primary' : ''}>
           <CardContent>
-            <h4 className="text-text text-lg font-display font-bold mb-4 flex items-center gap-2">
+            <h4 className="text-text text-base sm:text-lg font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined">account_balance_wallet</span>
               Generate Wallet & Profile
             </h4>
@@ -1096,7 +1097,7 @@ function UserPanel({
       {step === `user${userNum}-fund-usdc` && (
         <Card className={isActive(`user${userNum}-fund`) ? 'border-4 border-primary' : ''}>
           <CardContent>
-            <h4 className="text-text text-lg font-display font-bold mb-4 flex items-center gap-2">
+            <h4 className="text-text text-base sm:text-lg font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined">paid</span>
               Fund Account
             </h4>
@@ -1115,7 +1116,7 @@ function UserPanel({
       {step === 'user1-create-group' && userNum === 1 && onCreateGroup && (
         <Card className={isActive('user1-create') ? 'border-4 border-primary' : ''}>
           <CardContent>
-            <h4 className="text-text text-lg font-display font-bold mb-4 flex items-center gap-2">
+            <h4 className="text-text text-base sm:text-lg font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined">group_add</span>
               Create Group
             </h4>
@@ -1131,7 +1132,7 @@ function UserPanel({
       {(step === `user${userNum}-join-group`) && userNum > 1 && onJoinGroup && (
         <Card className={isActive(`user${userNum}-join`) ? 'border-4 border-primary' : ''}>
           <CardContent>
-            <h4 className="text-text text-lg font-display font-bold mb-4 flex items-center gap-2">
+            <h4 className="text-text text-base sm:text-lg font-display font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined">group</span>
               Join Group
             </h4>

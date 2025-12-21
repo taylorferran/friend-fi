@@ -30,6 +30,14 @@ const groupApps = [
     features: ['Shared expense ledger', 'Auto-split calculation', 'On-chain settlement'],
     status: 'active',
   },
+  {
+    id: 'habit-tracker',
+    name: 'Habit Tracker',
+    icon: 'fitness_center',
+    description: 'Create habit commitments with group members and stake USDC on your goals',
+    features: ['Weekly check-in commitments', 'Stake USDC on goals', 'Winner-takes-pool payouts'],
+    status: 'active',
+  },
 ];
 
 interface MemberWithProfile {
@@ -137,15 +145,24 @@ export default function GroupPage() {
               <Card className="mb-4 sm:mb-6">
                 <CardContent className="p-4 sm:p-5 lg:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
                         <span className="material-symbols-outlined text-text text-xl sm:text-2xl">groups</span>
                       </div>
-                      <div>
-                        <h1 className="text-text text-lg sm:text-xl lg:text-2xl font-display font-bold">{groupName}</h1>
-                        <p className="text-accent text-xs sm:text-sm font-mono">
-                          {members.length} member{members.length !== 1 ? 's' : ''}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <h1 className="text-text text-lg sm:text-xl lg:text-2xl font-display font-bold truncate">{groupName}</h1>
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                          <p className="text-accent text-xs sm:text-sm font-mono">
+                            {members.length} member{members.length !== 1 ? 's' : ''}
+                          </p>
+                          <span className="text-accent text-xs sm:text-sm font-mono">•</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-accent text-xs sm:text-sm font-mono">ID:</span>
+                            <span className="text-text text-xs sm:text-sm font-mono font-bold bg-primary/20 px-2 py-0.5 border border-text">
+                              {groupId}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -5,7 +5,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { usePathname, useRouter } from 'next/navigation';
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ['/', '/demo'];
+const PUBLIC_ROUTES = ['/', '/demo', '/demo-habits', '/demo-predictions', '/demo-expenses', '/demo-selector'];
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { ready, authenticated } = usePrivy();
@@ -13,7 +13,8 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  // Check if route is public (exact match or starts with /demo)
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/demo');
 
   useEffect(() => {
     if (!ready) return;
