@@ -20,6 +20,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: 'home' },
   { href: '/leaderboard', label: 'Leaderboard', icon: 'leaderboard' },
+  { href: '/transactions', label: 'Transactions', icon: 'receipt' },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -158,27 +159,6 @@ export function Sidebar() {
                 </Link>
               ))}
             </nav>
-
-            {/* Quick Actions */}
-            <div className="px-4 py-4 border-b-2 border-text">
-              <p className="text-accent text-xs font-mono font-bold uppercase tracking-wider mb-3">Quick Actions</p>
-              <div className="space-y-2">
-                <Link
-                  href="/groups/create"
-                  className="flex items-center gap-2 px-3 py-2 bg-primary/20 border-2 border-text text-text hover:bg-primary transition-colors text-sm font-mono font-bold"
-                >
-                  <span className="material-symbols-outlined text-lg">add_circle</span>
-                  New Group
-                </Link>
-                <Link
-                  href="/groups/join"
-                  className="flex items-center gap-2 px-3 py-2 bg-surface border-2 border-text text-text hover:bg-primary/20 transition-colors text-sm font-mono font-bold"
-                >
-                  <span className="material-symbols-outlined text-lg">group_add</span>
-                  Join Group
-                </Link>
-              </div>
-            </div>
           </div>
 
           {/* Bottom Navigation */}

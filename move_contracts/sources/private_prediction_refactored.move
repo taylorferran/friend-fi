@@ -75,6 +75,7 @@ module friend_fi::private_prediction_refactored {
     const E_ZERO_WAGER: u64 = 17;
     const E_BET_ALREADY_RESOLVED: u64 = 18;
     const E_NOT_BET_ADMIN: u64 = 19;
+    const E_BET_NOT_RESOLVED: u64 = 20;
     const E_ALREADY_BET_ON_DIFFERENT_OUTCOME: u64 = 21;
     const E_NO_WAGER_TO_CANCEL: u64 = 22;
 
@@ -726,6 +727,57 @@ module friend_fi::private_prediction_refactored {
     public fun total_fees_accumulated(): u64 acquires AppConfig {
         let app = borrow_app_config();
         app.fee_accumulator
+    }
+
+    #[view]
+    public fun get_bet_admin(bet_id: u64): address acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        bet.admin
+    }
+
+    #[view]
+    public fun get_bet_outcomes_length(bet_id: u64): u64 acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        vector::length(&bet.outcomes)
+    }
+
+    #[view]
+    public fun get_bet_outcome(bet_id: u64, outcome_index: u64): String acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        assert!(outcome_index < vector::length(&bet.outcomes), E_INVALID_OUTCOME_INDEX);
+        utf8(*std::string::bytes(vector::borrow(&bet.outcomes, outcome_index)))
+    }
+
+    #[view]
+    public fun get_bet_outcome_pool(bet_id: u64, outcome_index: u64): u64 acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        assert!(outcome_index < vector::length(&bet.outcome_pools), E_INVALID_OUTCOME_INDEX);
+        *vector::borrow(&bet.outcome_pools, outcome_index)
+    }
+
+    #[view]
+    public fun get_winning_outcome(bet_id: u64): u64 acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        assert!(bet.resolved, E_BET_NOT_RESOLVED);
+        bet.winning_outcome_index
+    }
+
+    #[view]
+    public fun get_user_wager_outcome(bet_id: u64, user: address): (u64, bool) acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        let (found, idx) = find_wager_index(bet, user);
+        if (!found) {
+            (0, false)
+        } else {
+            let w = vector::borrow(&bet.wagers, idx);
+            (w.outcome, true)
+        }
     }
 }
 

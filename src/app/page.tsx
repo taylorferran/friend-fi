@@ -312,8 +312,8 @@ export default function SplashPage() {
                     {authenticated ? 'Go to App' : 'Sign In'}
                     <span className="material-symbols-outlined text-2xl">arrow_forward</span>
                   </Button>
-                  <Button variant="primary" size="lg" className="text-lg px-8 py-5" onClick={() => router.push('/demo')}>
-                    Demo
+                  <Button variant="primary" size="lg" className="text-lg px-8 py-5" onClick={() => router.push('/demo-selector')}>
+                    Demos
                     <span className="material-symbols-outlined text-2xl">play_arrow</span>
                   </Button>
                 </div>
@@ -384,33 +384,35 @@ export default function SplashPage() {
                 </div>
               </div>
 
-              {/* Split Expenses - Coming Soon */}
-              <div className="scroll-reveal p-8 bg-background border-2 border-text/30 opacity-70 flex flex-col h-full">
-                <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-text/50 text-text/60 text-xs font-mono uppercase tracking-wider font-bold mb-6 w-fit">
-                  COMING SOON
+              {/* Split Expenses - Active */}
+              <div className="scroll-reveal p-8 bg-surface border-2 border-text hover:translate-x-[-4px] hover:translate-y-[-4px] hover:shadow-[4px_4px_0_theme(colors.text)] transition-all flex flex-col h-full">
+                <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-green-600 text-green-600 text-xs font-mono uppercase tracking-wider font-bold mb-6 w-fit">
+                  <span className="w-2 h-2 bg-green-600 animate-pulse" />
+                  LIVE
                 </div>
                 
-                <div className="w-14 h-14 mb-6 flex items-center justify-center bg-surface border-2 border-text/30">
-                  <span className="material-symbols-outlined text-3xl text-text/50">receipt_long</span>
+                <div className="w-14 h-14 mb-6 flex items-center justify-center bg-primary border-2 border-text">
+                  <span className="material-symbols-outlined text-3xl text-text">receipt_long</span>
                 </div>
                 
-                <h3 className="text-text/70 text-2xl font-display font-bold mb-3">Split Expenses</h3>
-                <p className="text-accent/60 text-base font-mono leading-relaxed mb-6">
+                <h3 className="text-text text-2xl font-display font-bold mb-3">Split Expenses</h3>
+                <p className="text-accent text-base font-mono leading-relaxed mb-6">
                   On-chain shared expense ledger with rolling balances. Settle up with USDC—full transparency and accountability.
                 </p>
                 
                 <ul className="space-y-3 mb-6">
                   {['Shared expense ledger', 'Rolling balances', 'One-click USDC settle'].map((feature) => (
-                    <li key={feature} className="flex items-center gap-3 text-text/50 font-mono text-sm">
-                      <span className="material-symbols-outlined text-text/30 text-lg">radio_button_unchecked</span>
+                    <li key={feature} className="flex items-center gap-3 text-text font-mono text-sm">
+                      <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
                       {feature}
                     </li>
                   ))}
                 </ul>
                 
                 <div className="mt-auto">
-                  <Button variant="secondary" className="w-full opacity-50 cursor-not-allowed" disabled>
-                    Coming Q1 2025
+                  <Button className="w-full" onClick={handleGoToApp}>
+                    {authenticated ? 'Go to App' : 'Sign In'}
+                    <span className="material-symbols-outlined">arrow_forward</span>
                   </Button>
                 </div>
               </div>

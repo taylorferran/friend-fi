@@ -64,6 +64,12 @@ module friend_fi::expense_splitting {
     /// Split type: Exact amount per participant.
     const SPLIT_TYPE_EXACT: u8 = 3;
 
+    /// Fee numerator for settlement rake (3 = 0.3%).
+    const RAKE_NUMERATOR: u64 = 3;
+
+    /// Fee denominator for settlement rake (1000 = 0.3%).
+    const RAKE_DENOMINATOR: u64 = 1000;
+
     // =========================================================================
     // ERROR CODES
     // =========================================================================
@@ -186,6 +192,14 @@ module friend_fi::expense_splitting {
         creditor: address,
         amount: u64,
         expense_id: u64,
+    }
+
+    #[event]
+    struct FeeCollectedEvent has drop, store {
+        debtor: address,
+        creditor: address,
+        settlement_amount: u64,
+        fee_amount: u64,
     }
 
     // =========================================================================
@@ -639,6 +653,7 @@ module friend_fi::expense_splitting {
 
     /// Settle a debt by transferring USDC on-chain.
     /// Amount is deducted from debtor's wallet and sent to creditor.
+    /// A small fee (0.3%) is taken from the gross amount.
     public entry fun settle_debt_with_usdc(
         debtor_account: &signer,
         group_id: u64,
@@ -656,9 +671,24 @@ module friend_fi::expense_splitting {
         let debt = vector::borrow(&group_exp.debts, debt_idx);
         assert!(amount <= debt.amount, E_INSUFFICIENT_AMOUNT);
 
-        // Transfer USDC from debtor to creditor
+        // Calculate fee (0.3%)
+        let fee = (amount * RAKE_NUMERATOR) / RAKE_DENOMINATOR;
+        let net_to_creditor = amount - fee;
+
+        // Transfer USDC: fee to escrow, net to creditor
         let metadata = usdc_metadata();
+        
+        // Withdraw gross amount from debtor
         let fa = primary_fungible_store::withdraw(debtor_account, metadata, amount);
+        
+        // Split: fee to escrow, rest to creditor
+        if (fee > 0) {
+            let fee_fa = fungible_asset::extract(&mut fa, fee);
+            let config = borrow_app_config();
+            fungible_asset::deposit(config.escrow_store, fee_fa);
+        };
+        
+        // Send net to creditor
         primary_fungible_store::deposit(creditor, fa);
 
         // Update debt
@@ -690,6 +720,16 @@ module friend_fi::expense_splitting {
             amount,
             expense_id: 0,
         });
+
+        // Emit fee collection event
+        if (fee > 0) {
+            event::emit(FeeCollectedEvent {
+                debtor,
+                creditor,
+                settlement_amount: amount,
+                fee_amount: fee,
+            });
+        };
     }
 
     /// Mark a debt as settled (off-chain payment).
@@ -832,6 +872,13 @@ module friend_fi::expense_splitting {
             let debt = vector::borrow(&group_exp.debts, idx);
             debt.amount
         }
+    }
+
+    #[view]
+    /// Get the current USDC balance in the escrow.
+    public fun get_escrow_balance(): u64 acquires AppConfig {
+        let config = borrow_app_config();
+        fungible_asset::balance(config.escrow_store)
     }
 }
 

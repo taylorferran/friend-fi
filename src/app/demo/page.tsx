@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Logo } from '@/components/ui/Logo';
@@ -404,7 +405,7 @@ export default function DemoPage() {
     });
     
     try {
-      const payload = buildCreateGroupPayload(groupName, groupPassword);
+      const payload = buildCreateGroupPayload(groupName, groupPassword, 'Demo group');
       const result = await executeDemoTransaction(user1Wallet, payload);
       
       recordTransaction('Create Group', user1.name, result.hash);
@@ -658,18 +659,33 @@ export default function DemoPage() {
   return (
     <div className="min-h-screen bg-background p-4 lg:p-8">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <Logo size="sm" />
-          <Button onClick={reset} variant="secondary" size="sm">
-            <span className="material-symbols-outlined">refresh</span>
-            Reset Demo
-          </Button>
+      <div className="border-b-4 border-text bg-surface p-6 mb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <Logo size="sm" />
+              <div>
+                <h1 className="text-text text-3xl font-display font-bold mb-1">Predictions Manual Demo</h1>
+                <p className="text-accent font-mono text-sm">
+                  Step-by-step walkthrough with 2 users
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                href="/demo-selector"
+                className="px-4 py-2 border-2 border-text bg-surface hover:bg-primary transition-colors font-mono font-bold"
+              >
+                <span className="material-symbols-outlined text-sm mr-2 inline-block">arrow_back</span>
+                All Demos
+              </Link>
+              <Button onClick={reset} variant="secondary" size="sm">
+                <span className="material-symbols-outlined">refresh</span>
+                Reset
+              </Button>
+            </div>
+          </div>
         </div>
-        <h1 className="text-text text-3xl font-display font-bold mb-2">Live Demo</h1>
-        <p className="text-accent font-mono text-sm">
-          Watch two users create a prediction market in real-time
-        </p>
       </div>
 
       {/* Main Content */}
@@ -677,12 +693,27 @@ export default function DemoPage() {
         {step === 'start' ? (
           <Card>
             <CardContent className="text-center py-16">
+              <div className="text-8xl mb-4">🎯</div>
               <h2 className="text-text text-2xl font-display font-bold mb-4">
-                Ready to see Friend-Fi in action?
+                Predictions Manual Demo
               </h2>
-              <p className="text-accent font-mono mb-8">
-                This demo shows how fast and easy it is to create and participate in prediction markets
+              <p className="text-accent font-mono mb-6">
+                Interactive walkthrough - control each step yourself
               </p>
+              
+              <div className="text-left max-w-2xl mx-auto mb-8 p-6 border-2 border-text bg-surface">
+                <h3 className="font-display font-bold text-text mb-3">What you'll do:</h3>
+                <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
+                  <li>Create wallets for 2 users</li>
+                  <li>Customize profiles (name & avatar)</li>
+                  <li>Fund accounts with USDC</li>
+                  <li>User 1 creates a group and bet</li>
+                  <li>User 2 joins and places counter-bet</li>
+                  <li>User 1 settles the bet</li>
+                  <li>View complete transaction history</li>
+                </ol>
+              </div>
+              
               <Button onClick={() => createUserWallet(1)} size="lg">
                 <span className="material-symbols-outlined">play_arrow</span>
                 Start Demo

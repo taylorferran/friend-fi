@@ -50,7 +50,7 @@ export default function CreateGroupPage() {
 
     try {
       // Call the smart contract
-      const result = await createGroup(groupName, password);
+      const result = await createGroup(groupName, password, description);
       
       // Store group info locally for reference
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({

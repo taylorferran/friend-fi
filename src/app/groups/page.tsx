@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Redirect to dashboard - groups are now shown there
+// Redirect /groups to /dashboard (groups are shown there)
 export default function GroupsPage() {
   const router = useRouter();
 

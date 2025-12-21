@@ -1,8 +1,12 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
-// Contract configuration
-export const CONTRACT_ADDRESS = "0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
-export const MODULE_NAME = "private_prediction_market";
+// Contract configuration - NEW MODULAR ARCHITECTURE
+export const CONTRACT_ADDRESS = "0xf436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
+
+// Module names
+export const GROUPS_MODULE = "groups";
+export const PREDICTION_MODULE = "private_prediction_refactored";
+export const EXPENSE_MODULE = "expense_splitting";
 
 // Movement Testnet configuration
 const config = new AptosConfig({
@@ -13,17 +17,20 @@ const config = new AptosConfig({
 
 export const aptos = new Aptos(config);
 
-// Helper to build function ID
-export function getFunctionId(functionName: string): `${string}::${string}::${string}` {
-  return `${CONTRACT_ADDRESS}::${MODULE_NAME}::${functionName}`;
+// Helper to build function ID for a specific module
+export function getFunctionId(moduleName: string, functionName: string): `${string}::${string}::${string}` {
+  return `${CONTRACT_ADDRESS}::${moduleName}::${functionName}`;
 }
 
-// View function helpers
+// ============================================================================
+// GROUPS MODULE - View Functions
+// ============================================================================
+
 export async function getGroupsCount(): Promise<number> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_groups_count"),
+        function: getFunctionId(GROUPS_MODULE, "get_groups_count"),
         typeArguments: [],
         functionArguments: [],
       },
@@ -35,35 +42,35 @@ export async function getGroupsCount(): Promise<number> {
   }
 }
 
-export async function getBetsCount(): Promise<number> {
+export async function getGroupName(groupId: number): Promise<string> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bets_count"),
+        function: getFunctionId(GROUPS_MODULE, "get_group_name"),
         typeArguments: [],
-        functionArguments: [],
+        functionArguments: [groupId.toString()],
       },
     });
-    return Number(result[0]);
+    return result[0] as string;
   } catch (error) {
-    console.error("Error getting bets count:", error);
-    return 0;
+    console.error("Error getting group name:", error);
+    return "";
   }
 }
 
-export async function checkIfMemberInGroup(groupId: number, memberAddress: string): Promise<boolean> {
+export async function getGroupDescription(groupId: number): Promise<string> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("check_if_member_in_group"),
+        function: getFunctionId(GROUPS_MODULE, "get_group_description"),
         typeArguments: [],
-        functionArguments: [groupId.toString(), memberAddress],
+        functionArguments: [groupId.toString()],
       },
     });
-    return result[0] as boolean;
+    return result[0] as string;
   } catch (error) {
-    console.error("Error checking membership:", error);
-    return false;
+    console.error("Error getting group description:", error);
+    return "";
   }
 }
 
@@ -71,7 +78,7 @@ export async function getGroupMembers(groupId: number): Promise<string[]> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_group_members"),
+        function: getFunctionId(GROUPS_MODULE, "get_group_members"),
         typeArguments: [],
         functionArguments: [groupId.toString()],
       },
@@ -83,19 +90,19 @@ export async function getGroupMembers(groupId: number): Promise<string[]> {
   }
 }
 
-export async function getGroupBets(groupId: number): Promise<number[]> {
+export async function checkIfMemberInGroup(groupId: number, memberAddress: string): Promise<boolean> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_group_bets"),
+        function: getFunctionId(GROUPS_MODULE, "check_if_member_in_group"),
         typeArguments: [],
-        functionArguments: [groupId.toString()],
+        functionArguments: [groupId.toString(), memberAddress],
       },
     });
-    return (result[0] as string[]).map(Number);
+    return result[0] as boolean;
   } catch (error) {
-    console.error("Error getting group bets:", error);
-    return [];
+    console.error("Error checking membership:", error);
+    return false;
   }
 }
 
@@ -103,7 +110,7 @@ export async function getProfile(address: string): Promise<{ name: string; avata
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_profile"),
+        function: getFunctionId(GROUPS_MODULE, "get_profile"),
         typeArguments: [],
         functionArguments: [address],
       },
@@ -119,18 +126,21 @@ export async function getProfile(address: string): Promise<{ name: string; avata
   }
 }
 
-// Transaction payload builders for use with Privy
-export function buildCreateGroupPayload(name: string, password: string) {
+// ============================================================================
+// GROUPS MODULE - Transaction Builders
+// ============================================================================
+
+export function buildCreateGroupPayload(name: string, password: string, description: string = "") {
   return {
-    function: getFunctionId("create_group"),
+    function: getFunctionId(GROUPS_MODULE, "create_group"),
     typeArguments: [],
-    functionArguments: [name, password],
+    functionArguments: [name, password, description],
   };
 }
 
 export function buildJoinGroupPayload(groupId: number, password: string) {
   return {
-    function: getFunctionId("join_group"),
+    function: getFunctionId(GROUPS_MODULE, "join_group"),
     typeArguments: [],
     functionArguments: [groupId.toString(), password],
   };
@@ -138,63 +148,69 @@ export function buildJoinGroupPayload(groupId: number, password: string) {
 
 export function buildSetProfilePayload(name: string, avatarId: number) {
   return {
-    function: getFunctionId("set_profile"),
+    function: getFunctionId(GROUPS_MODULE, "set_profile"),
     typeArguments: [],
     functionArguments: [name, avatarId.toString()],
   };
 }
 
-export function buildCreateBetPayload(
-  groupId: number,
-  description: string,
-  outcomes: string[],
-  adminAddress: string,
-  encryptedPayload: number[] = []
-) {
-  return {
-    function: getFunctionId("create_bet"),
-    typeArguments: [],
-    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload.map(n => n.toString())],
-  };
+// ============================================================================
+// PREDICTION MODULE - View Functions
+// ============================================================================
+
+export async function getBetsCount(): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(PREDICTION_MODULE, "get_bets_count"),
+        typeArguments: [],
+        functionArguments: [],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting bets count:", error);
+    return 0;
+  }
 }
 
-export function buildPlaceWagerPayload(
-  betId: number,
-  outcomeIndex: number,
-  amount: number
-) {
-  return {
-    function: getFunctionId("place_wager"),
-    typeArguments: [],
-    functionArguments: [betId.toString(), outcomeIndex.toString(), amount.toString()],
-  };
+export async function getGroupBets(groupId: number): Promise<number[]> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(PREDICTION_MODULE, "get_group_bets"),
+        typeArguments: [],
+        functionArguments: [groupId.toString()],
+      },
+    });
+    return (result[0] as string[]).map(Number);
+  } catch (error) {
+    console.error("Error getting group bets:", error);
+    return [];
+  }
 }
 
-export function buildResolveBetPayload(
-  betId: number,
-  winningOutcomeIndex: number
-) {
-  return {
-    function: getFunctionId("resolve_bet"),
-    typeArguments: [],
-    functionArguments: [betId.toString(), winningOutcomeIndex.toString()],
-  };
+export async function getBetDescription(betId: number): Promise<string> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_description"),
+        typeArguments: [],
+        functionArguments: [betId.toString()],
+      },
+    });
+    return result[0] as string;
+  } catch (error) {
+    console.error("Error getting bet description:", error);
+    return "";
+  }
 }
 
-export function buildCancelWagerPayload(betId: number) {
-  return {
-    function: getFunctionId("cancel_wager"),
-    typeArguments: [],
-    functionArguments: [betId.toString()],
-  };
-}
-
-// Bet view functions
 export async function getBetAdmin(betId: number): Promise<string> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_admin"),
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_admin"),
         typeArguments: [],
         functionArguments: [betId.toString()],
       },
@@ -210,7 +226,7 @@ export async function getBetOutcomesLength(betId: number): Promise<number> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_outcomes_length"),
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_outcomes_length"),
         typeArguments: [],
         functionArguments: [betId.toString()],
       },
@@ -226,7 +242,7 @@ export async function getBetOutcome(betId: number, outcomeIndex: number): Promis
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_outcome"),
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_outcome"),
         typeArguments: [],
         functionArguments: [betId.toString(), outcomeIndex.toString()],
       },
@@ -242,7 +258,7 @@ export async function getBetOutcomePool(betId: number, outcomeIndex: number): Pr
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_outcome_pool"),
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_outcome_pool"),
         typeArguments: [],
         functionArguments: [betId.toString(), outcomeIndex.toString()],
       },
@@ -258,7 +274,7 @@ export async function getBetTotalPool(betId: number): Promise<number> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_total_pool"),
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_total_pool"),
         typeArguments: [],
         functionArguments: [betId.toString()],
       },
@@ -274,7 +290,7 @@ export async function isBetResolved(betId: number): Promise<boolean> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("is_bet_resolved"),
+        function: getFunctionId(PREDICTION_MODULE, "is_bet_resolved"),
         typeArguments: [],
         functionArguments: [betId.toString()],
       },
@@ -290,7 +306,7 @@ export async function getWinningOutcome(betId: number): Promise<number> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_winning_outcome"),
+        function: getFunctionId(PREDICTION_MODULE, "get_winning_outcome"),
         typeArguments: [],
         functionArguments: [betId.toString()],
       },
@@ -306,7 +322,7 @@ export async function getUserWager(betId: number, userAddress: string): Promise<
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_user_wager"),
+        function: getFunctionId(PREDICTION_MODULE, "get_user_wager"),
         typeArguments: [],
         functionArguments: [betId.toString(), userAddress],
       },
@@ -318,44 +334,11 @@ export async function getUserWager(betId: number, userAddress: string): Promise<
   }
 }
 
-// New view functions added in contract update
-export async function getGroupName(groupId: number): Promise<string> {
-  try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId("get_group_name"),
-        typeArguments: [],
-        functionArguments: [groupId.toString()],
-      },
-    });
-    return result[0] as string;
-  } catch (error) {
-    console.error("Error getting group name:", error);
-    return "";
-  }
-}
-
-export async function getBetDescription(betId: number): Promise<string> {
-  try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId("get_bet_description"),
-        typeArguments: [],
-        functionArguments: [betId.toString()],
-      },
-    });
-    return result[0] as string;
-  } catch (error) {
-    console.error("Error getting bet description:", error);
-    return "";
-  }
-}
-
 export async function getUserWagerOutcome(betId: number, userAddress: string): Promise<{ outcomeIndex: number; hasWager: boolean }> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_user_wager_outcome"),
+        function: getFunctionId(PREDICTION_MODULE, "get_user_wager_outcome"),
         typeArguments: [],
         functionArguments: [betId.toString(), userAddress],
       },
@@ -370,23 +353,179 @@ export async function getUserWagerOutcome(betId: number, userAddress: string): P
   }
 }
 
-export async function getBetEncryptedPayload(betId: number): Promise<number[]> {
+// ============================================================================
+// PREDICTION MODULE - Transaction Builders
+// ============================================================================
+
+export function buildCreateBetPayload(
+  groupId: number,
+  description: string,
+  outcomes: string[],
+  adminAddress: string,
+  encryptedPayload: number[] = []
+) {
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "create_bet"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), description, outcomes, adminAddress, encryptedPayload.map(n => n.toString())],
+  };
+}
+
+export function buildPlaceWagerPayload(
+  betId: number,
+  outcomeIndex: number,
+  amount: number
+) {
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "place_wager"),
+    typeArguments: [],
+    functionArguments: [betId.toString(), outcomeIndex.toString(), amount.toString()],
+  };
+}
+
+export function buildResolveBetPayload(
+  betId: number,
+  winningOutcomeIndex: number
+) {
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "resolve_bet"),
+    typeArguments: [],
+    functionArguments: [betId.toString(), winningOutcomeIndex.toString()],
+  };
+}
+
+export function buildCancelWagerPayload(betId: number) {
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "cancel_wager"),
+    typeArguments: [],
+    functionArguments: [betId.toString()],
+  };
+}
+
+// ============================================================================
+// EXPENSE MODULE - View Functions
+// ============================================================================
+
+export async function getUserBalance(groupId: number, userAddress: string): Promise<{ balance: number; isOwed: boolean }> {
   try {
     const result = await aptos.view({
       payload: {
-        function: getFunctionId("get_bet_encrypted_payload"),
+        function: getFunctionId(EXPENSE_MODULE, "get_user_balance"),
         typeArguments: [],
-        functionArguments: [betId.toString()],
+        functionArguments: [groupId.toString(), userAddress],
       },
     });
-    return result[0] as number[];
+    return {
+      balance: Number(result[0]),
+      isOwed: result[1] as boolean,
+    };
   } catch (error) {
-    console.error("Error getting bet encrypted payload:", error);
-    return [];
+    console.error("Error getting user balance:", error);
+    return { balance: 0, isOwed: false };
   }
 }
 
-// Helper to get full bet data
+export async function getGroupDebts(groupId: number): Promise<{ debtors: string[]; creditors: string[]; amounts: number[] }> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(EXPENSE_MODULE, "get_group_debts"),
+        typeArguments: [],
+        functionArguments: [groupId.toString()],
+      },
+    });
+    return {
+      debtors: result[0] as string[],
+      creditors: result[1] as string[],
+      amounts: (result[2] as string[]).map(Number),
+    };
+  } catch (error) {
+    console.error("Error getting group debts:", error);
+    return { debtors: [], creditors: [], amounts: [] };
+  }
+}
+
+export async function getGroupExpensesCount(groupId: number): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(EXPENSE_MODULE, "get_group_expenses_count"),
+        typeArguments: [],
+        functionArguments: [groupId.toString()],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting group expenses count:", error);
+    return 0;
+  }
+}
+
+// ============================================================================
+// EXPENSE MODULE - Transaction Builders
+// ============================================================================
+
+export function buildCreateExpenseEqualPayload(
+  groupId: number,
+  description: string,
+  totalAmount: number,
+  participants: string[]
+) {
+  return {
+    function: getFunctionId(EXPENSE_MODULE, "create_expense_equal"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), description, totalAmount.toString(), participants],
+  };
+}
+
+export function buildCreateExpenseExactPayload(
+  groupId: number,
+  description: string,
+  totalAmount: number,
+  participants: string[],
+  amounts: number[]
+) {
+  return {
+    function: getFunctionId(EXPENSE_MODULE, "create_expense_exact"),
+    typeArguments: [],
+    functionArguments: [
+      groupId.toString(),
+      description,
+      totalAmount.toString(),
+      participants,
+      amounts.map(a => a.toString())
+    ],
+  };
+}
+
+export function buildSettleDebtPayload(
+  groupId: number,
+  creditor: string,
+  amount: number
+) {
+  return {
+    function: getFunctionId(EXPENSE_MODULE, "settle_debt_with_usdc"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), creditor, amount.toString()],
+  };
+}
+
+export function buildMarkDebtSettledPayload(
+  groupId: number,
+  debtor: string,
+  amount: number
+) {
+  return {
+    function: getFunctionId(EXPENSE_MODULE, "mark_debt_settled"),
+    typeArguments: [],
+    functionArguments: [groupId.toString(), debtor, amount.toString()],
+  };
+}
+
+// ============================================================================
+// HELPER TYPES AND FUNCTIONS
+// ============================================================================
+
 export interface BetData {
   id: number;
   description: string;
@@ -408,7 +547,7 @@ export async function getBetData(betId: number): Promise<BetData | null> {
       getWinningOutcome(betId),
     ]);
 
-    // Fetch ALL outcomes in PARALLEL (not sequentially!)
+    // Fetch ALL outcomes in PARALLEL
     const outcomeIndices = Array.from({ length: outcomesLength }, (_, i) => i);
     const outcomeResults = await Promise.all(
       outcomeIndices.map(async (i) => {
@@ -435,7 +574,6 @@ export async function getBetData(betId: number): Promise<BetData | null> {
   }
 }
 
-// Get wager info for a specific user
 export interface WagerInfo {
   address: string;
   amount: number;
@@ -445,10 +583,6 @@ export interface WagerInfo {
     avatarId: number;
   };
 }
-
-// Note: The contract doesn't expose a direct way to get all wagers for a bet
-// We'll need to track this through events or add a view function to the contract
-// For now, we can get individual user wagers if we know their addresses
 
 export async function getUserWagerWithProfile(betId: number, userAddress: string): Promise<WagerInfo | null> {
   try {
@@ -472,7 +606,6 @@ export async function getUserWagerWithProfile(betId: number, userAddress: string
   }
 }
 
-// Get profiles for multiple addresses
 export async function getProfiles(addresses: string[]): Promise<Map<string, { name: string; avatarId: number }>> {
   const profiles = new Map<string, { name: string; avatarId: number }>();
   
@@ -492,7 +625,6 @@ export async function getProfiles(addresses: string[]): Promise<Map<string, { na
   return profiles;
 }
 
-// Helper to get full group data
 export interface GroupData {
   id: number;
   name: string;
@@ -519,4 +651,3 @@ export async function getGroupData(groupId: number): Promise<GroupData | null> {
     return null;
   }
 }
-

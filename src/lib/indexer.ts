@@ -8,13 +8,17 @@
  * - Contract events (WagerPlacedEvent, PayoutPaidEvent, BetResolvedEvent)
  */
 
-import { CONTRACT_ADDRESS, MODULE_NAME } from './contract';
+import { CONTRACT_ADDRESS, PREDICTION_MODULE, GROUPS_MODULE } from './contract';
 
 const INDEXER_URL = 'https://indexer.testnet.movementnetwork.xyz/v1/graphql';
 
 // USDC.E on Movement testnet
 // This matches the asset type pattern from the explorer
 const USDC_ASSET_TYPE = '0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7';
+
+// Note: The indexer queries events from different modules:
+// - Prediction events (WagerPlacedEvent, BetResolvedEvent, etc.) come from PREDICTION_MODULE
+// - Group events (GroupCreatedEvent, MemberJoinedEvent) come from GROUPS_MODULE
 
 // Helper to execute GraphQL queries
 async function executeQuery<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
@@ -138,9 +142,14 @@ export async function getUSDCBalance(ownerAddress: string): Promise<number> {
 
 // ==================== Contract Event Queries ====================
 
-// Build the event type string for our contract
-function getEventType(eventName: string): string {
-  return `${CONTRACT_ADDRESS}::${MODULE_NAME}::${eventName}`;
+// Build the event type string for prediction events
+function getPredictionEventType(eventName: string): string {
+  return `${CONTRACT_ADDRESS}::${PREDICTION_MODULE}::${eventName}`;
+}
+
+// Build the event type string for group events
+function getGroupEventType(eventName: string): string {
+  return `${CONTRACT_ADDRESS}::${GROUPS_MODULE}::${eventName}`;
 }
 
 export interface WagerPlacedEvent {
@@ -204,7 +213,7 @@ export async function getBetWagers(betId: number): Promise<WagerPlacedEvent[]> {
         };
       }>;
     }>(query, { 
-      eventType: getEventType('WagerPlacedEvent'),
+      eventType: getPredictionEventType('WagerPlacedEvent'),
       betId: betId.toString()
     });
 
@@ -253,7 +262,7 @@ export async function getBetPayouts(betId: number): Promise<PayoutPaidEvent[]> {
         };
       }>;
     }>(query, {
-      eventType: getEventType('PayoutPaidEvent'),
+      eventType: getPredictionEventType('PayoutPaidEvent'),
       betId: betId.toString()
     });
 
@@ -300,7 +309,7 @@ export async function getBetResolutionEvent(betId: number): Promise<BetResolvedE
         };
       }>;
     }>(query, {
-      eventType: getEventType('BetResolvedEvent'),
+      eventType: getPredictionEventType('BetResolvedEvent'),
       betId: betId.toString()
     });
 
@@ -413,7 +422,7 @@ export async function getUserBets(userAddress: string): Promise<number[]> {
         data: { bet_id: string };
       }>;
     }>(query, {
-      eventType: getEventType('WagerPlacedEvent'),
+      eventType: getPredictionEventType('WagerPlacedEvent'),
       bettor: userAddress
     });
 
@@ -453,7 +462,7 @@ export async function getUserTotalWinnings(userAddress: string): Promise<number>
         data: { payout_amount: string };
       }>;
     }>(query, {
-      eventType: getEventType('PayoutPaidEvent'),
+      eventType: getPredictionEventType('PayoutPaidEvent'),
       bettor: userAddress
     });
 
@@ -487,7 +496,7 @@ export async function getWagersForUser(userAddress: string): Promise<Array<{ bet
         data: { bet_id: string; total_wager: string };
       }>;
     }>(query, {
-      eventType: getEventType('WagerPlacedEvent'),
+      eventType: getPredictionEventType('WagerPlacedEvent'),
       bettor: userAddress
     });
 
@@ -532,7 +541,7 @@ export async function getPayoutsForUser(userAddress: string): Promise<Array<{ be
         data: { bet_id: string; payout_amount: string };
       }>;
     }>(query, {
-      eventType: getEventType('PayoutPaidEvent'),
+      eventType: getPredictionEventType('PayoutPaidEvent'),
       bettor: userAddress
     });
 
@@ -569,7 +578,7 @@ export async function getUserTotalWagered(userAddress: string): Promise<number> 
         data: { bet_id: string; total_wager: string };
       }>;
     }>(query, {
-      eventType: getEventType('WagerPlacedEvent'),
+      eventType: getPredictionEventType('WagerPlacedEvent'),
       bettor: userAddress
     });
 
@@ -662,7 +671,7 @@ export async function getAllGroups(): Promise<GroupCreatedEvent[]> {
           name: string;
         };
       }>;
-    }>(query, { eventType: getEventType('GroupCreatedEvent') });
+    }>(query, { eventType: getGroupEventType('GroupCreatedEvent') });
 
     return data.events.map(e => ({
       groupId: Number(e.data.group_id),
@@ -700,7 +709,7 @@ export async function getGroupMembersFromIndexer(groupId: number): Promise<strin
         data: { group_id: string; member: string };
       }>;
     }>(query, {
-      eventType: getEventType('MemberJoinedEvent'),
+      eventType: getGroupEventType('MemberJoinedEvent'),
       groupId: groupId.toString()
     });
 
@@ -740,7 +749,7 @@ export async function getUserGroups(userAddress: string): Promise<number[]> {
         data: { group_id: string };
       }>;
     }>(query, {
-      eventType: getEventType('MemberJoinedEvent'),
+      eventType: getGroupEventType('MemberJoinedEvent'),
       member: userAddress
     });
 
@@ -788,7 +797,7 @@ export async function getGroupBetsFromIndexer(groupId: number): Promise<BetCreat
         };
       }>;
     }>(query, {
-      eventType: getEventType('BetCreatedEvent'),
+      eventType: getPredictionEventType('BetCreatedEvent'),
       groupId: groupId.toString()
     });
 
@@ -836,7 +845,7 @@ export async function getAllBets(): Promise<BetCreatedEvent[]> {
           description: string;
         };
       }>;
-    }>(query, { eventType: getEventType('BetCreatedEvent') });
+    }>(query, { eventType: getPredictionEventType('BetCreatedEvent') });
 
     return data.events.map(e => ({
       betId: Number(e.data.bet_id),
@@ -921,7 +930,7 @@ export async function getBetDetailsFromIndexer(betId: number): Promise<IndexedBe
         };
       }>;
     }>(query, {
-      eventType: getEventType('BetCreatedEvent'),
+      eventType: getPredictionEventType('BetCreatedEvent'),
       betId: betId.toString()
     });
 
@@ -956,4 +965,121 @@ export async function getBetDetailsFromIndexer(betId: number): Promise<IndexedBe
     return null;
   }
 }
+
+// ==================== Account Transaction Queries ====================
+
+export interface AccountTransaction {
+  version: number;
+  success: boolean;
+  vmStatus: string;
+  hash: string;
+  gasUsed: number;
+  timestamp: string;
+  entryFunctionIdStr: string | null;
+  // Parsed function components
+  functionAddress?: string;
+  functionModule?: string;
+  functionName?: string;
+}
+
+/**
+ * Get transactions for a specific account with detailed information
+ * Returns transactions ordered by most recent first
+ */
+export async function getUserTransactions(
+  accountAddress: string,
+  limit: number = 50
+): Promise<AccountTransaction[]> {
+  // Simplified approach: Just use account_transactions and user_transactions
+  // The Movement indexer has a limited schema compared to standard Aptos
+  const query = `
+    query GetAccountTransactionVersions($account: String!, $limit: Int!) {
+      account_transactions(
+        where: { account_address: { _eq: $account } }
+        order_by: { transaction_version: desc }
+        limit: $limit
+      ) {
+        transaction_version
+      }
+    }
+  `;
+
+  try {
+    const versionsData = await executeQuery<{
+      account_transactions: Array<{
+        transaction_version: number;
+      }>;
+    }>(query, { account: accountAddress, limit });
+
+    console.log(`Found ${versionsData.account_transactions.length} transaction versions for ${accountAddress}`);
+
+    if (versionsData.account_transactions.length === 0) {
+      return [];
+    }
+
+    const versions = versionsData.account_transactions.map(tx => tx.transaction_version);
+
+    // Get user transaction details for these versions
+    const userTxQuery = `
+      query GetUserTransactionDetails($versions: [bigint!]!) {
+        user_transactions(
+          where: { version: { _in: $versions } }
+        ) {
+          version
+          entry_function_id_str
+        }
+      }
+    `;
+
+    const userTxData = await executeQuery<{
+      user_transactions: Array<{
+        version: number;
+        entry_function_id_str: string | null;
+      }>;
+    }>(userTxQuery, { versions });
+
+    console.log(`Retrieved ${userTxData.user_transactions.length} user transaction details`);
+
+    // Create a map for quick lookup
+    const entryFunctionMap = new Map<number, string | null>();
+    for (const utx of userTxData.user_transactions) {
+      entryFunctionMap.set(utx.version, utx.entry_function_id_str);
+    }
+
+    // Build result from what we have
+    // Note: We don't have hash or timestamp easily available, so we'll use version-based placeholders
+    return versions.map((version, index) => {
+      const entryFunctionIdStr = entryFunctionMap.get(version) || null;
+      
+      // Parse the entry function id string (format: "0xaddr::module::function")
+      let functionAddress, functionModule, functionName;
+      if (entryFunctionIdStr) {
+        const parts = entryFunctionIdStr.split('::');
+        if (parts.length === 3) {
+          functionAddress = parts[0];
+          functionModule = parts[1];
+          functionName = parts[2];
+        }
+      }
+
+      return {
+        version,
+        success: true, // Assume success if it's in the chain
+        vmStatus: 'Executed',
+        hash: `0x${version.toString(16)}`, // Use version as hash placeholder
+        gasUsed: 0,
+        timestamp: new Date(Date.now() - index * 60000).toISOString(), // Approximate timestamps
+        entryFunctionIdStr,
+        functionAddress,
+        functionModule,
+        functionName,
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching user transactions:', error);
+    console.error('Error details:', error);
+    throw error; // Re-throw to see the actual error
+  }
+}
+
 

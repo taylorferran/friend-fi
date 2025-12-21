@@ -46,12 +46,12 @@ export function useMoveWallet() {
   }, [wallet, refreshBalance]);
 
   // Create a group on-chain
-  const createGroup = useCallback(async (name: string, password: string) => {
+  const createGroup = useCallback(async (name: string, password: string, description: string = '') => {
     if (!wallet) throw new Error('Wallet not initialized');
     
     setError(null);
     try {
-      const payload = buildCreateGroupPayload(name, password);
+      const payload = buildCreateGroupPayload(name, password, description);
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {

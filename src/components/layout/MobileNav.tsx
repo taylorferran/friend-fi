@@ -12,6 +12,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: 'home' },
+  { href: '/transactions', label: 'Txns', icon: 'receipt' },
   { href: '/leaderboard', label: 'Ranks', icon: 'leaderboard' },
   { href: '/settings', label: 'Profile', icon: 'person' },
 ];
@@ -82,32 +83,23 @@ export function MobileNav() {
       {/* Bottom Navigation */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t-2 border-text safe-area-pb">
         <div className="flex items-center justify-around">
-          {/* First nav item */}
-          <Link
-            href={navItems[0].href}
-            className={`flex flex-col items-center gap-1 py-3 px-4 transition-all font-mono ${
-              isActive(navItems[0].href) ? 'text-primary' : 'text-accent'
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">{navItems[0].icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{navItems[0].label}</span>
-          </Link>
-
-          {/* Leaderboard */}
-          <Link
-            href={navItems[1].href}
-            className={`flex flex-col items-center gap-1 py-3 px-4 transition-all font-mono ${
-              isActive(navItems[1].href) ? 'text-primary' : 'text-accent'
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">{navItems[1].icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{navItems[1].label}</span>
-          </Link>
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center gap-1 py-3 px-2 transition-all font-mono ${
+                isActive(item.href) ? 'text-primary' : 'text-accent'
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl">{item.icon}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+            </Link>
+          ))}
 
           {/* Center Create Button */}
           <button
             onClick={() => setShowQuickActions(!showQuickActions)}
-            className={`flex flex-col items-center gap-1 py-3 px-4 -mt-6 transition-all font-mono ${
+            className={`flex flex-col items-center gap-1 py-3 px-2 -mt-6 transition-all font-mono ${
               showQuickActions 
                 ? 'bg-secondary text-text border-2 border-text shadow-[2px_2px_0_theme(colors.text)]' 
                 : 'bg-primary text-text border-2 border-text shadow-[2px_2px_0_theme(colors.text)]'
@@ -117,17 +109,6 @@ export function MobileNav() {
               add
             </span>
           </button>
-
-          {/* Profile */}
-          <Link
-            href={navItems[2].href}
-            className={`flex flex-col items-center gap-1 py-3 px-4 transition-all font-mono ${
-              isActive(navItems[2].href) ? 'text-primary' : 'text-accent'
-            }`}
-          >
-            <span className="material-symbols-outlined text-xl">{navItems[2].icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider">{navItems[2].label}</span>
-          </Link>
         </div>
       </nav>
     </>
