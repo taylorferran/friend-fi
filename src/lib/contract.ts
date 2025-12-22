@@ -1,7 +1,9 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
+import { getGroupFromSupabase, getProfileFromSupabase, getBetFromSupabase } from './supabase-services';
+import { executeWithFallback } from './transaction-helper';
 
 // Contract configuration - NEW MODULAR ARCHITECTURE (ALL 4 MODULES)
-export const CONTRACT_ADDRESS = "0x60b19358beede1dfe759f33b94d36ceedff4d855874442f7f1b2b80268e41370";
+export const CONTRACT_ADDRESS = "0xb51f98645aa50776e7d40bf1713ba46e235f16c785cf8cefeeed310f5a2a01aa";
 
 // Module names
 export const GROUPS_MODULE = "groups";
@@ -29,14 +31,14 @@ export function getFunctionId(moduleName: string, functionName: string): `${stri
 
 export async function getGroupsCount(): Promise<number> {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "get_groups_count"),
-        typeArguments: [],
-        functionArguments: [],
-      },
-    });
-    return Number(result[0]);
+    // Groups are now 100% off-chain in Supabase
+    const { supabase } = await import('./supabase');
+    const { count, error } = await supabase
+      .from('groups')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) throw error;
+    return count || 0;
   } catch (error) {
     console.error("Error getting groups count:", error);
     return 0;
@@ -45,30 +47,24 @@ export async function getGroupsCount(): Promise<number> {
 
 export async function getGroupName(groupId: number): Promise<string> {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "get_group_name"),
-        typeArguments: [],
-        functionArguments: [groupId.toString()],
-      },
-    });
-    return result[0] as string;
+    console.log('[getGroupName] 💾 Querying Supabase...');
+    // Groups are now 100% off-chain in Supabase
+    const { getGroupFromSupabase } = await import('./supabase-services');
+    const group = await getGroupFromSupabase(groupId);
+    console.log('[getGroupName] ✅ Supabase hit');
+    return group?.name || `Group #${groupId}`;
   } catch (error) {
-    console.error("Error getting group name:", error);
-    return "";
+    console.error("[getGroupName] Error:", error);
+    return `Group #${groupId}`;
   }
 }
 
 export async function getGroupDescription(groupId: number): Promise<string> {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "get_group_description"),
-        typeArguments: [],
-        functionArguments: [groupId.toString()],
-      },
-    });
-    return result[0] as string;
+    // Groups are now 100% off-chain in Supabase
+    const { getGroupFromSupabase } = await import('./supabase-services');
+    const group = await getGroupFromSupabase(groupId);
+    return group?.description || "";
   } catch (error) {
     console.error("Error getting group description:", error);
     return "";
@@ -77,35 +73,31 @@ export async function getGroupDescription(groupId: number): Promise<string> {
 
 export async function getGroupMembers(groupId: number): Promise<string[]> {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "get_group_members"),
-        typeArguments: [],
-        functionArguments: [groupId.toString()],
-      },
-    });
-    return result[0] as string[];
+    console.log('[getGroupMembers] 💾 Querying Supabase for group:', groupId);
+    // Groups are now 100% off-chain in Supabase
+    const { getGroupMembersFromSupabase } = await import('./supabase-services');
+    const members = await getGroupMembersFromSupabase(groupId);
+    console.log('[getGroupMembers] ✅ Got members:', members.length);
+    return members.map(m => m.wallet_address);
   } catch (error) {
-    console.error("Error getting group members:", error);
+    console.error("[getGroupMembers] ❌ Error getting group members:", error);
     return [];
   }
 }
 
 export async function checkIfMemberInGroup(groupId: number, memberAddress: string): Promise<boolean> {
   try {
-    // Pad address to Aptos format (64 hex chars) if needed
-    const normalizedAddress = memberAddress.startsWith('0x') 
-      ? `0x${memberAddress.slice(2).padStart(64, '0')}`
-      : `0x${memberAddress.padStart(64, '0')}`;
+    // Groups are now 100% off-chain in Supabase
+    const { getGroupMembersFromSupabase } = await import('./supabase-services');
+    const members = await getGroupMembersFromSupabase(groupId);
     
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(GROUPS_MODULE, "check_if_member_in_group"),
-        typeArguments: [],
-        functionArguments: [groupId.toString(), normalizedAddress],
-      },
+    // Normalize both addresses for comparison (remove 0x, lowercase)
+    const normalizedMember = memberAddress.toLowerCase().replace('0x', '');
+    
+    return members.some(m => {
+      const normalizedCheck = m.wallet_address.toLowerCase().replace('0x', '');
+      return normalizedCheck === normalizedMember;
     });
-    return result[0] as boolean;
   } catch (error) {
     console.error("Error checking membership:", error);
     return false;
@@ -188,30 +180,25 @@ export async function getProfile(address: string): Promise<{ name: string; avata
     let profile: { name: string; avatarId: number; exists: boolean };
     
     try {
-      console.log(`[getProfile] NEW request: original=${address}, normalized=${normalizedAddress.substring(0, 20)}...`);
+      console.log(`[getProfile] NEW request from Supabase: original=${address}, normalized=${normalizedAddress.substring(0, 20)}...`);
       
-      const result = await aptos.view({
-        payload: {
-          function: getFunctionId(GROUPS_MODULE, "get_profile"),
-          typeArguments: [],
-          functionArguments: [normalizedAddress],
-        },
-      });
+      // ✅ Fetch from Supabase (off-chain)
+      const supabaseProfile = await getProfileFromSupabase(normalizedAddress);
       
-      const exists = result[2] as boolean;
-      const name = result[0] as string;
-      const avatarId = Number(result[1]);
-      
-      profile = {
-        name: exists ? name : "",
-        avatarId: exists ? avatarId : 0,
-        exists,
-      };
+      if (supabaseProfile) {
+        profile = {
+          name: supabaseProfile.name || "",
+          avatarId: supabaseProfile.avatar_id || 0,
+          exists: true,
+        };
+      } else {
+        profile = { name: "", avatarId: 0, exists: false };
+      }
       
     } catch (error) {
       // Log the error but don't throw - return empty profile
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[getProfile] Query ERROR for ${normalizedAddress.substring(0, 20)}...:`, errorMessage, error);
+      console.error(`[getProfile] Supabase ERROR for ${normalizedAddress.substring(0, 20)}...:`, errorMessage);
       
       profile = { name: "", avatarId: 0, exists: false };
     }
@@ -239,30 +226,8 @@ export async function getProfile(address: string): Promise<{ name: string; avata
 // ============================================================================
 // GROUPS MODULE - Transaction Builders
 // ============================================================================
-
-export function buildCreateGroupPayload(name: string, password: string, description: string = "") {
-  return {
-    function: getFunctionId(GROUPS_MODULE, "create_group"),
-    typeArguments: [],
-    functionArguments: [name, password, description],
-  };
-}
-
-export function buildJoinGroupPayload(groupId: number, password: string) {
-  return {
-    function: getFunctionId(GROUPS_MODULE, "join_group"),
-    typeArguments: [],
-    functionArguments: [groupId.toString(), password],
-  };
-}
-
-export function buildSetProfilePayload(name: string, avatarId: number) {
-  return {
-    function: getFunctionId(GROUPS_MODULE, "set_profile"),
-    typeArguments: [],
-    functionArguments: [name, avatarId.toString()],
-  };
-}
+// Note: Groups are now 100% off-chain (Supabase)
+// No on-chain group transactions needed - see supabase-services.ts
 
 // ============================================================================
 // PREDICTION MODULE - View Functions
@@ -286,6 +251,7 @@ export async function getBetsCount(): Promise<number> {
 
 export async function getGroupBets(groupId: number): Promise<number[]> {
   try {
+    console.log('[getGroupBets] Fetching bets for group:', groupId);
     const result = await aptos.view({
       payload: {
         function: getFunctionId(PREDICTION_MODULE, "get_group_bets"),
@@ -293,9 +259,15 @@ export async function getGroupBets(groupId: number): Promise<number[]> {
         functionArguments: [groupId.toString()],
       },
     });
+    console.log('[getGroupBets] ✅ Got bets:', result[0]);
     return (result[0] as string[]).map(Number);
-  } catch (error) {
-    console.error("Error getting group bets:", error);
+  } catch (error: any) {
+    // If error is MISSING_DATA, it means no bets have been created yet for this group
+    if (error?.message?.includes('MISSING_DATA')) {
+      console.log('[getGroupBets] No bets initialized yet for group:', groupId);
+      return [];
+    }
+    console.error("[getGroupBets] Error getting group bets:", error);
     return [];
   }
 }
@@ -313,6 +285,22 @@ export async function getBetDescription(betId: number): Promise<string> {
   } catch (error) {
     console.error("Error getting bet description:", error);
     return "";
+  }
+}
+
+export async function getBetGroupId(betId: number): Promise<number> {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: getFunctionId(PREDICTION_MODULE, "get_bet_group_id"),
+        typeArguments: [],
+        functionArguments: [betId.toString()],
+      },
+    });
+    return Number(result[0]);
+  } catch (error) {
+    console.error("Error getting bet group_id:", error);
+    return 0;
   }
 }
 
@@ -422,9 +410,15 @@ export async function getWinningOutcome(betId: number): Promise<number> {
       },
     });
     return Number(result[0]);
-  } catch (error) {
+  } catch (error: any) {
+    // If error contains "ABORTED" with sub_status 20, it means bet hasn't been resolved yet
+    // This is EXPECTED for unresolved bets - don't log as error
+    if (error?.message?.includes('ABORTED') || error?.message?.includes('sub_status: Some(20)')) {
+      return -1; // Return -1 to indicate no winner yet
+    }
+    // Only log unexpected errors
     console.error("Error getting winning outcome:", error);
-    return 0;
+    return -1; // Default to no winner
   }
 }
 
@@ -479,6 +473,8 @@ export async function getUserWagerOutcome(betId: number, userAddress: string): P
 
 export function buildCreateBetPayload(
   groupId: number,
+  signature: string,
+  expiresAtMs: number,
   description: string,
   outcomes: string[],
   adminAddress: string,
@@ -489,22 +485,48 @@ export function buildCreateBetPayload(
     ? `0x${adminAddress.slice(2).padStart(64, '0')}`
     : `0x${adminAddress.padStart(64, '0')}`;
   
+  // Convert hex signature to byte array (Ed25519 signatures are 64 bytes)
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.replace(/^0x/, ''), 'hex')
+  );
+  
   return {
     function: getFunctionId(PREDICTION_MODULE, "create_bet"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), description, outcomes, normalizedAddress, encryptedPayload.map(n => n.toString())],
+    functionArguments: [
+      groupId.toString(),
+      Array.from(signatureBytes), // Must be byte array
+      expiresAtMs.toString(),
+      description,
+      outcomes,
+      normalizedAddress,
+      encryptedPayload.map(n => n.toString())
+    ],
   };
 }
 
 export function buildPlaceWagerPayload(
   betId: number,
   outcomeIndex: number,
-  amount: number
+  amount: number,
+  signature: string,
+  expiresAtMs: number
 ) {
+  // Convert hex signature to byte array (Ed25519 signatures are 64 bytes)
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.replace(/^0x/, ''), 'hex')
+  );
+  
   return {
     function: getFunctionId(PREDICTION_MODULE, "place_wager"),
     typeArguments: [],
-    functionArguments: [betId.toString(), outcomeIndex.toString(), amount.toString()],
+    functionArguments: [
+      betId.toString(),
+      outcomeIndex.toString(),
+      amount.toString(),
+      Array.from(signatureBytes), // Must be byte array
+      expiresAtMs.toString()
+    ],
   };
 }
 
@@ -599,12 +621,26 @@ export function buildCreateExpenseEqualPayload(
   groupId: number,
   description: string,
   totalAmount: number,
-  participants: string[]
+  participants: string[],
+  signature: string,
+  expiresAtMs: number
 ) {
+  // Convert hex signature to byte array
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.replace(/^0x/, ''), 'hex')
+  );
+  
   return {
     function: getFunctionId(EXPENSE_MODULE, "create_expense_equal"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), description, totalAmount.toString(), participants],
+    functionArguments: [
+      groupId.toString(),           // 1. group_id
+      Array.from(signatureBytes),   // 2. backend_signature
+      expiresAtMs.toString(),       // 3. expires_at_ms
+      description,                  // 4. description
+      totalAmount.toString(),       // 5. total_amount
+      participants,                 // 6. participants
+    ],
   };
 }
 
@@ -841,6 +877,7 @@ export function buildDeleteCommitmentPayload(groupId: number, commitmentLocalId:
 
 export interface BetData {
   id: number;
+  groupId: number;
   description: string;
   admin: string;
   outcomes: { label: string; pool: number }[];
@@ -851,9 +888,10 @@ export interface BetData {
 
 export async function getBetData(betId: number): Promise<BetData | null> {
   try {
-    const [description, admin, outcomesLength, totalPool, resolved, winningOutcomeIndex] = await Promise.all([
+    const [description, admin, groupId, outcomesLength, totalPool, resolved, winningOutcomeIndex] = await Promise.all([
       getBetDescription(betId),
       getBetAdmin(betId),
+      getBetGroupId(betId),
       getBetOutcomesLength(betId),
       getBetTotalPool(betId),
       isBetResolved(betId),
@@ -874,6 +912,7 @@ export async function getBetData(betId: number): Promise<BetData | null> {
 
     return {
       id: betId,
+      groupId,
       description,
       admin,
       outcomes: outcomeResults,

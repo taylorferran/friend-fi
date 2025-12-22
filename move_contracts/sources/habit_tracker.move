@@ -36,7 +36,7 @@ module friend_fi::habit_tracker {
     // =========================================================================
 
     use std::signer;
-    use std::string::{String, utf8};
+    use std::string::{String};
     use std::vector;
     use aptos_framework::event;
     use aptos_framework::fungible_asset;
@@ -44,6 +44,7 @@ module friend_fi::habit_tracker {
     use aptos_framework::primary_fungible_store;
     use aptos_framework::timestamp;
     use friend_fi::groups;
+    use friend_fi::signature_auth; // NEW: For signature-based auth
 
     // =========================================================================
     // CONSTANTS
@@ -421,6 +422,8 @@ module friend_fi::habit_tracker {
     public entry fun create_commitment(
         account: &signer,
         group_id: u64,
+        backend_signature: vector<u8>,
+        expires_at_ms: u64,
         participant_b: address,
         weekly_payout: u64,
         weekly_check_ins_required: u64,
@@ -429,9 +432,9 @@ module friend_fi::habit_tracker {
     ) acquires State, AppConfig {
         let participant_a = signer::address_of(account);
 
-        // Verify both are group members
-        assert!(groups::is_member(group_id, participant_a), E_NOT_GROUP_MEMBER);
-        assert!(groups::is_member(group_id, participant_b), E_BOTH_MUST_BE_GROUP_MEMBERS);
+        // Verify both are group members using signature authentication
+        signature_auth::assert_membership(group_id, participant_a, expires_at_ms, backend_signature);
+        // Note: participant_b's membership is verified when they accept
 
         // Validate parameters
         assert!(duration_weeks > 0, E_INVALID_DURATION);
@@ -518,9 +521,14 @@ module friend_fi::habit_tracker {
     public entry fun accept_commitment(
         account: &signer,
         group_id: u64,
+        backend_signature: vector<u8>,
+        expires_at_ms: u64,
         commitment_local_id: u64,
     ) acquires State, AppConfig {
         let participant_b = signer::address_of(account);
+
+        // Verify participant B is group member using signature authentication
+        signature_auth::assert_membership(group_id, participant_b, expires_at_ms, backend_signature);
 
         // Verify commitment exists and get details
         let state = borrow_state();

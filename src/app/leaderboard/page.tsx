@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
@@ -24,16 +24,12 @@ interface LeaderboardEntry {
 
 export default function LeaderboardPage() {
   const router = useRouter();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
   const { wallet } = useMoveWallet();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/login');
-    }
-  }, [ready, authenticated, router]);
+  // No redirect - allow viewing leaderboard without login
 
   useEffect(() => {
     async function loadLeaderboard() {
@@ -105,18 +101,7 @@ export default function LeaderboardPage() {
     loadLeaderboard();
   }, [wallet?.address]);
 
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-        </div>
-      </div>
-    );
-  }
+  // Removed authentication gate - allow viewing leaderboard
 
   return (
     <div className="flex min-h-screen bg-background">

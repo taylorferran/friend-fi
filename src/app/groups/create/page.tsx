@@ -9,11 +9,13 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { useAuth } from '@/hooks/useAuth';
+import { createGroupInSupabase } from '@/lib/supabase-services';
+import { hashPassword } from '@/lib/crypto';
 
 export default function CreateGroupPage() {
   const router = useRouter();
   const { authenticated, ready } = useAuth();
-  const { wallet, createGroup } = useMoveWallet();
+  const { wallet } = useMoveWallet(); // Only need wallet address, no transactions!
   const { showToast } = useToast();
   
   const [groupName, setGroupName] = useState('');
@@ -49,30 +51,42 @@ export default function CreateGroupPage() {
     setLoading(true);
 
     try {
-      // Call the smart contract
-      const result = await createGroup(groupName, password, description);
+      // FULLY OFF-CHAIN group creation (no on-chain transaction!)
+      console.log('[CreateGroup] Creating group off-chain only...');
+      
+      // Step 1: Hash password for storage
+      const passwordHash = await hashPassword(password);
+      
+      // Step 2: Save everything to Supabase
+      console.log('[CreateGroup] Saving to Supabase...');
+      const group = await createGroupInSupabase(
+        groupName,
+        description || '',
+        passwordHash,
+        wallet.address
+      );
+      console.log('[CreateGroup] Supabase save complete, group ID:', group.id);
       
       // Store group info locally for reference
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
-        id: result.groupId,
+        id: group.id,
         name: groupName,
-        password: password,
       }));
 
       showToast({
         type: 'success',
         title: 'Group created!',
-        message: groupName,
-        txHash: result.hash,
+        message: `${groupName} - 100% off-chain, instant & free! 🎉`,
       });
 
       // Redirect after a moment
       setTimeout(() => {
-        router.push('/dashboard');
+        router.push(`/groups/${group.id}`);
       }, 1500);
     } catch (err: unknown) {
+      console.error('[CreateGroup] Error:', err);
       const message = err instanceof Error ? err.message : 'Failed to create group';
-      showToast({ type: 'error', title: 'Transaction failed', message });
+      showToast({ type: 'error', title: 'Failed to create group', message });
     } finally {
       setLoading(false);
     }

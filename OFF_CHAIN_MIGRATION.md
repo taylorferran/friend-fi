@@ -312,3 +312,19 @@ Your hypothesis is **100% correct**: By moving every transaction that doesn't mo
 
 The key is the **hybrid approach**: Keep minimal on-chain state for access control and verification, but move all metadata and social features to Supabase.
 
+---
+
+## 📋 Implementation Status
+
+**Current State**: Pre-migration (backup branch: `pre-offchain-migration`)
+
+**Next Steps**: See `MIGRATION_PLAN.md` for detailed step-by-step implementation guide.
+
+**Key Implementation Notes**:
+- Contracts need refactoring to separate metadata from financial state
+- Frontend needs dual-query system (Supabase + on-chain fallback)
+- Migration script needed for existing data
+- RLS policies required for wallet-based authentication
+
+**Estimated Timeline**: 2-3 weeks for complete migration
+

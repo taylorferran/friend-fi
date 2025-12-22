@@ -43,7 +43,7 @@ module friend_fi::private_prediction_refactored {
     use aptos_framework::object;
     use aptos_framework::primary_fungible_store;
     
-    use friend_fi::groups;
+    use friend_fi::signature_auth;
 
     // =========================================================================
     // CONSTANTS
@@ -396,6 +396,8 @@ module friend_fi::private_prediction_refactored {
     public entry fun create_bet(
         account: &signer,
         group_id: u64,
+        signature: vector<u8>,
+        expires_at_ms: u64,
         description: String,
         outcomes: vector<String>,
         admin: address,
@@ -403,8 +405,8 @@ module friend_fi::private_prediction_refactored {
     ) acquires State {
         let caller = signer::address_of(account);
 
-        // Verify caller is a group member using groups module
-        assert!(groups::is_member(group_id, caller), E_NOT_MEMBER);
+        // Verify membership using signature authentication
+        signature_auth::assert_membership(group_id, caller, expires_at_ms, signature);
 
         let num_outcomes = vector::length(&outcomes);
         assert!(num_outcomes > 1, E_NEED_AT_LEAST_TWO_OUTCOMES);
@@ -462,6 +464,8 @@ module friend_fi::private_prediction_refactored {
         bet_id: u64,
         outcome_index: u64,
         amount: u64,
+        signature: vector<u8>,
+        expires_at_ms: u64,
     ) acquires State, AppConfig {
         let user = signer::address_of(account);
 
@@ -477,8 +481,8 @@ module friend_fi::private_prediction_refactored {
             assert!(outcome_index < vector::length(&bet_read.outcomes), E_INVALID_OUTCOME_INDEX);
             assert!(amount > 0, E_ZERO_WAGER);
 
-            // Check user is a group member using groups module
-            assert!(groups::is_member(bet_read.group_id, user), E_NOT_MEMBER);
+            // Verify user is a group member using signature authentication
+            signature_auth::assert_membership(bet_read.group_id, user, expires_at_ms, signature);
 
             (bet_read.group_id, 0)
         };
@@ -689,6 +693,14 @@ module friend_fi::private_prediction_refactored {
         let state = borrow_state();
         let bet = borrow_bet(state, bet_id);
         utf8(*std::string::bytes(&bet.description))
+    }
+
+    /// Get group_id of a bet
+    #[view]
+    public fun get_bet_group_id(bet_id: u64): u64 acquires State {
+        let state = borrow_state();
+        let bet = borrow_bet(state, bet_id);
+        bet.group_id
     }
 
     #[view]

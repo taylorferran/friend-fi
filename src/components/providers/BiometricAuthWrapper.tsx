@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const BIOMETRIC_AUTH_KEY = 'friendfi_biometric_authenticated';
 
 /**
- * Biometric-only auth hook (no Privy dependency)
+ * Biometric-only auth wrapper
+ * No Privy dependency - uses WebAuthn biometric authentication
+ * No redirects - all routes are accessible, auth state is just tracked
  */
-export function useAuth() {
+export function BiometricAuthWrapper({ children }: { children: React.ReactNode }) {
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Check auth status on mount
+  // Check biometric auth status on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isAuth = localStorage.getItem(BIOMETRIC_AUTH_KEY) === 'true';
@@ -20,13 +22,13 @@ export function useAuth() {
     }
   }, []);
 
-  // Listen for auth changes (both storage and custom events)
+  // Listen for auth changes (when user logs in/out)
   useEffect(() => {
     const checkAuth = () => {
       const isAuth = localStorage.getItem(BIOMETRIC_AUTH_KEY) === 'true';
       setBiometricAuthenticated(isAuth);
     };
-  
+
     // Listen for storage changes (other tabs)
     window.addEventListener('storage', checkAuth);
     
@@ -39,25 +41,21 @@ export function useAuth() {
     };
   }, []);
 
-  // Logout function
-  const logout = () => {
-      localStorage.removeItem(BIOMETRIC_AUTH_KEY);
-    localStorage.removeItem('friendfi_move_wallet');
-    localStorage.removeItem('friendfi_user_settings');
-      setBiometricAuthenticated(false);
-    
-    // Trigger events for UI updates
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('auth-changed'));
-  };
+  // Show loading only on initial mount
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="brutalist-spinner-instant">
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
+          <div className="brutalist-spinner-box-instant" />
+        </div>
+      </div>
+    );
+  }
 
-  return {
-    authenticated: biometricAuthenticated,
-    ready,
-    user: null, // No user object for biometric auth
-    logout,
-    isPrivyAuth: false, // No Privy
-    isBiometricAuth: biometricAuthenticated,
-  };
+  // Always show content - no redirects
+  return <>{children}</>;
 }
 

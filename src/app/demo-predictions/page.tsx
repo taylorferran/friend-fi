@@ -9,9 +9,6 @@ import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
 import { transferUSDCFromFaucet, aptos } from '@/lib/move-wallet';
 import { Account, Ed25519PrivateKey, AccountAddress } from "@aptos-labs/ts-sdk";
 import { 
-  buildSetProfilePayload, 
-  buildCreateGroupPayload, 
-  buildJoinGroupPayload, 
   buildCreateBetPayload,
   buildPlaceWagerPayload,
   buildResolveBetPayload,
@@ -23,6 +20,8 @@ import {
   PREDICTION_MODULE,
   getFunctionId
 } from '@/lib/contract';
+import { createGroupInSupabase, addGroupMember, upsertProfile } from '@/lib/supabase-services';
+import { hashPassword } from '@/lib/crypto';
 
 // Faucet wallet private key
 const FAUCET_PRIVATE_KEY = process.env.NEXT_PUBLIC_FAUCET_PRIVATE_KEY || '';
@@ -229,57 +228,53 @@ export default function DemoPredictionsPage() {
       // Small delay to ensure account state is propagated
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Set profile (account is created by the USDC transfer)
+      // Set profile in Supabase (off-chain, instant, no gas)
       setCurrentAction('Setting admin profile...');
-      const profilePayload = buildSetProfilePayload(admin.name, admin.avatarId);
-      await executeDemoTransaction(
-        admin.walletData,
-        profilePayload,
-        'Set Profile',
-        admin.name
-      );
+      await upsertProfile({
+        address: admin.address,
+        name: admin.name,
+        avatar_id: admin.avatarId,
+      });
+      recordTx(admin.name, 'Set Profile (Supabase)', 'supabase-profile', 'success');
       
-      // Phase 2: Create Group
+      // Phase 2: Create Group (off-chain in Supabase)
       setPhase('create-group');
       setCurrentAction('Creating prediction group...');
       
       const randomGroupName = `Predictions ${Math.floor(Math.random() * 10000)}`;
       setGroupName(randomGroupName);
       const groupPassword = 'demo123';
+      const passwordHash = await hashPassword(groupPassword);
       
-      const groupPayload = buildCreateGroupPayload(
+      const newGroup = await createGroupInSupabase(
         randomGroupName,
-        groupPassword,
-        'Speed demo prediction group'
+        'Speed demo prediction group',
+        passwordHash,
+        admin.address
       );
-      const groupHash = await executeDemoTransaction(
-        admin.walletData,
-        groupPayload,
-        'Create Group',
-        admin.name
-      );
-      
-      // Get group ID from events
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const groupTx = await aptos.getTransactionByHash({ transactionHash: groupHash });
-      const groupEvents = (groupTx as any).events || [];
-      const groupCreatedEvent = groupEvents.find((e: any) => 
-        e.type.includes('::groups::GroupCreatedEvent')
-      );
-      const newGroupId = groupCreatedEvent?.data?.group_id 
-        ? parseInt(groupCreatedEvent.data.group_id) 
-        : 0;
+      const newGroupId = newGroup.id;
       setGroupId(newGroupId);
+      recordTx(admin.name, 'Create Group (Supabase)', 'supabase-group', 'success');
       
-      // Phase 3: Create Bet
+      // Phase 3: Create Bet (with signature)
       setPhase('create-bet');
       setCurrentAction('Creating prediction bet...');
       
       const randomTopic = BET_TOPICS[Math.floor(Math.random() * BET_TOPICS.length)];
       setBetTopic(randomTopic);
       
+      // Request membership signature for admin
+      const membershipResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: admin.address }),
+      });
+      const membershipProof = await membershipResponse.json();
+      
       const betPayload = buildCreateBetPayload(
         newGroupId,
+        membershipProof.signature,
+        membershipProof.expiresAt,
         randomTopic,
         ['Yes', 'No'],
         admin.address,
@@ -306,7 +301,22 @@ export default function DemoPredictionsPage() {
       
       // Admin places wager (95% of 0.2 USDC = 0.19 USDC = 190,000 micro-USDC)
       setCurrentAction('Admin placing wager on Yes...');
-      const adminWagerPayload = buildPlaceWagerPayload(newBetId, 0, 190000);
+      
+      // Request fresh signature for wager
+      const wagerResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress: admin.address }),
+      });
+      const wagerProof = await wagerResponse.json();
+      
+      const adminWagerPayload = buildPlaceWagerPayload(
+        newBetId,
+        0,
+        190000,
+        wagerProof.signature,
+        wagerProof.expiresAt
+      );
       await executeDemoTransaction(
         admin.walletData,
         adminWagerPayload,
@@ -354,14 +364,13 @@ export default function DemoPredictionsPage() {
         // Small delay to ensure account state is propagated
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Set profile
-        const profilePayload = buildSetProfilePayload(user.name, user.avatarId);
-        await executeDemoTransaction(
-          user.walletData,
-          profilePayload,
-          'Set Profile',
-          user.name
-        );
+        // Set profile in Supabase
+        await upsertProfile({
+          address: user.address,
+          name: user.name,
+          avatar_id: user.avatarId,
+        });
+        recordTx(user.name, 'Set Profile (Supabase)', 'supabase-profile', 'success');
       }
       setUsers(newUsers);
       
@@ -370,21 +379,31 @@ export default function DemoPredictionsPage() {
       setCurrentAction('Users joining group and casting votes...');
       
       const joinAndVotePromises = newUsers.map(async (user, idx) => {
-        // Join group
-        const joinPayload = buildJoinGroupPayload(newGroupId, groupPassword);
-        await executeDemoTransaction(
-          user.walletData,
-          joinPayload,
-          'Join Group',
-          user.name
-        );
+        // Join group in Supabase (off-chain, instant)
+        await addGroupMember(newGroupId, user.address);
+        recordTx(user.name, 'Join Group (Supabase)', 'supabase-join', 'success');
         
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.2 = 0.19 USDC = 190,000 micro-USDC
         const outcome = idx < 3 ? 0 : 1;
         const outcomeName = outcome === 0 ? 'Yes' : 'No';
-        const wagerPayload = buildPlaceWagerPayload(newBetId, outcome, 190000);
+        
+        // Request membership signature
+        const voteResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userAddress: user.address }),
+        });
+        const voteProof = await voteResponse.json();
+        
+        const wagerPayload = buildPlaceWagerPayload(
+          newBetId,
+          outcome,
+          190000,
+          voteProof.signature,
+          voteProof.expiresAt
+        );
         await executeDemoTransaction(
           user.walletData,
           wagerPayload,

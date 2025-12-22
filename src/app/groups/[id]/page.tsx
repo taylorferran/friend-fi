@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -49,19 +49,13 @@ interface MemberWithProfile {
 export default function GroupPage() {
   const router = useRouter();
   const params = useParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
   const { wallet } = useMoveWallet();
   const groupId = parseInt(params.id as string, 10);
   
   const [groupName, setGroupName] = useState(`Group #${groupId}`);
   const [members, setMembers] = useState<MemberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/login');
-    }
-  }, [ready, authenticated, router]);
 
   // Store group context
   useEffect(() => {
@@ -99,7 +93,7 @@ export default function GroupPage() {
     loadGroupData();
   }, [groupId]);
 
-  if (!ready || !authenticated) {
+  if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="brutalist-spinner-instant">

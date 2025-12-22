@@ -451,7 +451,14 @@ export default function DemoPage() {
     
     try {
       const outcomes = ['YES', 'NO'];
-      const payload = buildCreateBetPayload(groupId!, betQuestion, outcomes, user1Wallet.address);
+      const payload = buildCreateBetPayload(
+        groupId!,
+        '0x00', // Dummy signature for demo
+        Date.now() + 3600000, // Expires in 1 hour
+        betQuestion,
+        outcomes,
+        user1Wallet.address
+      );
       const result = await executeDemoTransaction(user1Wallet, payload);
       
       recordTransaction('Create Bet', user1.name, result.hash);
@@ -502,7 +509,13 @@ export default function DemoPage() {
     
     try {
       const amount = 10000; // 0.01 USDC (6 decimals)
-      const payload = buildPlaceWagerPayload(betId!, outcome, amount);
+      const payload = buildPlaceWagerPayload(
+        betId!,
+        outcome,
+        amount,
+        '0x00', // Dummy signature for demo
+        Date.now() + 3600000 // Expires in 1 hour
+      );
       const result = await executeDemoTransaction(wallet, payload);
       
       recordTransaction(`Place Wager (${outcome === 0 ? 'YES' : 'NO'})`, userName, result.hash);

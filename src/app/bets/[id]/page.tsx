@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getBetData, getUserWager, getUserWagerOutcome, getProfiles, type BetData } from '@/lib/contract';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
+import { requestMembershipSignature } from '@/lib/signature-service';
 
 // Placeholder type since we're not using indexer (event queries take 60+ seconds)
 interface BettorInfo {
@@ -30,7 +31,7 @@ interface BettorWithProfile extends BettorInfo {
 export default function ViewBetPage() {
   const router = useRouter();
   const params = useParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
   const { wallet, placeWager, resolveBet } = useMoveWallet();
   const betId = parseInt(params.id as string, 10);
 
@@ -49,11 +50,8 @@ export default function ViewBetPage() {
   const [loadingBettors, setLoadingBettors] = useState(false);
   const [indexerError, setIndexerError] = useState(false);
 
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/login');
-    }
-  }, [ready, authenticated, router]);
+  // Note: No redirect - allow viewing bets when not authenticated
+  // Users will be prompted to login when trying to place a wager
 
   // NOTE: loadBettors disabled - indexer event queries take 60+ seconds
   // Individual bettor details won't be shown until indexer is faster
@@ -100,14 +98,32 @@ export default function ViewBetPage() {
   }, [betId, wallet?.address, loadBettors]);
 
   const handlePlaceWager = async () => {
-    if (selectedOutcome === null || !wagerAmount) return;
+    if (selectedOutcome === null || !wagerAmount || !wallet || !bet) return;
     
     setSubmitting(true);
 
     try {
-      // Amount in USDC smallest units (6 decimals)
+      // Step 1: Request membership signature
+      console.log('[PlaceWager] Requesting membership signature...');
+      showToast({ 
+        type: 'success', 
+        title: 'Verifying membership...', 
+        message: 'Checking group access' 
+      });
+      
+      const proof = await requestMembershipSignature(bet.groupId, wallet.address);
+      console.log('[PlaceWager] Signature received, expires at:', new Date(proof.expiresAt).toLocaleTimeString());
+      
+      // Step 2: Place wager with signature
+      console.log('[PlaceWager] Placing wager with signature...');
       const amount = Math.floor(parseFloat(wagerAmount) * 1_000_000);
-      const result = await placeWager(betId, selectedOutcome, amount);
+      const result = await placeWager(
+        betId,
+        selectedOutcome,
+        amount,
+        proof.signature,
+        proof.expiresAt
+      );
       
       showToast({
         type: 'success',
@@ -127,8 +143,25 @@ export default function ViewBetPage() {
       setWagerAmount('');
       setSelectedOutcome(null);
     } catch (err) {
+      console.error('[PlaceWager] Error:', err);
+      
       const message = err instanceof Error ? err.message : 'Failed to place wager';
-      showToast({ type: 'error', title: 'Transaction failed', message });
+      
+      if (message.includes('Not a member') || message.includes('403')) {
+        showToast({ 
+          type: 'error', 
+          title: 'Not a member', 
+          message: 'You need to join this group first' 
+        });
+      } else if (message.includes('expired')) {
+        showToast({ 
+          type: 'error', 
+          title: 'Signature expired', 
+          message: 'Please try again' 
+        });
+      } else {
+        showToast({ type: 'error', title: 'Transaction failed', message });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -171,18 +204,7 @@ export default function ViewBetPage() {
     return (wagerAmount / newOutcomePool) * newTotalPool;
   };
 
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-        </div>
-      </div>
-    );
-  }
+  // Removed authentication gate - allow viewing bets without login
 
   return (
     <div className="flex min-h-screen bg-background">

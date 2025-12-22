@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
+import { requestMembershipSignature } from '@/lib/signature-service';
 
 export default function CreateBetPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
   const { wallet, createBet } = useMoveWallet();
   const { showToast } = useToast();
   
@@ -48,10 +49,7 @@ export default function CreateBetPage() {
     }
   }, [searchParams]);
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  // No redirect - allow page to load and show login prompt if needed
 
   const getOutcomes = (): string[] => {
     if (betType === 'yesno') {
@@ -100,7 +98,26 @@ export default function CreateBetPage() {
     }
 
     try {
-      const result = await createBet(groupId, question, outcomes);
+      // Step 1: Request membership signature
+      console.log('[CreateBet] Requesting membership signature...');
+      showToast({ 
+        type: 'success', 
+        title: 'Verifying membership...', 
+        message: 'Checking group access' 
+      });
+      
+      const proof = await requestMembershipSignature(groupId, wallet.address);
+      console.log('[CreateBet] Signature received, expires at:', new Date(proof.expiresAt).toLocaleTimeString());
+      
+      // Step 2: Create bet with signature
+      console.log('[CreateBet] Creating bet with signature...');
+      const result = await createBet(
+        groupId,
+        question,
+        outcomes,
+        proof.signature,
+        proof.expiresAt
+      );
       
       showToast({
         type: 'success',
@@ -114,9 +131,26 @@ export default function CreateBetPage() {
         router.push(`/groups/${groupId}`);
       }, 1500);
     } catch (err) {
-      console.error('Failed to create bet:', err);
+      console.error('[CreateBet] Error:', err);
+      
+      // Check if it's a membership error
       const message = err instanceof Error ? err.message : 'Failed to create bet';
-      showToast({ type: 'error', title: 'Transaction failed', message });
+      
+      if (message.includes('Not a member') || message.includes('403')) {
+        showToast({ 
+          type: 'error', 
+          title: 'Not a member', 
+          message: 'You need to join this group first' 
+        });
+      } else if (message.includes('expired')) {
+        showToast({ 
+          type: 'error', 
+          title: 'Signature expired', 
+          message: 'Please try again' 
+        });
+      } else {
+        showToast({ type: 'error', title: 'Transaction failed', message });
+      }
     } finally {
       setLoading(false);
     }

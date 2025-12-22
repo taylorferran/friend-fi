@@ -9,7 +9,7 @@ import {
   signAndSubmitTransaction as signDirectly,
   type MoveWallet 
 } from '@/lib/move-wallet';
-import { buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, buildSetProfilePayload, getGroupsCount, getBetsCount } from '@/lib/contract';
+import { buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, getGroupsCount, getBetsCount, CONTRACT_ADDRESS, GROUPS_MODULE } from '@/lib/contract';
 
 export function useMoveWallet() {
   const { isPrivyAuth, isBiometricAuth } = useAuth();
@@ -113,7 +113,14 @@ export function useMoveWallet() {
     
     setError(null);
     try {
-      const payload = buildCreateGroupPayload(name, password, description);
+      // New simplified contract - only needs signer (no parameters)
+      // Metadata (name, description, password) will be saved to Supabase by the calling code
+      const payload = {
+        function: `${CONTRACT_ADDRESS}::${GROUPS_MODULE}::create_group` as `${string}::${string}::${string}`,
+        typeArguments: [],
+        functionArguments: [], // No arguments for new simplified contract
+      };
+      
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {
@@ -133,38 +140,61 @@ export function useMoveWallet() {
     }
   }, [wallet, signAndSubmitTransaction]);
 
-  // Join a group on-chain
+  // Join a group - now 100% off-chain (Supabase)
   const joinGroup = useCallback(async (groupId: number, password: string) => {
     if (!wallet) throw new Error('Wallet not initialized');
     
     setError(null);
     try {
-      const payload = buildJoinGroupPayload(groupId, password);
-      const result = await signAndSubmitTransaction(payload);
+      // Import Supabase functions dynamically
+      const { addGroupMember, verifyGroupPassword } = await import('@/lib/supabase-services');
+      const { hashPassword } = await import('@/lib/crypto');
       
-      if (!result.success) {
-        throw new Error('Transaction failed');
+      // Verify password
+      const passwordHash = await hashPassword(password);
+      const isValid = await verifyGroupPassword(groupId, passwordHash);
+      
+      if (!isValid) {
+        throw new Error('Invalid group password');
       }
       
-      return result;
+      // Add member to Supabase
+      await addGroupMember(groupId, wallet.address);
+      
+      // Return success (no on-chain transaction)
+      return {
+        hash: 'supabase-join',
+        success: true,
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to join group';
       setError(message);
       throw err;
     }
-  }, [wallet, signAndSubmitTransaction]);
+  }, [wallet]);
 
   // Create a bet on-chain
-  const createBet = useCallback(async (groupId: number, description: string, outcomes: string[]) => {
+  const createBet = useCallback(async (
+    groupId: number,
+    description: string,
+    outcomes: string[],
+    signature: string,
+    expiresAtMs: number
+  ) => {
     if (!wallet) throw new Error('Wallet not initialized');
     
     setError(null);
     try {
-      // Use the wallet from state (could be Privy or biometric)
-      // Don't get from localStorage as it might be a different wallet
-      
       // The creator is automatically the admin
-      const payload = buildCreateBetPayload(groupId, description, outcomes, wallet.address);
+      const payload = buildCreateBetPayload(
+        groupId,
+        signature,
+        expiresAtMs,
+        description,
+        outcomes,
+        wallet.address,
+        []
+      );
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {
@@ -184,13 +214,19 @@ export function useMoveWallet() {
     }
   }, [wallet, signAndSubmitTransaction]);
 
-  // Place a wager on a bet
-  const placeWager = useCallback(async (betId: number, outcomeIndex: number, amount: number) => {
+  // Place a wager on a bet (with signature authentication)
+  const placeWager = useCallback(async (
+    betId: number,
+    outcomeIndex: number,
+    amount: number,
+    signature: string,
+    expiresAtMs: number
+  ) => {
     if (!wallet) throw new Error('Wallet not initialized');
     
     setError(null);
     try {
-      const payload = buildPlaceWagerPayload(betId, outcomeIndex, amount);
+      const payload = buildPlaceWagerPayload(betId, outcomeIndex, amount, signature, expiresAtMs);
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {
@@ -232,20 +268,20 @@ export function useMoveWallet() {
     
     setError(null);
     try {
-      const payload = buildSetProfilePayload(name, avatarId);
-      const result = await signAndSubmitTransaction(payload);
+      // Use Supabase instead of on-chain (profiles are now off-chain)
+      const { upsertProfile } = await import('@/lib/supabase-services');
+      await upsertProfile(wallet.address, name, avatarId);
       
-      if (!result.success) {
-        throw new Error('Transaction failed');
-      }
-      
-      return result;
+      return {
+        hash: 'off-chain', // No transaction hash for off-chain operation
+        success: true,
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to set profile';
       setError(message);
       throw err;
     }
-  }, [wallet, signAndSubmitTransaction]);
+  }, [wallet]);
 
   return {
     wallet,
@@ -259,6 +295,7 @@ export function useMoveWallet() {
     placeWager,
     resolveBet,
     setProfile,
+    signAndSubmitTransaction, // Export this so components can use it
   };
 }
 

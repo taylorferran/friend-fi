@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -31,7 +31,7 @@ interface BetInfo {
 export default function GroupPrivatePredictionsPage() {
   const router = useRouter();
   const params = useParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
   const { wallet } = useMoveWallet();
   const { showToast } = useToast();
   const groupId = parseInt(params.id as string, 10);
@@ -43,12 +43,6 @@ export default function GroupPrivatePredictionsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('bets');
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [sendAmount, setSendAmount] = useState('');
-
-  useEffect(() => {
-    if (ready && !authenticated) {
-      router.push('/login');
-    }
-  }, [ready, authenticated, router]);
 
   // Store group context for bet creation (updates when groupName changes)
   useEffect(() => {
@@ -196,7 +190,7 @@ export default function GroupPrivatePredictionsPage() {
     }
   };
 
-  if (!ready || !authenticated) {
+  if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="brutalist-spinner-instant">

@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
+import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { useUnifiedMoveWallet, usePrivyMoveWallet } from '@/hooks/usePrivyMoveWallet';
-import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile, getProfileWithFallback } from '@/lib/contract';
+import { getAllGroupsForUser, getProfileFromSupabase } from '@/lib/supabase-services';
 import { ProfileSetupModal } from '@/components/ui/ProfileSetupModal';
 import { useToast } from '@/components/ui/Toast';
 import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
@@ -22,11 +22,10 @@ interface GroupData {
 }
 
 export default function DashboardPage() {
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
+  const { isRegistered, register, authenticate: biometricAuth, isRegistering, isAuthenticating } = useBiometricWallet();
   const router = useRouter();
   const { wallet, loading: walletLoading, setProfile } = useMoveWallet();
-  const { isPrivyWallet } = useUnifiedMoveWallet();
-  const privyWallet = usePrivyMoveWallet(); // Get Privy wallet info to access public key
   const { showToast } = useToast();
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -39,6 +38,15 @@ export default function DashboardPage() {
   const checkingRef = useRef(false);
   const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasCheckedRef = useRef(false);
+
+  // Handle biometric login
+  const handleLogin = async () => {
+    if (isRegistered) {
+      await biometricAuth();
+    } else {
+      await register();
+    }
+  };
   
   // Check if user has a profile on-chain
   useEffect(() => {
@@ -142,18 +150,15 @@ export default function DashboardPage() {
         if (storedActualAddress) {
           // Use the stored actual address (from when profile was created)
           console.log('[Dashboard] Using stored actual address from previous transaction:', storedActualAddress);
-          profile = await getProfile(storedActualAddress);
-        } else if (privyWallet && privyWallet.address && isPrivyWallet) {
-          // Try with public key if available, otherwise will fallback to padded
-          profile = await getProfileWithFallback(privyWallet.address, privyWallet.publicKey || undefined);
+          profile = await getProfileFromSupabase(storedActualAddress) || null;
         } else {
           // Regular profile lookup
-          profile = await getProfile(wallet.address);
+          profile = await getProfileFromSupabase(wallet.address) || null;
         }
         console.log('[Dashboard] Profile check completed:', profile);
         
         // CRITICAL: If profile exists with a name, immediately hide modal and NEVER show it again
-        if (profile.exists && profile.name) {
+        if (profile && profile.name) {
           console.log('[Dashboard] Profile found! Hiding modal permanently for this session.');
           setShowProfileSetup(false);
           setProfileChecked(true);
@@ -251,8 +256,14 @@ export default function DashboardPage() {
 
   // Auth redirect is handled by AuthWrapper - no need here
 
-  // Load user's groups - PARALLEL queries for speed
+  // Load user's groups - FROM SUPABASE ONLY (100% off-chain)
   useEffect(() => {
+    if (!authenticated) {
+      setGroups([]);
+      setGroupsLoading(false);
+      return;
+    }
+
     async function loadGroups() {
       if (!wallet?.address) {
         return;
@@ -260,70 +271,33 @@ export default function DashboardPage() {
 
       setGroupsLoading(true);
       try {
-        const count = await getGroupsCount();
+        console.log('[Dashboard] Loading groups from Supabase...');
         
-        if (count === 0) {
-          setGroups([]);
-          setGroupsLoading(false);
-          return;
-        }
+        // Get all groups for this user from Supabase
+        const userGroups = await getAllGroupsForUser(wallet.address);
+        
+        console.log('[Dashboard] Found', userGroups.length, 'groups');
+        
+        // Map to dashboard format
+        const groupData = userGroups.map(group => ({
+          id: group.id,
+          name: group.name,
+          memberCount: group.group_members?.length || 0,
+          betCount: 0, // We'll load bets separately when user enters the group
+        }));
 
-        // Check ALL memberships in PARALLEL (huge speed improvement)
-        const groupIds = Array.from({ length: count }, (_, i) => i);
-        const membershipChecks = await Promise.all(
-          groupIds.map(id => 
-            checkIfMemberInGroup(id, wallet.address)
-              .then(isMember => ({ id, isMember }))
-              .catch(() => ({ id, isMember: false }))
-          )
-        );
-
-        // Filter to groups user is a member of
-        const userGroupIds = membershipChecks
-          .filter(check => check.isMember)
-          .map(check => check.id);
-
-        if (userGroupIds.length === 0) {
-          setGroups([]);
-          setGroupsLoading(false);
-          return;
-        }
-
-        // Get group name, members + bets for ALL user groups in PARALLEL - now with names!
-        const groupDataPromises = userGroupIds.map(async (id) => {
-          try {
-            const [name, members, bets] = await Promise.all([
-              getGroupName(id),
-              getGroupMembers(id),
-              getGroupBets(id),
-            ]);
-            return {
-              id,
-              name: name || `Group #${id}`,
-              memberCount: members.length,
-              betCount: bets.length,
-            };
-          } catch (error) {
-            console.error(`Error loading group ${id}:`, error);
-            return null;
-          }
-        });
-
-        const groupDataResults = await Promise.all(groupDataPromises);
-        const userGroups = groupDataResults.filter((g): g is GroupData => g !== null);
-
-        setGroups(userGroups);
+        setGroups(groupData);
       } catch (error) {
-        console.error('Error loading groups:', error);
+        console.error('[Dashboard] Error loading groups:', error);
       } finally {
         setGroupsLoading(false);
       }
     }
 
-    if (wallet?.address) {
+    if (wallet?.address && authenticated) {
       loadGroups();
     }
-  }, [wallet?.address]);
+  }, [wallet?.address, authenticated]);
 
   const handleGroupClick = (group: GroupData) => {
     // Store group in session for bet creation
@@ -334,8 +308,8 @@ export default function DashboardPage() {
     router.push(`/groups/${group.id}`);
   };
 
-  // Show loading while auth is checking
-  if (!ready || !authenticated) {
+  // Show loading only initially, not when waiting for auth
+  if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="brutalist-spinner-instant">
@@ -349,7 +323,151 @@ export default function DashboardPage() {
   }
 
   // Determine if we're in a loading state
-  const isLoading = walletLoading || groupsLoading;
+  const isLoading = authenticated && (walletLoading || groupsLoading);
+
+  // Preview mode (unauthenticated)
+  if (!authenticated) {
+    return (
+      <>
+        <div className="flex min-h-screen bg-background">
+          <Sidebar />
+
+          <main className="flex-1 mobile-content lg:p-0 lg:py-16">
+            <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+              {/* Login Banner */}
+              <Card className="mb-6 border-4 border-primary bg-primary/10">
+                <CardContent className="p-6 text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <span className="material-symbols-outlined text-5xl text-text">fingerprint</span>
+                  </div>
+                  <h2 className="text-text text-2xl font-display font-bold mb-2">
+                    Welcome to Friend-Fi
+                  </h2>
+                  <p className="text-accent font-mono mb-6 max-w-md mx-auto">
+                    Secure, gasless social DeFi for your inner circle. Login with biometrics to get started.
+                  </p>
+                  <Button 
+                    onClick={handleLogin} 
+                    loading={isRegistering || isAuthenticating}
+                    className="mx-auto"
+                  >
+                    <span className="material-symbols-outlined">fingerprint</span>
+                    {isRegistered ? 'Login with Biometric' : 'Create Wallet'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Preview Content */}
+              <div className="mb-6">
+                <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">
+                  Your Groups
+                </h1>
+                <p className="text-accent text-sm sm:text-base font-mono">
+                  Create or join groups to get started
+                </p>
+              </div>
+
+              {/* Preview Cards (blurred/disabled) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 opacity-50 pointer-events-none">
+                {/* Example Group Card */}
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="p-4 sm:p-5 border-b-2 border-text">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-text text-2xl sm:text-3xl">groups</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-text text-base sm:text-lg font-display font-bold">Weekend Trip</h3>
+                          <p className="text-accent text-xs sm:text-sm font-mono uppercase tracking-wider">
+                            5 members
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-accent text-lg sm:text-xl">casino</span>
+                        <span className="text-text font-mono font-bold text-sm sm:text-base">3</span>
+                        <span className="text-accent text-xs sm:text-sm font-mono">bets</span>
+                      </div>
+                      <span className="material-symbols-outlined text-accent text-lg sm:text-xl">chevron_right</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Example Group Card 2 */}
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="p-4 sm:p-5 border-b-2 border-text">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary border-2 border-text flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-text text-2xl sm:text-3xl">groups</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-text text-base sm:text-lg font-display font-bold">Housemates</h3>
+                          <p className="text-accent text-xs sm:text-sm font-mono uppercase tracking-wider">
+                            4 members
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-accent text-lg sm:text-xl">receipt_long</span>
+                        <span className="text-text font-mono font-bold text-sm sm:text-base">12</span>
+                        <span className="text-accent text-xs sm:text-sm font-mono">expenses</span>
+                      </div>
+                      <span className="material-symbols-outlined text-accent text-lg sm:text-xl">chevron_right</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Add New Group Card */}
+                <Card className="border-dashed">
+                  <CardContent className="p-4 h-full flex items-center justify-center min-h-[140px]">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-surface border-2 border-text border-dashed flex items-center justify-center mx-auto mb-3">
+                        <span className="material-symbols-outlined text-accent text-2xl">add</span>
+                      </div>
+                      <p className="text-accent font-mono text-sm font-bold uppercase tracking-wider">New Group</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Features Preview */}
+              <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <span className="material-symbols-outlined text-5xl text-primary mb-3">receipt_long</span>
+                    <h3 className="text-text text-lg font-display font-bold mb-2">Split Expenses</h3>
+                    <p className="text-accent text-sm font-mono">Track and settle shared costs on-chain</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <span className="material-symbols-outlined text-5xl text-primary mb-3">casino</span>
+                    <h3 className="text-text text-lg font-display font-bold mb-2">Private Bets</h3>
+                    <p className="text-accent text-sm font-mono">Make predictions with your friends</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <span className="material-symbols-outlined text-5xl text-primary mb-3">verified</span>
+                    <h3 className="text-text text-lg font-display font-bold mb-2">Habit Tracking</h3>
+                    <p className="text-accent text-sm font-mono">Hold each other accountable</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </main>
+        </div>
+      </>
+    );
+  }
+
+  // Authenticated view (existing dashboard)
 
   return (
     <>

@@ -12,6 +12,7 @@ import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 import { useAuth } from '@/hooks/useAuth';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
+import { upsertProfile } from '@/lib/supabase-services';
 import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
 export default function SettingsPage() {
@@ -84,11 +85,20 @@ export default function SettingsPage() {
       return;
     }
 
+    if (!moveWallet?.address) {
+      showToast({ type: 'error', title: 'Wallet not connected' });
+      return;
+    }
+
     setSaving(true);
     
     try {
-      // Save to blockchain
-      const result = await setProfile(username, selectedAvatar.id);
+      // 🎉 NEW: Save to Supabase (off-chain, instant, no gas!)
+      await upsertProfile(
+        moveWallet.address,
+        username,
+        selectedAvatar.id
+      );
       
       // Also save to session storage for immediate UI updates
       const settings = {
@@ -104,12 +114,12 @@ export default function SettingsPage() {
       setHasOnChainProfile(true);
       showToast({ 
         type: 'success', 
-        title: 'Profile saved on-chain!', 
-        txHash: result.hash 
+        title: '✨ Profile saved to database!', 
+        message: 'Instant, gasless, permanent storage'
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save profile';
-      showToast({ type: 'error', title: 'Transaction failed', message });
+      showToast({ type: 'error', title: 'Save failed', message });
     } finally {
       setSaving(false);
     }
@@ -234,8 +244,8 @@ export default function SettingsPage() {
                 <h2 className="text-text text-lg sm:text-xl font-display font-bold">Profile</h2>
                 {hasOnChainProfile && (
                   <span className="px-2 py-1 bg-green-600/20 border border-green-600 text-green-600 text-xs font-mono font-bold uppercase flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">verified</span>
-                    On-chain
+                    <span className="material-symbols-outlined text-xs">cloud_done</span>
+                    Off-Chain
                   </span>
                 )}
               </div>
@@ -259,7 +269,9 @@ export default function SettingsPage() {
                     />
                     <div className="min-w-0">
                       <p className="text-text font-display font-bold text-base sm:text-lg truncate">{username || 'Anonymous'}</p>
-                      <p className="text-accent text-xs sm:text-sm font-mono truncate">{user?.email?.address}</p>
+                      <p className="text-accent text-xs sm:text-sm font-mono truncate">
+                        {moveWallet?.address ? `${moveWallet.address.slice(0, 10)}...${moveWallet.address.slice(-8)}` : ''}
+                      </p>
                     </div>
                   </div>
 
@@ -269,7 +281,7 @@ export default function SettingsPage() {
                       placeholder="Enter your display name"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      hint="This will be stored on-chain and visible to other users"
+                      hint="💾 Saved to database - instant, gasless, permanent"
                     />
                   </div>
 
@@ -310,8 +322,8 @@ export default function SettingsPage() {
                     className="w-full"
                     disabled={loadingProfile}
                   >
-                    <span className="material-symbols-outlined">save</span>
-                    Save to Blockchain
+                    <span className="material-symbols-outlined">cloud_upload</span>
+                    Save Profile (Instant, No Gas)
                   </Button>
                 </>
               )}
@@ -381,7 +393,9 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
                   <div>
                     <p className="text-text font-mono font-bold">Email</p>
-                    <p className="text-accent text-sm font-mono">{user?.email?.address || 'Not connected'}</p>
+                    <p className="text-accent text-sm font-mono">
+                    {moveWallet?.address ? `${moveWallet.address.slice(0, 10)}...${moveWallet.address.slice(-8)}` : 'Not connected'}
+                  </p>
                   </div>
                   <span className="material-symbols-outlined text-green-600">verified</span>
                 </div>

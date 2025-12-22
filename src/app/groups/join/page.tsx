@@ -2,18 +2,19 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { getGroupsCount } from '@/lib/contract';
+import { getGroupFromSupabase, addGroupMember } from '@/lib/supabase-services';
+import { hashPassword } from '@/lib/crypto';
 
 export default function JoinGroupPage() {
   const router = useRouter();
-  const { authenticated, ready } = usePrivy();
-  const { wallet, joinGroup } = useMoveWallet();
+  const { authenticated, ready } = useAuth();
+  const { wallet } = useMoveWallet(); // Only need wallet address, no transactions!
   
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
@@ -43,32 +44,54 @@ export default function JoinGroupPage() {
       return;
     }
 
-    // Check if group exists
-    const groupCount = await getGroupsCount();
-    if (groupIdNum >= groupCount) {
-      setError(`Group ID ${groupIdNum} does not exist. There are ${groupCount} groups.`);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const result = await joinGroup(groupIdNum, password);
-      setTxHash(result.hash);
+      // Step 1: Hash the password
+      console.log('[JoinGroup] Hashing password...');
+      const passwordHash = await hashPassword(password);
+      
+      // Step 2: Get group from Supabase and verify password
+      console.log('[JoinGroup] Fetching group from Supabase...');
+      const supabaseGroup = await getGroupFromSupabase(groupIdNum);
+      
+      if (!supabaseGroup) {
+        setError(`Group ID ${groupIdNum} does not exist.`);
+        setLoading(false);
+        return;
+      }
+      
+      // Step 3: Verify password (100% off-chain)
+      console.log('[JoinGroup] Verifying password...');
+      const isValidPassword = supabaseGroup.password_hash === passwordHash;
+      
+      if (!isValidPassword) {
+        setError('Invalid password. Please check and try again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('[JoinGroup] Password verified! Adding member to Supabase...');
+      
+      // Step 4: Add to group_members in Supabase (100% off-chain)
+      await addGroupMember(supabaseGroup.id, wallet.address);
+      console.log('[JoinGroup] Member added successfully!');
       
       // Store group info locally
       sessionStorage.setItem('friendfi_current_group', JSON.stringify({
-        id: groupIdNum,
-        name: `Group #${groupIdNum}`,
-        password: password,
+        id: supabaseGroup.id,
+        name: supabaseGroup.name,
       }));
 
+      setTxHash('off-chain'); // Fake hash for success display
+      
       // Show success and redirect
       setTimeout(() => {
-      router.push('/dashboard');
+        router.push(`/groups/${supabaseGroup.id}`);
       }, 2000);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to join group. Please check the password.';
+      console.error('[JoinGroup] Error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to join group.';
       setError(message);
     } finally {
       setLoading(false);

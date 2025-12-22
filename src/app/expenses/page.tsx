@@ -1,19 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent } from '@/components/ui/Card';
 
 export default function ExpensesPage() {
   const router = useRouter();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  // No redirect - allow viewing page without login
 
   return (
     <div className="flex min-h-screen bg-background">

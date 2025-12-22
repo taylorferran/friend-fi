@@ -42,6 +42,7 @@ module friend_fi::expense_splitting {
     use aptos_framework::object;
     use aptos_framework::primary_fungible_store;
     use friend_fi::groups;
+    use friend_fi::signature_auth; // NEW: For signature-based auth
 
     // =========================================================================
     // CONSTANTS
@@ -425,14 +426,16 @@ module friend_fi::expense_splitting {
     public entry fun create_expense_equal(
         account: &signer,
         group_id: u64,
+        backend_signature: vector<u8>,
+        expires_at_ms: u64,
         description: String,
         total_amount: u64,
         participants: vector<address>,
     ) acquires State {
         let payer = signer::address_of(account);
 
-        // Verify payer is group member
-        assert!(groups::is_member(group_id, payer), E_NOT_GROUP_MEMBER);
+        // Verify payer is group member using signature authentication
+        signature_auth::assert_membership(group_id, payer, expires_at_ms, backend_signature);
 
         // Validate participants
         assert!(vector::length(&participants) > 0, E_EMPTY_PARTICIPANTS);
@@ -536,6 +539,8 @@ module friend_fi::expense_splitting {
     public entry fun create_expense_percentage(
         account: &signer,
         group_id: u64,
+        backend_signature: vector<u8>,
+        expires_at_ms: u64,
         description: String,
         total_amount: u64,
         participants: vector<address>,
@@ -543,8 +548,8 @@ module friend_fi::expense_splitting {
     ) acquires State {
         let payer = signer::address_of(account);
 
-        // Verify payer is group member
-        assert!(groups::is_member(group_id, payer), E_NOT_GROUP_MEMBER);
+        // Verify payer is group member using signature authentication
+        signature_auth::assert_membership(group_id, payer, expires_at_ms, backend_signature);
 
         // Validate participants and percentages match
         assert!(vector::length(&participants) > 0, E_EMPTY_PARTICIPANTS);

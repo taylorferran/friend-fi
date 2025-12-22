@@ -1,250 +1,397 @@
+/// ============================================================================
+/// Groups Module Tests (V2 - Hybrid Architecture)
+/// ============================================================================
+///
+/// Tests for the simplified groups module that only stores membership on-chain.
+/// Profile and group metadata tests are now handled by Supabase integration tests.
+///
+/// ============================================================================
+
 #[test_only]
 module friend_fi::groups_tests {
-    use std::string::utf8;
+    use std::signer;
     use std::vector;
     use friend_fi::groups;
-    use aptos_framework::account;
 
-    // Test addresses
-    const ADMIN: address = @friend_fi;
-    const ALICE: address = @0xA11CE;
-    const BOB: address = @0xB0B;
-    const CHARLIE: address = @0xC0C;
+    // =========================================================================
+    // INITIALIZATION TESTS
+    // =========================================================================
 
     #[test(admin = @friend_fi)]
-    fun test_init(admin: &signer) {
+    fun test_initialization(admin: &signer) {
         groups::init_for_testing(admin);
+        
+        // Should start with 0 groups
         assert!(groups::get_groups_count() == 0, 0);
     }
 
     #[test(admin = @friend_fi)]
     #[expected_failure(abort_code = 1)] // E_ALREADY_INITIALIZED
-    fun test_double_init_fails(admin: &signer) {
+    fun test_double_initialization_fails(admin: &signer) {
         groups::init_for_testing(admin);
-        groups::init_for_testing(admin);
+        groups::init_for_testing(admin); // Should fail
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_set_profile(admin: &signer, alice: &signer) {
+    // =========================================================================
+    // GROUP CREATION TESTS
+    // =========================================================================
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    fun test_create_group(admin: &signer, creator: &signer) {
         groups::init_for_testing(admin);
-
-        groups::set_profile(alice, utf8(b"alice"), 1);
-
-        let (name, avatar_id, exists) = groups::get_profile(@0xA11CE);
-        assert!(exists, 0);
-        assert!(name == utf8(b"alice"), 1);
-        assert!(avatar_id == 1, 2);
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B)]
-    #[expected_failure(abort_code = 14)] // E_USERNAME_TAKEN
-    fun test_duplicate_username_fails(admin: &signer, alice: &signer, bob: &signer) {
-        groups::init_for_testing(admin);
-
-        groups::set_profile(alice, utf8(b"alice"), 1);
-        groups::set_profile(bob, utf8(b"alice"), 2); // Should fail
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_update_profile(admin: &signer, alice: &signer) {
-        groups::init_for_testing(admin);
-
-        groups::set_profile(alice, utf8(b"alice"), 1);
-        groups::set_profile(alice, utf8(b"alice_updated"), 2);
-
-        let (name, avatar_id, exists) = groups::get_profile(@0xA11CE);
-        assert!(exists, 0);
-        assert!(name == utf8(b"alice_updated"), 1);
-        assert!(avatar_id == 2, 2);
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_resolve_username(admin: &signer, alice: &signer) {
-        groups::init_for_testing(admin);
-
-        groups::set_profile(alice, utf8(b"alice"), 1);
-
-        let (addr, found) = groups::resolve_username(utf8(b"alice"));
-        assert!(found, 0);
-        assert!(addr == @0xA11CE, 1);
-
-        let (_, not_found) = groups::resolve_username(utf8(b"nonexistent"));
-        assert!(!not_found, 2);
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_create_group(admin: &signer, alice: &signer) {
-        groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Trip to Bali"),
-            utf8(b"password123"),
-            utf8(b"Summer vacation expenses"),
-        );
-
+        
+        // Create a group
+        groups::create_group(creator);
+        
+        // Check group was created
         assert!(groups::get_groups_count() == 1, 0);
         
-        let name = groups::get_group_name(0);
-        assert!(name == utf8(b"Trip to Bali"), 1);
-
-        let desc = groups::get_group_description(0);
-        assert!(desc == utf8(b"Summer vacation expenses"), 2);
-
         // Creator should be a member
-        assert!(groups::check_if_member_in_group(0, @0xA11CE), 3);
+        let creator_addr = signer::address_of(creator);
+        assert!(groups::is_member(0, creator_addr), 1);
+        
+        // Creator should be admin
+        assert!(groups::is_admin(0, creator_addr), 2);
+        
+        // Check admin address
+        assert!(groups::get_admin(0) == creator_addr, 3);
+        
+        // Check members list
+        let members = groups::get_members(0);
+        assert!(vector::length(&members) == 1, 4);
+        assert!(*vector::borrow(&members, 0) == creator_addr, 5);
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B)]
-    fun test_join_group(admin: &signer, alice: &signer, bob: &signer) {
+    #[test(admin = @friend_fi, creator1 = @0x123, creator2 = @0x456)]
+    fun test_create_multiple_groups(admin: &signer, creator1: &signer, creator2: &signer) {
         groups::init_for_testing(admin);
+        
+        // Create two groups
+        groups::create_group(creator1);
+        groups::create_group(creator2);
+        
+        // Check both were created
+        assert!(groups::get_groups_count() == 2, 0);
+        
+        // Check membership
+        assert!(groups::is_member(0, signer::address_of(creator1)), 1);
+        assert!(groups::is_member(1, signer::address_of(creator2)), 2);
+        
+        // Check they're not members of each other's groups
+        assert!(!groups::is_member(0, signer::address_of(creator2)), 3);
+        assert!(!groups::is_member(1, signer::address_of(creator1)), 4);
+    }
 
-        groups::create_group(
-            alice,
-            utf8(b"Flatmates"),
-            utf8(b"secret"),
-            utf8(b"Shared rent and utilities"),
-        );
+    // =========================================================================
+    // JOIN GROUP TESTS
+    // =========================================================================
 
-        groups::join_group(bob, 0, utf8(b"secret"));
-
-        // Both should be members
-        assert!(groups::check_if_member_in_group(0, @0xA11CE), 0);
-        assert!(groups::check_if_member_in_group(0, @0xB0B), 1);
-
-        let members = groups::get_group_members(0);
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
+    fun test_join_group(admin: &signer, creator: &signer, user: &signer) {
+        groups::init_for_testing(admin);
+        
+        // Create group
+        groups::create_group(creator);
+        
+        // User joins
+        groups::join_group(user, 0);
+        
+        // Check user is member
+        let user_addr = signer::address_of(user);
+        assert!(groups::is_member(0, user_addr), 0);
+        
+        // User is not admin
+        assert!(!groups::is_admin(0, user_addr), 1);
+        
+        // Check members list
+        let members = groups::get_members(0);
         assert!(vector::length(&members) == 2, 2);
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B)]
-    #[expected_failure(abort_code = 11)] // E_INVALID_PASSWORD
-    fun test_join_group_wrong_password(admin: &signer, alice: &signer, bob: &signer) {
+    #[test(admin = @friend_fi, creator = @0x123, user1 = @0x456, user2 = @0x789)]
+    fun test_multiple_users_join(admin: &signer, creator: &signer, user1: &signer, user2: &signer) {
         groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Flatmates"),
-            utf8(b"secret"),
-            utf8(b"Shared rent and utilities"),
-        );
-
-        groups::join_group(bob, 0, utf8(b"wrongpassword"));
+        
+        // Create group
+        groups::create_group(creator);
+        
+        // Two users join
+        groups::join_group(user1, 0);
+        groups::join_group(user2, 0);
+        
+        // Check all are members
+        assert!(groups::is_member(0, signer::address_of(creator)), 0);
+        assert!(groups::is_member(0, signer::address_of(user1)), 1);
+        assert!(groups::is_member(0, signer::address_of(user2)), 2);
+        
+        // Check members count
+        let members = groups::get_members(0);
+        assert!(vector::length(&members) == 3, 3);
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
     #[expected_failure(abort_code = 12)] // E_ALREADY_MEMBER
-    fun test_join_group_already_member(admin: &signer, alice: &signer) {
+    fun test_join_twice_fails(admin: &signer, creator: &signer, user: &signer) {
         groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Flatmates"),
-            utf8(b"secret"),
-            utf8(b"Shared rent and utilities"),
-        );
-
-        // Alice is already a member (creator)
-        groups::join_group(alice, 0, utf8(b"secret"));
+        
+        groups::create_group(creator);
+        groups::join_group(user, 0);
+        groups::join_group(user, 0); // Should fail
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B)]
-    fun test_leave_group(admin: &signer, alice: &signer, bob: &signer) {
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
+    #[expected_failure(abort_code = 10)] // E_BAD_GROUP_ID
+    fun test_join_nonexistent_group_fails(admin: &signer, creator: &signer, user: &signer) {
         groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Flatmates"),
-            utf8(b"secret"),
-            utf8(b"Shared rent and utilities"),
-        );
-
-        groups::join_group(bob, 0, utf8(b"secret"));
-        assert!(groups::check_if_member_in_group(0, @0xB0B), 0);
-
-        groups::leave_group(bob, 0);
-        assert!(!groups::check_if_member_in_group(0, @0xB0B), 1);
-
-        let members = groups::get_group_members(0);
-        assert!(vector::length(&members) == 1, 2);
+        
+        groups::create_group(creator);
+        groups::join_group(user, 999); // Should fail
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B)]
+    // =========================================================================
+    // LEAVE GROUP TESTS
+    // =========================================================================
+
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
+    fun test_leave_group(admin: &signer, creator: &signer, user: &signer) {
+        groups::init_for_testing(admin);
+        
+        // Create and join
+        groups::create_group(creator);
+        groups::join_group(user, 0);
+        
+        // User leaves
+        groups::leave_group(user, 0);
+        
+        // Check user is no longer member
+        let user_addr = signer::address_of(user);
+        assert!(!groups::is_member(0, user_addr), 0);
+        
+        // Check members list
+        let members = groups::get_members(0);
+        assert!(vector::length(&members) == 1, 1);
+        assert!(*vector::borrow(&members, 0) == signer::address_of(creator), 2);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    fun test_creator_can_leave(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        
+        // Create group
+        groups::create_group(creator);
+        
+        // Creator leaves their own group
+        groups::leave_group(creator, 0);
+        
+        // Check creator is no longer member
+        assert!(!groups::is_member(0, signer::address_of(creator)), 0);
+        
+        // Group still exists but is empty
+        let members = groups::get_members(0);
+        assert!(vector::length(&members) == 0, 1);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
     #[expected_failure(abort_code = 13)] // E_NOT_MEMBER
-    fun test_leave_group_not_member(admin: &signer, alice: &signer, bob: &signer) {
+    fun test_leave_without_joining_fails(admin: &signer, creator: &signer, user: &signer) {
         groups::init_for_testing(admin);
+        
+        groups::create_group(creator);
+        groups::leave_group(user, 0); // Should fail - never joined
+    }
 
-        groups::create_group(
-            alice,
-            utf8(b"Flatmates"),
-            utf8(b"secret"),
-            utf8(b"Shared rent and utilities"),
-        );
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
+    #[expected_failure(abort_code = 13)] // E_NOT_MEMBER
+    fun test_leave_twice_fails(admin: &signer, creator: &signer, user: &signer) {
+        groups::init_for_testing(admin);
+        
+        groups::create_group(creator);
+        groups::join_group(user, 0);
+        groups::leave_group(user, 0);
+        groups::leave_group(user, 0); // Should fail - already left
+    }
 
-        // Bob is not a member
+    // =========================================================================
+    // MEMBERSHIP QUERY TESTS
+    // =========================================================================
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    fun test_is_member_query(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        
+        let creator_addr = signer::address_of(creator);
+        let random_addr = @0x999;
+        
+        // Before group creation
+        assert!(!groups::is_member(0, creator_addr), 0);
+        
+        // Create group
+        groups::create_group(creator);
+        
+        // After group creation
+        assert!(groups::is_member(0, creator_addr), 1);
+        assert!(!groups::is_member(0, random_addr), 2);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    fun test_is_admin_query(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        
+        let creator_addr = signer::address_of(creator);
+        let random_addr = @0x999;
+        
+        // Before group creation
+        assert!(!groups::is_admin(0, creator_addr), 0);
+        
+        // Create group
+        groups::create_group(creator);
+        
+        // After group creation
+        assert!(groups::is_admin(0, creator_addr), 1);
+        assert!(!groups::is_admin(0, random_addr), 2);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123, user = @0x456)]
+    fun test_member_is_not_admin(admin: &signer, creator: &signer, user: &signer) {
+        groups::init_for_testing(admin);
+        
+        groups::create_group(creator);
+        groups::join_group(user, 0);
+        
+        let user_addr = signer::address_of(user);
+        
+        // User is member but not admin
+        assert!(groups::is_member(0, user_addr), 0);
+        assert!(!groups::is_admin(0, user_addr), 1);
+    }
+
+    // =========================================================================
+    // EDGE CASE TESTS
+    // =========================================================================
+
+    #[test(admin = @friend_fi)]
+    fun test_queries_before_initialization() {
+        // Should not crash, just return false/0
+        assert!(groups::get_groups_count() == 0, 0);
+        assert!(!groups::is_member(0, @0x123), 1);
+        assert!(!groups::is_admin(0, @0x123), 2);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    fun test_queries_for_invalid_group_id(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        groups::create_group(creator);
+        
+        // Query for non-existent group
+        assert!(!groups::is_member(999, signer::address_of(creator)), 0);
+        assert!(!groups::is_admin(999, signer::address_of(creator)), 1);
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    #[expected_failure(abort_code = 10)] // E_BAD_GROUP_ID
+    fun test_get_members_invalid_group_fails(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        groups::create_group(creator);
+        
+        let _ = groups::get_members(999); // Should fail
+    }
+
+    #[test(admin = @friend_fi, creator = @0x123)]
+    #[expected_failure(abort_code = 10)] // E_BAD_GROUP_ID
+    fun test_get_admin_invalid_group_fails(admin: &signer, creator: &signer) {
+        groups::init_for_testing(admin);
+        groups::create_group(creator);
+        
+        let _ = groups::get_admin(999); // Should fail
+    }
+
+    // =========================================================================
+    // INTEGRATION SCENARIO TESTS
+    // =========================================================================
+
+    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B, charlie = @0xC4471E)]
+    fun test_realistic_group_scenario(
+        admin: &signer,
+        alice: &signer,
+        bob: &signer,
+        charlie: &signer
+    ) {
+        groups::init_for_testing(admin);
+        
+        // Alice creates a group for a trip
+        groups::create_group(alice);
+        
+        // Bob and Charlie join
+        groups::join_group(bob, 0);
+        groups::join_group(charlie, 0);
+        
+        // Verify all members
+        let members = groups::get_members(0);
+        assert!(vector::length(&members) == 3, 0);
+        
+        assert!(groups::is_member(0, signer::address_of(alice)), 1);
+        assert!(groups::is_member(0, signer::address_of(bob)), 2);
+        assert!(groups::is_member(0, signer::address_of(charlie)), 3);
+        
+        // Alice is admin, others are not
+        assert!(groups::is_admin(0, signer::address_of(alice)), 4);
+        assert!(!groups::is_admin(0, signer::address_of(bob)), 5);
+        assert!(!groups::is_admin(0, signer::address_of(charlie)), 6);
+        
+        // Bob leaves the group
         groups::leave_group(bob, 0);
+        
+        // Verify Bob is gone
+        assert!(!groups::is_member(0, signer::address_of(bob)), 7);
+        
+        let members_after = groups::get_members(0);
+        assert!(vector::length(&members_after) == 2, 8);
     }
 
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_is_member_helper(admin: &signer, alice: &signer) {
+    #[test(admin = @friend_fi, user1 = @0x1, user2 = @0x2, user3 = @0x3, user4 = @0x4, user5 = @0x5)]
+    fun test_multiple_groups_multiple_users(
+        admin: &signer,
+        user1: &signer,
+        user2: &signer,
+        user3: &signer,
+        user4: &signer,
+        user5: &signer
+    ) {
         groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Trip"),
-            utf8(b"pass"),
-            utf8(b"Trip expenses"),
-        );
-
-        assert!(groups::is_member(0, @0xA11CE), 0);
-        assert!(!groups::is_member(0, @0xB0B), 1);
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE)]
-    fun test_get_group_admin(admin: &signer, alice: &signer) {
-        groups::init_for_testing(admin);
-
-        groups::create_group(
-            alice,
-            utf8(b"Trip"),
-            utf8(b"pass"),
-            utf8(b"Trip expenses"),
-        );
-
-        let group_admin = groups::get_group_admin(0);
-        assert!(group_admin == @0xA11CE, 0);
-    }
-
-    #[test(admin = @friend_fi, alice = @0xA11CE, bob = @0xB0B, charlie = @0xC0C)]
-    fun test_multiple_groups(admin: &signer, alice: &signer, bob: &signer, charlie: &signer) {
-        groups::init_for_testing(admin);
-
-        // Create multiple groups
-        groups::create_group(
-            alice,
-            utf8(b"Group 1"),
-            utf8(b"pass1"),
-            utf8(b"First group"),
-        );
-
-        groups::create_group(
-            bob,
-            utf8(b"Group 2"),
-            utf8(b"pass2"),
-            utf8(b"Second group"),
-        );
-
-        assert!(groups::get_groups_count() == 2, 0);
-
-        // Charlie joins both groups
-        groups::join_group(charlie, 0, utf8(b"pass1"));
-        groups::join_group(charlie, 1, utf8(b"pass2"));
-
-        assert!(groups::check_if_member_in_group(0, @0xC0C), 1);
-        assert!(groups::check_if_member_in_group(1, @0xC0C), 2);
-
-        // Verify group names
-        assert!(groups::get_group_name(0) == utf8(b"Group 1"), 3);
-        assert!(groups::get_group_name(1) == utf8(b"Group 2"), 4);
+        
+        // User1 creates Group A
+        groups::create_group(user1);
+        
+        // User2 creates Group B
+        groups::create_group(user2);
+        
+        // User3 creates Group C
+        groups::create_group(user3);
+        
+        // Cross-join: User4 joins A and B, User5 joins B and C
+        groups::join_group(user4, 0); // A
+        groups::join_group(user4, 1); // B
+        groups::join_group(user5, 1); // B
+        groups::join_group(user5, 2); // C
+        
+        // Verify counts
+        assert!(groups::get_groups_count() == 3, 0);
+        
+        // Verify Group A: User1 (admin), User4
+        assert!(vector::length(&groups::get_members(0)) == 2, 1);
+        assert!(groups::is_member(0, signer::address_of(user1)), 2);
+        assert!(groups::is_member(0, signer::address_of(user4)), 3);
+        
+        // Verify Group B: User2 (admin), User4, User5
+        assert!(vector::length(&groups::get_members(1)) == 3, 4);
+        assert!(groups::is_member(1, signer::address_of(user2)), 5);
+        assert!(groups::is_member(1, signer::address_of(user4)), 6);
+        assert!(groups::is_member(1, signer::address_of(user5)), 7);
+        
+        // Verify Group C: User3 (admin), User5
+        assert!(vector::length(&groups::get_members(2)) == 2, 8);
+        assert!(groups::is_member(2, signer::address_of(user3)), 9);
+        assert!(groups::is_member(2, signer::address_of(user5)), 10);
     }
 }
 
