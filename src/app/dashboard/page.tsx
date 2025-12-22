@@ -8,7 +8,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile } from '@/lib/contract';
+import { useUnifiedMoveWallet, usePrivyMoveWallet } from '@/hooks/usePrivyMoveWallet';
+import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile, getProfileWithFallback } from '@/lib/contract';
 import { ProfileSetupModal } from '@/components/ui/ProfileSetupModal';
 import { useToast } from '@/components/ui/Toast';
 import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
@@ -24,6 +25,8 @@ export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
   const router = useRouter();
   const { wallet, loading: walletLoading, setProfile } = useMoveWallet();
+  const { isPrivyWallet } = useUnifiedMoveWallet();
+  const privyWallet = usePrivyMoveWallet(); // Get Privy wallet info to access public key
   const { showToast } = useToast();
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -39,12 +42,45 @@ export default function DashboardPage() {
   
   // Check if user has a profile on-chain
   useEffect(() => {
+    // CRITICAL: Check sessionStorage FIRST - if profile exists there, use it and NEVER show modal
+    const savedSettings = sessionStorage.getItem('friendfi_user_settings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.username && settings.username.trim()) {
+          console.log('[Dashboard] Profile found in sessionStorage, hiding modal permanently');
+          setShowProfileSetup(false);
+          setProfileChecked(true);
+          sessionStorage.setItem('friendfi_profile_exists', 'true');
+          return; // Don't check on-chain if we have it in sessionStorage
+        }
+      } catch (e) {
+        // Invalid JSON, continue to on-chain check
+      }
+    }
+    
+    // CRITICAL: If we already confirmed profile exists in this session, NEVER check again
+    const profileExists = sessionStorage.getItem('friendfi_profile_exists') === 'true';
+    if (profileExists) {
+      console.log('[Dashboard] Profile already confirmed to exist, skipping check');
+      setShowProfileSetup(false);
+      setProfileChecked(true);
+      return;
+    }
+    
+    // Don't check if wallet is still loading
+    if (walletLoading) {
+      console.log('[Dashboard] Wallet still loading, skipping profile check');
+      return;
+    }
+    
     // Only check once per wallet address
     if (!wallet?.address) {
       // Reset when wallet is cleared
       lastCheckedAddressRef.current = null;
       hasCheckedRef.current = false;
       setProfileChecked(false);
+      setShowProfileSetup(false); // Don't show modal if no wallet
       return;
     }
     
@@ -68,7 +104,7 @@ export default function DashboardPage() {
     
     async function checkProfile() {
       // Double-check conditions after delay
-      if (!wallet?.address) return;
+      if (!wallet?.address || walletLoading) return;
       
       if (lastCheckedAddressRef.current === wallet.address && hasCheckedRef.current) {
         console.log('[Dashboard] Skipping - already checked after delay');
@@ -97,15 +133,44 @@ export default function DashboardPage() {
         lastCheckedAddressRef.current = wallet.address;
         hasCheckedRef.current = true;
         
-        const profile = await getProfile(wallet.address);
+        // Check if we have a stored actual address from a previous transaction
+        const storedActualAddress = sessionStorage.getItem('friendfi_actual_address');
+        
+        // Use fallback function if we have Privy wallet with Ethereum address
+        // This will try derived address first, then padded address
+        let profile;
+        if (storedActualAddress) {
+          // Use the stored actual address (from when profile was created)
+          console.log('[Dashboard] Using stored actual address from previous transaction:', storedActualAddress);
+          profile = await getProfile(storedActualAddress);
+        } else if (privyWallet && privyWallet.address && isPrivyWallet) {
+          // Try with public key if available, otherwise will fallback to padded
+          profile = await getProfileWithFallback(privyWallet.address, privyWallet.publicKey || undefined);
+        } else {
+          // Regular profile lookup
+          profile = await getProfile(wallet.address);
+        }
         console.log('[Dashboard] Profile check completed:', profile);
         
+        // CRITICAL: If profile exists with a name, immediately hide modal and NEVER show it again
         if (profile.exists && profile.name) {
-          // Profile exists and has a name, hide modal
+          console.log('[Dashboard] Profile found! Hiding modal permanently for this session.');
           setShowProfileSetup(false);
-        } else {
+          setProfileChecked(true);
+          // Store in sessionStorage to prevent any future checks from showing the modal
+          sessionStorage.setItem('friendfi_profile_exists', 'true');
+          // Don't check again - we have the profile
+          return;
+        }
+        
+        // Only show modal if profile doesn't exist AND we haven't already confirmed it exists
+        const profileExists = sessionStorage.getItem('friendfi_profile_exists') === 'true';
+        if (!profileExists) {
           // No profile found, show setup modal
           setShowProfileSetup(true);
+        } else {
+          // We know profile exists from previous check, don't show modal
+          setShowProfileSetup(false);
         }
         setProfileChecked(true);
       } catch (error) {
@@ -119,10 +184,12 @@ export default function DashboardPage() {
     }
     
     // Add a delay to ensure wallet is fully initialized and stable
+    // Increase delay if wallet is still loading to give public key time to fetch
+    const delay = walletLoading ? 1000 : 500;
     checkTimeoutRef.current = setTimeout(() => {
       checkTimeoutRef.current = null;
       checkProfile();
-    }, 300);
+    }, delay);
     
     // Cleanup function
     return () => {
@@ -131,7 +198,7 @@ export default function DashboardPage() {
         checkTimeoutRef.current = null;
       }
     };
-  }, [wallet?.address]); // Remove profileChecked from dependencies to prevent re-runs
+  }, [wallet?.address, walletLoading]); // Include walletLoading in dependencies
 
   // Handle profile setup completion
   const handleProfileSetup = async (username: string, avatarId: number) => {
@@ -140,6 +207,17 @@ export default function DashboardPage() {
     setSavingProfile(true);
     try {
       const result = await setProfile(username, avatarId);
+      
+      // If the result includes an address (from Privy transaction), store it
+      // This is the actual on-chain address used, which may differ from the padded address
+      if ((result as any).address) {
+        const actualAddress = (result as any).address;
+        console.log('[Dashboard] Storing actual transaction address:', actualAddress);
+        sessionStorage.setItem('friendfi_actual_address', actualAddress);
+        // Update the wallet address reference so future queries use the correct address
+        lastCheckedAddressRef.current = actualAddress;
+        hasCheckedRef.current = false; // Allow re-check with new address
+      }
       
       // Save to session storage for immediate UI updates
       const settings = {

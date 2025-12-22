@@ -20,13 +20,28 @@ export function useMoveWallet() {
   const [error, setError] = useState<string | null>(null);
 
   // Initialize wallet - use Privy wallet if available, otherwise use localStorage wallet
+  // CRITICAL: Never create a fallback wallet if Privy is authenticated or loading
   useEffect(() => {
+    // Priority 1: Privy wallet (if available and authenticated)
     if (isPrivyWallet && privyWallet) {
-      // Use Privy wallet
+      // Use Privy wallet - this is the primary method
+      // Clear any localStorage wallet reference to prevent confusion
       setWallet(privyWallet);
       setLoading(false);
-    } else if (isBiometricAuth) {
-      // Use biometric wallet from localStorage
+      return; // Exit early - don't check other sources
+    }
+    
+    // Priority 2: Wait for Privy if authenticated (don't load fallback)
+    if (isPrivyAuth && !privyWallet) {
+      // Privy is authenticated but wallet not ready yet - wait, don't create fallback
+      setLoading(true);
+      // Don't set wallet to null here - wait for Privy wallet to load
+      return; // Exit early - don't load fallback wallet
+    }
+    
+    // Priority 3: Biometric wallet (only if Privy is NOT authenticated)
+    if (isBiometricAuth && !isPrivyAuth) {
+      // Use biometric wallet from localStorage - only if Privy is not available
       try {
         const stored = localStorage.getItem('friendfi_move_wallet');
         if (stored) {
@@ -40,8 +55,12 @@ export function useMoveWallet() {
         setError('Failed to load biometric wallet');
         setLoading(false);
       }
-    } else {
-      // Fallback: create/get wallet from localStorage (for demo/backward compatibility)
+      return; // Exit early
+    }
+    
+    // Priority 4: Fallback wallet (only if neither Privy nor biometric)
+    // Only create if Privy is NOT being used
+    if (!isPrivyAuth && !isBiometricAuth) {
       try {
         const w = getOrCreateMoveWallet();
         setWallet(w);
@@ -50,8 +69,11 @@ export function useMoveWallet() {
         setError('Failed to initialize wallet');
         setLoading(false);
       }
+    } else {
+      // If we get here, we're waiting for a wallet to load
+      setLoading(true);
     }
-  }, [isPrivyWallet, privyWallet, isBiometricAuth]);
+  }, [isPrivyWallet, privyWallet, isBiometricAuth, isPrivyAuth]);
 
   // Refresh balance
   const refreshBalance = useCallback(async () => {
@@ -138,11 +160,11 @@ export function useMoveWallet() {
     
     setError(null);
     try {
-      // Get the current wallet from localStorage (in case it was switched)
-      const currentWallet = getOrCreateMoveWallet();
+      // Use the wallet from state (could be Privy or biometric)
+      // Don't get from localStorage as it might be a different wallet
       
       // The creator is automatically the admin
-      const payload = buildCreateBetPayload(groupId, description, outcomes, currentWallet.address);
+      const payload = buildCreateBetPayload(groupId, description, outcomes, wallet.address);
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {

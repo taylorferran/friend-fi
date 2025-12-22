@@ -3,22 +3,41 @@
  * Privy returns Ethereum-style addresses (40 hex chars), but Aptos needs 64 hex chars
  */
 
+import { sha3_256 } from '@noble/hashes/sha3.js';
+
 /**
  * Derive Aptos address from Ed25519 public key
  * This is the actual address used by the signer in transactions
  * Aptos addresses are derived by: SHA3-256(public_key_bytes || 0x00)
  * 
- * NOTE: This requires @noble/hashes which may not be available.
- * For now, this function will throw an error. Use padAddressToAptos() as a fallback.
- * 
  * @param publicKeyHex - Ed25519 public key in hex format (with or without 0x prefix)
  * @returns Aptos address (64 hex chars with 0x prefix)
  */
-export async function deriveAptosAddressFromPublicKey(publicKeyHex: string): Promise<string> {
-  // TODO: Implement proper address derivation from Ed25519 public key
-  // This requires SHA3-256 which needs @noble/hashes
-  // For now, throw an error so callers know to use the fallback
-  throw new Error('deriveAptosAddressFromPublicKey not yet implemented - use padded address for now');
+export function deriveAptosAddressFromPublicKey(publicKeyHex: string): string {
+  // Remove 0x prefix if present
+  const pubKeyBytes = publicKeyHex.startsWith('0x') 
+    ? publicKeyHex.slice(2) 
+    : publicKeyHex;
+  
+  // Convert hex string to Uint8Array
+  const pubKeyArray = new Uint8Array(
+    pubKeyBytes.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+  );
+  
+  // Append 0x00 byte as per Aptos specification
+  const input = new Uint8Array(pubKeyArray.length + 1);
+  input.set(pubKeyArray, 0);
+  input[pubKeyArray.length] = 0x00;
+  
+  // Compute SHA3-256 hash
+  const hash = sha3_256(input);
+  
+  // Convert hash to hex string with 0x prefix
+  const address = '0x' + Array.from(hash)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return address;
 }
 
 /**

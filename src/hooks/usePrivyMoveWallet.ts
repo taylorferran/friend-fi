@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { signAndSubmitWithPrivy } from '@/lib/privy-move-wallet';
 import { signAndSubmitTransaction as signDirectly } from '@/lib/move-wallet';
-import { deriveAptosAddressFromPublicKey } from '@/lib/address-utils';
+import { deriveAptosAddressFromPublicKey, padAddressToAptos } from '@/lib/address-utils';
 import type { MoveWallet } from '@/lib/move-wallet';
 
 const BIOMETRIC_AUTH_KEY = 'friendfi_biometric_authenticated';
@@ -40,10 +40,13 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
         let address = '';
 
         // Try user.wallet first (most common)
+        let foundPublicKey = '';
         if ((user as any).wallet) {
           const wallet = (user as any).wallet;
           walletId = wallet.walletId || wallet.id || '';
           address = wallet.address || '';
+          // Try to get public key directly from wallet object
+          foundPublicKey = (wallet as any).publicKey || (wallet as any).ed25519PublicKey || '';
         }
         
         // Try linkedAccounts
@@ -54,6 +57,10 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
           if (embeddedWallet) {
             walletId = (embeddedWallet as any).walletId || (embeddedWallet as any).id || walletId;
             address = (embeddedWallet as any).address || address;
+            // Try to get public key from linked account
+            if (!foundPublicKey) {
+              foundPublicKey = (embeddedWallet as any).publicKey || (embeddedWallet as any).ed25519PublicKey || '';
+            }
           }
         }
 
@@ -62,6 +69,22 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
           const wallet = (user as any).wallet;
           walletId = wallet.walletId || wallet.id || walletId;
           address = wallet.address || address;
+          // Try to get public key directly from wallet object
+          if (!foundPublicKey) {
+            foundPublicKey = (wallet as any).publicKey || (wallet as any).ed25519PublicKey || '';
+          }
+        }
+        
+        // If we found public key directly, use it (no need for API call)
+        if (foundPublicKey && walletId && address) {
+          console.log('[usePrivyMoveWallet] Found public key directly from user object');
+          setWalletInfo({
+            walletId,
+            address,
+            publicKey: foundPublicKey,
+          });
+          setLoading(false);
+          return;
         }
 
         if (!address) {
@@ -80,14 +103,24 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
             });
 
             if (response.ok) {
-              const { publicKey } = await response.json();
+              const data = await response.json();
+              const publicKey = data.publicKey || '';
+              
+              if (!publicKey) {
+                console.warn('[usePrivyMoveWallet] Public key not returned from API for walletId:', walletId);
+              } else {
+                console.log('[usePrivyMoveWallet] Successfully retrieved public key for walletId:', walletId);
+              }
+              
               setWalletInfo({
                 walletId,
                 address,
-                publicKey: publicKey || '',
+                publicKey,
               });
             } else {
-              // If we can't get public key, still set wallet info
+              const errorData = await response.json().catch(() => ({}));
+              console.error('[usePrivyMoveWallet] Failed to fetch wallet info:', response.status, errorData);
+              // If we can't get public key, still set wallet info but log the error
               setWalletInfo({
                 walletId,
                 address,
@@ -95,6 +128,7 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
               });
             }
           } catch (err) {
+            console.error('[usePrivyMoveWallet] Error fetching wallet info:', err);
             // If API call fails, still set wallet info without public key
             setWalletInfo({
               walletId,
@@ -103,6 +137,7 @@ export function usePrivyMoveWallet(): PrivyWalletInfo | null {
             });
           }
         } else {
+          console.warn('[usePrivyMoveWallet] No walletId found, cannot fetch public key');
           // No walletId but we have address - might be able to derive or fetch later
           setWalletInfo({
             walletId: '',
@@ -142,34 +177,53 @@ export function useUnifiedMoveWallet() {
 
   // Track the last wallet address to avoid unnecessary updates
   const lastWalletAddressRef = useRef<string | null>(null);
+  // Track if we've already determined the wallet source to prevent switching
+  const walletSourceRef = useRef<'Privy' | 'Biometric' | 'None' | null>(null);
   
   // Get wallet address - from Privy if available, otherwise from localStorage
   useEffect(() => {
     async function determineWallet() {
       // Determine which wallet to use
       let newWallet: MoveWallet | null = null;
-      let walletSource = '';
+      let walletSource: 'Privy' | 'Biometric' | 'None' = 'None';
       
-      if (privyWallet) {
-        // For Privy wallets, we need to use the address that matches what was used in transactions
-        // When we build transactions, we pad the Ethereum address, so the signer address should match
-        // However, the actual Aptos address derived from the public key might be different
-        // For now, we'll use the padded Ethereum address, but ideally we'd derive from public key
-        let aptosAddress = privyWallet.address.startsWith('0x') 
-          ? `0x${privyWallet.address.slice(2).padStart(64, '0')}`
-          : `0x${privyWallet.address.padStart(64, '0')}`;
+      // CRITICAL: If Privy wallet is available, ALWAYS use it - never fall back
+      // This prevents loading multiple wallets
+      if (privyWallet && privyAuthenticated) {
+        // Derive the actual Aptos address from the Ed25519 public key
+        // This is the address that will be used on-chain when signing transactions
+        let aptosAddress: string;
         
-        // TODO: Derive actual Aptos address from Ed25519 public key
-        // For now, we use the padded Ethereum address
-        // The issue is that the profile might have been saved with the actual Aptos address
-        // derived from the public key, not the padded address
-        // This is a known limitation - we need SHA3-256 to properly derive the address
+        if (privyWallet.publicKey) {
+          try {
+            // Derive actual Aptos address from public key (SHA3-256)
+            aptosAddress = deriveAptosAddressFromPublicKey(privyWallet.publicKey);
         console.log(
           `[useUnifiedMoveWallet] Using Privy wallet:`,
           `\n  Ethereum address (from Privy): ${privyWallet.address}`,
-          `\n  Padded Aptos address (for queries): ${aptosAddress}`,
-          `\n  NOTE: If profile was saved with different address format, it may not be found`
+              `\n  Derived Aptos address (from public key): ${aptosAddress}`,
+              `\n  This is the actual on-chain address used for profiles and transactions`
+            );
+          } catch (error) {
+            // Fallback to padded address if derivation fails
+            console.warn('[useUnifiedMoveWallet] Failed to derive Aptos address, using padded address:', error);
+            aptosAddress = padAddressToAptos(privyWallet.address);
+            console.log(
+              `[useUnifiedMoveWallet] Using Privy wallet (fallback):`,
+              `\n  Ethereum address (from Privy): ${privyWallet.address}`,
+              `\n  Padded Aptos address (fallback): ${aptosAddress}`
+            );
+          }
+        } else {
+          // No public key available, use padded address as fallback
+          aptosAddress = padAddressToAptos(privyWallet.address);
+          console.warn(
+            `[useUnifiedMoveWallet] No public key available, using padded address:`,
+            `\n  Ethereum address (from Privy): ${privyWallet.address}`,
+            `\n  Padded Aptos address: ${aptosAddress}`,
+            `\n  WARNING: Profile may not be found if saved with derived address`
         );
+        }
         
         // Check for conflict: if user has biometric wallet, warn about address mismatch
         if (isBiometricAuth) {
@@ -203,8 +257,9 @@ export function useUnifiedMoveWallet() {
           privateKeyHex: '', // Not needed for Privy wallets
         };
         walletSource = 'Privy';
-      } else if (isBiometricAuth) {
-        // For biometric, get from localStorage
+      } else if (isBiometricAuth && !privyAuthenticated) {
+        // Only use biometric wallet if Privy is NOT authenticated
+        // This prevents loading both wallets simultaneously
         const stored = localStorage.getItem('friendfi_move_wallet');
         if (stored) {
           try {
@@ -219,8 +274,19 @@ export function useUnifiedMoveWallet() {
           newWallet = null;
         }
       } else {
+        // No wallet available - don't create one if Privy might be loading
         newWallet = null;
         walletSource = 'None';
+      }
+      
+      // Prevent wallet switching: if we've already determined a source, stick with it
+      // This prevents the wallet from switching between Privy and biometric during initialization
+      if (walletSourceRef.current !== null && walletSourceRef.current !== walletSource && walletSourceRef.current !== 'None') {
+        console.warn(
+          `[useUnifiedMoveWallet] Preventing wallet switch from ${walletSourceRef.current} to ${walletSource}. ` +
+          `Already using ${walletSourceRef.current} wallet.`
+        );
+        return; // Don't switch wallets
       }
       
       // Only update if the address actually changed
@@ -228,8 +294,13 @@ export function useUnifiedMoveWallet() {
       if (newAddress !== lastWalletAddressRef.current) {
         if (newAddress) {
           console.log(`[useUnifiedMoveWallet] Using ${walletSource} wallet:`, newAddress);
+          walletSourceRef.current = walletSource; // Lock in the wallet source
         } else {
           console.log(`[useUnifiedMoveWallet] No wallet available (${walletSource})`);
+          // Only set to None if we're not waiting for Privy to load
+          if (!privyAuthenticated && !isBiometricAuth) {
+            walletSourceRef.current = 'None';
+          }
         }
         lastWalletAddressRef.current = newAddress;
         setWallet(newWallet);
@@ -237,7 +308,7 @@ export function useUnifiedMoveWallet() {
     }
     
     determineWallet();
-  }, [privyWallet, isBiometricAuth]);
+  }, [privyWallet, privyAuthenticated, isBiometricAuth]);
 
   /**
    * Sign and submit transaction
@@ -249,9 +320,24 @@ export function useUnifiedMoveWallet() {
       typeArguments: string[];
       functionArguments: (string | string[])[];
     }
-  ): Promise<{ hash: string; success: boolean }> => {
+  ): Promise<{ hash: string; success: boolean; address?: string }> => {
+    // Log transaction signing attempt
+    console.log('[useUnifiedMoveWallet] signAndSubmitTransaction called:', {
+      hasPrivyWallet: !!privyWallet,
+      privyAuthenticated,
+      hasPublicKey: !!privyWallet?.publicKey,
+      walletId: privyWallet?.walletId,
+      function: payload.function,
+    });
+    
     // Use Privy if available and user is authenticated via Privy
     if (privyWallet && privyAuthenticated && privyWallet.publicKey) {
+      console.log('[useUnifiedMoveWallet] Using Privy to sign transaction:', {
+        walletId: privyWallet.walletId,
+        address: privyWallet.address,
+        publicKeyLength: privyWallet.publicKey.length,
+        function: payload.function,
+      });
       return signAndSubmitWithPrivy(
         privyWallet.walletId,
         privyWallet.publicKey,
@@ -260,7 +346,32 @@ export function useUnifiedMoveWallet() {
       );
     }
     
-    // Fallback to direct signing (for biometric users or if Privy not available)
+    // Log why we're not using Privy
+    if (!privyWallet) {
+      console.warn('[useUnifiedMoveWallet] No Privy wallet available, using direct signing');
+    } else if (!privyAuthenticated) {
+      console.warn('[useUnifiedMoveWallet] Not authenticated with Privy, using direct signing');
+    } else if (!privyWallet.publicKey) {
+      // CRITICAL: If Privy is authenticated but public key is missing, DO NOT fall back
+      // Falling back would use a different wallet (localStorage) which is wrong!
+      throw new Error(
+        'Cannot sign transaction: Privy wallet public key is not available. ' +
+        'This is required to derive the correct Aptos address and sign transactions. ' +
+        'Please contact support or try refreshing the page. ' +
+        `WalletId: ${privyWallet.walletId}`
+      );
+    }
+    
+    // Fallback to direct signing (ONLY for non-Privy users like biometric or demo mode)
+    // This should NOT happen if Privy is authenticated
+    if (privyAuthenticated) {
+      throw new Error(
+        'Unexpected error: Privy is authenticated but transaction signing failed. ' +
+        'This should not happen. Please contact support.'
+      );
+    }
+    
+    console.log('[useUnifiedMoveWallet] Using direct signing (fallback - non-Privy user)');
     return signDirectly(payload);
   }, [privyWallet, privyAuthenticated]);
 

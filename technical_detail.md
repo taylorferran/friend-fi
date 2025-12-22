@@ -206,25 +206,80 @@ primary_fungible_store::transfer → "Transfer USDC"
 ## Wallet Management
 
 ### Privy Integration
-- **Email-only authentication**: No wallet extensions required
-- **Automatic wallet creation**: Move wallet generated on first login
-- **Local storage**: Wallet keypair stored in `localStorage` under `friendfi_move_wallet`
 
-### Wallet Structure
+**Primary Authentication Method**: Privy embedded wallets
+- **Email-only authentication**: No wallet extensions required
+- **Automatic wallet creation**: Privy creates embedded wallet on first login for Movement network
+- **Server-managed keys**: Private keys are stored securely on Privy's infrastructure, never exposed to client
+- **Wallet info extraction**: Wallet details extracted from `user.wallet` or `user.linkedAccounts` in `usePrivyMoveWallet` hook
+
+**Privy Wallet Structure**:
 ```typescript
-interface MoveWallet {
-  address: string;           // Account address (0x...)
-  privateKeyHex: string;     // Ed25519 private key
+interface PrivyWalletInfo {
+  walletId: string;      // Privy wallet identifier
+  address: string;        // Ethereum-style address (40 hex chars)
+  publicKey: string;      // Ed25519 public key (32 bytes hex)
 }
 ```
 
-### Account Creation
-```typescript
-const account = Account.generate();
-const wallet = {
-  address: account.accountAddress.toString(),
-  privateKeyHex: account.privateKey.toString(),
-};
+**Address Conversion**:
+- Privy returns Ethereum-style addresses (40 hex characters) and Ed25519 public keys
+- **Primary Method**: Aptos address is derived from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
+  - This is the actual on-chain address used for profiles and transactions
+  - Implemented in `deriveAptosAddressFromPublicKey()` in `src/lib/address-utils.ts`
+  - Uses `@noble/hashes` library for SHA3-256 hashing
+- **Fallback Method**: If public key is unavailable, addresses are padded to 64 hex characters
+  - Fallback: `0x${address.slice(2).padStart(64, '0')}`
+  - Only used when public key cannot be retrieved from Privy
+
+### Dual Wallet System
+
+The app supports two wallet types:
+
+1. **Privy Embedded Wallets** (Primary)
+   - Managed by Privy's servers
+   - No private key access on client
+   - Signing via Privy's `rawSign()` API
+   - Used when user authenticates via Privy
+
+2. **Biometric/LocalStorage Wallets** (Fallback)
+   - Stored in `localStorage` under `friendfi_move_wallet`
+   - Contains `address` and `privateKeyHex`
+   - Used for biometric authentication or demo mode
+   - Client-side signing with direct private key access
+
+**Wallet Selection Logic** (`useUnifiedMoveWallet`):
+- Prefers Privy wallet if available and user is authenticated via Privy
+- Falls back to biometric wallet if Privy not available
+- Warns about address mismatches if both exist
+
+### Privy API Endpoints
+
+**`/api/privy-wallet-info`**:
+- Fetches wallet details from Privy using Node.js SDK
+- Returns `walletId`, `address`, and `publicKey`
+- Uses `privy.wallets().get(walletId)` to retrieve wallet info
+
+**`/api/privy-raw-sign`**:
+- Signs transaction messages using Privy's `rawSign()` method
+- Accepts `walletId` and `message` (hex-encoded)
+- Returns Ed25519 signature
+- Uses `privy.wallets().rawSign(walletId, { params: { hash: message } })`
+
+### Transaction Signing Flow (Privy)
+
+1. **Derive Aptos Address**: Derive actual on-chain address from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
+2. **Build Transaction**: Create raw transaction using Aptos SDK with derived address as sender
+3. **Generate Signing Message**: `generateSigningMessageForTransaction(rawTxn)`
+4. **Sign via API**: POST to `/api/privy-raw-sign` with walletId and message
+5. **Create Authenticator**: Combine signature + public key into `AccountAuthenticatorEd25519`
+6. **Submit Transaction**: POST to `/api/sponsor-transaction` (gasless sponsorship)
+7. **Wait for Confirmation**: Poll for transaction completion
+
+**Code Flow**:
+```
+Dashboard → useMoveWallet → useUnifiedMoveWallet → signAndSubmitWithPrivy 
+→ /api/privy-raw-sign → Privy SDK → /api/sponsor-transaction → Movement Network
 ```
 
 ## Indexer Queries
@@ -279,9 +334,10 @@ const wallet = {
 
 ### State Management
 - React hooks (`useState`, `useEffect`)
-- Custom hooks (`useMoveWallet`, `useToast`)
+- Custom hooks (`useMoveWallet`, `usePrivyMoveWallet`, `useUnifiedMoveWallet`, `useAuth`, `useToast`)
 - Session storage for user settings
-- Local storage for wallet data
+- Local storage for biometric wallet data (fallback only)
+- Privy-managed wallet state (primary)
 
 ### Design System
 **Brutalist Theme**:
@@ -322,13 +378,31 @@ const wallet = {
 ## Security Considerations
 
 ### Private Key Storage
-⚠️ **Development Mode**: Private keys stored in localStorage
-🔒 **Production**: Should use secure key management (e.g., Privy embedded wallets)
+
+**Privy Embedded Wallets** (Primary):
+- ✅ **Production-ready**: Private keys stored securely on Privy's infrastructure
+- ✅ **Never exposed**: Private keys never leave Privy's servers
+- ✅ **No client access**: Client only has access to `walletId`, `address`, and `publicKey`
+
+**Biometric/LocalStorage Wallets** (Fallback):
+- ⚠️ **Development Mode**: Private keys stored in `localStorage` under `friendfi_move_wallet`
+- ⚠️ **Security Risk**: Accessible via browser DevTools
+- 🔒 **Production**: Should migrate to Privy embedded wallets for production use
 
 ### Transaction Signing
-- All transactions signed client-side
-- Private key never sent to server
-- Gasless sponsorship via Shinami (server-side)
+
+**Privy Wallets**:
+- **Server-side signing**: Transactions signed via Privy's Node.js SDK on server
+- **API route**: `/api/privy-raw-sign` calls `privy.wallets().rawSign()` 
+- **Private key security**: Private key never exposed to client or our server
+- **Message signing**: Only transaction hash is sent to Privy for signing
+- **Gasless sponsorship**: Transaction submission via `/api/sponsor-transaction` (Shinami)
+
+**Biometric/LocalStorage Wallets**:
+- **Client-side signing**: Transactions signed directly in browser using private key
+- **Direct signing**: Uses Aptos SDK `Account.sign()` method
+- **Private key access**: Private key loaded from localStorage (security risk)
+- **Gasless sponsorship**: Same `/api/sponsor-transaction` endpoint
 
 ### Input Validation
 - USDC amounts validated (positive numbers only)
@@ -377,6 +451,7 @@ const wallet = {
 ### Environment Variables
 ```env
 NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
+PRIVY_APP_SECRET=your_privy_app_secret (server-side only, for API routes)
 SHINAMI_ACCESS_KEY=your_shinami_key (server-side only)
 ```
 
@@ -431,13 +506,39 @@ Use only the available tables:
 
 **Possible Causes**:
 1. Wallet has no transactions yet (new wallet)
-2. Address format mismatch
+2. Address format mismatch (Ethereum 40-char vs Aptos 64-char)
 3. Indexer lag (recent transactions may take a few seconds to appear)
+4. Address padding issue (Privy returns 40-char, queries need 64-char)
 
 **Debugging**:
 - Check console logs for the wallet address being queried
+- Verify address format: should be 64 hex chars (excluding 0x prefix)
+- Check for address padding: `useUnifiedMoveWallet` logs the address conversion
 - Verify transactions exist on the Movement explorer
 - Check for GraphQL errors in the console
+- Compare Privy address vs padded address in console logs
+
+#### Address Format Mismatch (Privy Wallets) - RESOLVED
+
+**Symptoms** (now resolved):
+- Profile not found even though transactions exist
+- Transactions not showing in history
+- "Address mismatch" warnings in console
+
+**Root Cause**:
+Privy returns Ethereum-style addresses (40 hex chars), but Aptos uses 64 hex chars. Previously, the app only padded addresses, which didn't match the actual on-chain address derived from the Ed25519 public key.
+
+**Solution** (implemented):
+- ✅ **Proper Address Derivation**: Aptos address is now derived from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
+- ✅ **Consistent Address Usage**: Both transaction building and profile queries use the same derived address
+- ✅ **Fallback Support**: If public key is unavailable, falls back to padded address with warning
+
+**Implementation**:
+- `deriveAptosAddressFromPublicKey()` in `src/lib/address-utils.ts` uses `@noble/hashes` for SHA3-256
+- `useUnifiedMoveWallet` hook derives address when public key is available
+- `signAndSubmitWithPrivy` uses derived address for transaction sender
+
+**Note**: If you previously saved a profile with the padded address, you may need to save it again. New profiles will use the correct derived address and will be found correctly.
 
 ### Development Tips
 

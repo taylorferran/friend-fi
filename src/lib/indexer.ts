@@ -119,8 +119,6 @@ export async function getUSDCBalance(ownerAddress: string): Promise<number> {
       current_fungible_asset_balances: Array<{ asset_type: string; amount: string }>;
     }>(query, { owner: ownerAddress });
 
-    console.log('User balances:', data.current_fungible_asset_balances);
-
     // Look for USDC.E - matches the known USDC address or contains "usdc"
     const usdcBalance = data.current_fungible_asset_balances.find(
       b => b.asset_type.includes(USDC_ASSET_TYPE) || 
@@ -128,11 +126,9 @@ export async function getUSDCBalance(ownerAddress: string): Promise<number> {
     );
 
     if (usdcBalance) {
-      console.log('Found USDC balance:', usdcBalance);
       return Number(usdcBalance.amount);
     }
     
-    console.log('No USDC balance found for:', ownerAddress);
     return 0;
   } catch (error) {
     console.error('Error fetching USDC balance:', error);
