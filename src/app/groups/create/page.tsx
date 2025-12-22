@@ -23,10 +23,7 @@ export default function CreateGroupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  // Allow page to be viewed without authentication - show login prompt if needed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

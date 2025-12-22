@@ -1,6 +1,6 @@
 /**
- * Address utility functions for converting between Ethereum and Aptos address formats
- * Privy returns Ethereum-style addresses (40 hex chars), but Aptos needs 64 hex chars
+ * Address utility functions for converting between address formats
+ * Aptos addresses are 64 hex chars, derived from Ed25519 public keys
  */
 
 import { sha3_256 } from '@noble/hashes/sha3.js';

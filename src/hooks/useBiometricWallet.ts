@@ -53,14 +53,17 @@ export function useBiometricWallet() {
       setIsRegistered(true);
       setIsAuthenticated(true);
 
+      // Dispatch event to notify auth hook
+      window.dispatchEvent(new Event('auth-changed'));
+
       showToast({
         type: 'success',
         title: 'Biometric wallet created!',
         message: 'Welcome! You can now log in with Face ID/Touch ID',
       });
       
-      // Redirect to dashboard after successful registration
-      router.push('/dashboard');
+      // Don't redirect - let the component handle the state change
+      // The authentication state will update and UI will refresh automatically
       
       return true;
     } catch (err) {
@@ -97,14 +100,17 @@ export function useBiometricWallet() {
       localStorage.setItem(BIOMETRIC_AUTH_KEY, 'true');
       setIsAuthenticated(true);
 
+      // Dispatch event to notify auth hook
+      window.dispatchEvent(new Event('auth-changed'));
+
       showToast({
         type: 'success',
         title: 'Logged in!',
         message: 'Welcome back',
       });
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Don't redirect - let the component handle the state change
+      // The authentication state will update and UI will refresh automatically
       
       return true;
     } catch (err) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -31,7 +31,7 @@ interface BetInfo {
 export default function GroupPrivatePredictionsPage() {
   const router = useRouter();
   const params = useParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const { wallet } = useMoveWallet();
   const { showToast } = useToast();
   const groupId = parseInt(params.id as string, 10);
@@ -46,7 +46,7 @@ export default function GroupPrivatePredictionsPage() {
 
   useEffect(() => {
     if (ready && !authenticated) {
-      router.push('/login');
+      // Removed /login redirect - show login prompt instead
     }
   }, [ready, authenticated, router]);
 
@@ -196,18 +196,6 @@ export default function GroupPrivatePredictionsPage() {
     }
   };
 
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-background">

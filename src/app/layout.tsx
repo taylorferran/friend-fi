@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Libre_Baskerville, Space_Mono } from "next/font/google";
 import "./globals.css";
-import { PrivyProviderWrapper } from "@/components/providers/PrivyProvider";
+import { AuthWrapper } from "@/components/providers/AuthWrapper";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const libreBaskerville = Libre_Baskerville({
@@ -65,11 +65,11 @@ export default function RootLayout({
         <link rel="prefetch" href="/dashboard" />
       </head>
       <body className={`${libreBaskerville.variable} ${spaceMono.variable} font-mono antialiased`} suppressHydrationWarning>
-        <PrivyProviderWrapper>
+        <AuthWrapper>
           <ToastProvider>
             {children}
           </ToastProvider>
-        </PrivyProviderWrapper>
+        </AuthWrapper>
       </body>
     </html>
   );

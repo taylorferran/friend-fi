@@ -125,33 +125,6 @@ function normalizeAddressForProfile(address: string): string {
     : `0x${address.padStart(64, '0')}`;
 }
 
-/**
- * Try to get profile with multiple address formats
- * This is a fallback when we don't have the public key to derive the exact address
- */
-export async function getProfileWithFallback(
-  ethereumAddress: string,
-  publicKey?: string
-): Promise<{ name: string; avatarId: number; exists: boolean }> {
-  // If we have public key, derive the actual address
-  if (publicKey) {
-    try {
-      const { deriveAptosAddressFromPublicKey } = await import('@/lib/address-utils');
-      const derivedAddress = deriveAptosAddressFromPublicKey(publicKey);
-      const profile = await getProfile(derivedAddress);
-      if (profile.exists) {
-        return profile;
-      }
-    } catch (error) {
-      console.warn('[getProfileWithFallback] Failed to derive address, trying padded address:', error);
-    }
-  }
-  
-  // Fallback to padded address
-  const paddedAddress = normalizeAddressForProfile(ethereumAddress);
-  return getProfile(paddedAddress);
-}
-
 export async function getProfile(address: string): Promise<{ name: string; avatarId: number; exists: boolean }> {
   if (!address) {
     console.warn("[getProfile] Called with empty address");

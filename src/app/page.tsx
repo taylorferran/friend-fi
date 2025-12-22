@@ -2,21 +2,14 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/Button';
-import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 
 // Preload routes in the background
 const ROUTES_TO_PRELOAD = ['/dashboard', '/groups/create', '/groups/join', '/bets', '/leaderboard'];
 
 export default function SplashPage() {
-  const { authenticated: privyAuthenticated, login } = usePrivy();
   const router = useRouter();
-  const { isRegistered, isAuthenticated: biometricAuthenticated, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
-  
-  // User is authenticated if either Privy OR biometric auth is active
-  const authenticated = privyAuthenticated || biometricAuthenticated;
   const [showContent, setShowContent] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
@@ -34,34 +27,15 @@ export default function SplashPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Handle "Go to App" click - either login or go to dashboard
-  const handleGoToApp = useCallback(async () => {
-    if (authenticated) {
-      router.push('/dashboard');
-      return;
-    }
+  // Handle "Go to App" click - always navigate to dashboard (login happens there)
+  const handleGoToApp = useCallback(() => {
+    router.push('/dashboard');
+  }, [router]);
 
-    // On mobile: always use biometric login (register if first time, authenticate if registered)
-    if (isMobile) {
-      if (isRegistered) {
-        await authenticate();
-      } else {
-        // First time: register biometric wallet (this will also import to Privy and log in)
-        await register();
-      }
-    } else {
-      // Desktop: use email login
-      login();
-    }
-  }, [authenticated, login, router, isMobile, isRegistered, register, authenticate]);
-
-  // Redirect to dashboard after successful login
+  // Pre-fetch dashboard for faster navigation
   useEffect(() => {
-    if (authenticated) {
-      // Pre-fetch dashboard for faster navigation
-      router.prefetch('/dashboard');
-    }
-  }, [authenticated, router]);
+    router.prefetch('/dashboard');
+  }, [router]);
 
   // Refs for scroll animations
   const appsRef = useRef<HTMLElement>(null);
@@ -90,7 +64,7 @@ export default function SplashPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Start content animation immediately (PrivyProvider handles initial loading)
+  // Start content animation immediately
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
     return () => clearTimeout(timer);
@@ -157,7 +131,7 @@ export default function SplashPage() {
               <a href="#how-it-works" className="px-4 py-2 hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
               <div className="ml-4">
                 <Button size="sm" onClick={handleGoToApp}>
-                  {authenticated ? 'Go to App' : 'Sign In'}
+                  Go to App
                 </Button>
               </div>
             </nav>
@@ -182,7 +156,7 @@ export default function SplashPage() {
                 <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-6 py-4 border-b-2 border-text hover:bg-primary/20 transition-colors font-mono uppercase text-sm tracking-wider font-bold text-text">How it Works</a>
                 <div className="p-4">
                   <Button className="w-full" onClick={handleGoToApp}>
-                    {authenticated ? 'Go to App' : 'Sign In'}
+                    Go to App
                   </Button>
                 </div>
               </nav>
@@ -348,7 +322,7 @@ export default function SplashPage() {
               }`}>
                 <div className="flex items-center gap-4">
                   <Button variant="secondary" size="lg" className="text-lg px-12 py-5" onClick={handleGoToApp}>
-                    {authenticated ? 'Go to App' : 'Sign In'}
+                    Go to App
                     <span className="material-symbols-outlined text-2xl">arrow_forward</span>
                   </Button>
                   <Button variant="primary" size="lg" className="text-lg px-8 py-5" onClick={() => router.push('/demo-selector')}>
@@ -419,16 +393,10 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating || isRegistering}
                   >
-                    {authenticated 
-                      ? 'Go to App' 
-                      : isMobile
-                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
-                        : 'Sign In'
-                    }
+                    Go to App
                     <span className="material-symbols-outlined">
-                      {isMobile ? 'fingerprint' : 'arrow_forward'}
+                      arrow_forward
                     </span>
                   </Button>
                 </div>
@@ -463,16 +431,10 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating || isRegistering}
                   >
-                    {authenticated 
-                      ? 'Go to App' 
-                      : isMobile
-                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
-                        : 'Sign In'
-                    }
+                    Go to App
                     <span className="material-symbols-outlined">
-                      {isMobile ? 'fingerprint' : 'arrow_forward'}
+                      arrow_forward
                     </span>
                   </Button>
                 </div>
@@ -507,16 +469,10 @@ export default function SplashPage() {
                   <Button 
                     className="w-full" 
                     onClick={handleGoToApp}
-                    disabled={isAuthenticating || isRegistering}
                   >
-                    {authenticated 
-                      ? 'Go to App' 
-                      : isMobile
-                        ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
-                        : 'Sign In'
-                    }
+                    Go to App
                     <span className="material-symbols-outlined">
-                      {isMobile ? 'fingerprint' : 'arrow_forward'}
+                      arrow_forward
                     </span>
                   </Button>
                 </div>
@@ -593,7 +549,7 @@ export default function SplashPage() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { step: '01', icon: 'mail', title: 'Sign In', desc: 'Email login via Privy. Your Move wallet is created automatically.' },
+                { step: '01', icon: 'fingerprint', title: 'Sign In', desc: 'Biometric authentication. Your Move wallet is created securely.' },
                 { step: '02', icon: 'group_add', title: 'Create Group', desc: 'Set up a private group with an ID and encryption password.' },
                 { step: '03', icon: 'apps', title: 'Pick an App', desc: 'Choose from predictions, accountability tracking, and more.' },
                 { step: '04', icon: 'emoji_events', title: 'Play & Win', desc: 'Wager with friends. Winners get paid automatically.' },
@@ -636,16 +592,10 @@ export default function SplashPage() {
                 size="lg" 
                 className="bg-white text-secondary border-white hover:bg-white/90" 
                 onClick={handleGoToApp}
-                disabled={isAuthenticating || isRegistering}
               >
-                {authenticated 
-                  ? 'Go to App' 
-                  : isMobile
-                    ? (isRegistering ? 'Setting up...' : isAuthenticating ? 'Authenticating...' : 'Login with Biometric')
-                    : 'Sign In'
-                }
+                Go to App
                 <span className="material-symbols-outlined">
-                  {isMobile ? 'fingerprint' : 'arrow_forward'}
+                  arrow_forward
                 </span>
               </Button>
             </div>

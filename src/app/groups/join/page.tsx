@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -12,7 +12,7 @@ import { getGroupsCount } from '@/lib/contract';
 
 export default function JoinGroupPage() {
   const router = useRouter();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const { wallet, joinGroup } = useMoveWallet();
   
   const [groupId, setGroupId] = useState('');
@@ -22,10 +22,7 @@ export default function JoinGroupPage() {
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  // Allow page to be viewed without authentication - show login prompt if needed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -7,33 +7,18 @@ import { Logo } from '@/components/ui/Logo';
 const demos = [
   {
     id: 'predictions',
-    title: 'Prediction Market Speed Demo',
+    title: 'Private Prediction Market Speed Demo',
     description: 'Watch 7 users create wallets, join a group, place bets, and settle in real-time',
     icon: '⚡',
     href: '/demo-predictions',
     features: [
-      '7 users with 0.2 USDC each',
-      'Each bets 95% (0.19 USDC)',
+      '7 users with 0.1 USDC each',
+      'Each bets 95% (0.095 USDC)',
       'Real-time transaction feed',
       '0.3% platform fee collected',
       'Parallel voting execution',
     ],
     color: 'primary',
-  },
-  {
-    id: 'predictions-slow',
-    title: 'Prediction Market Manual Demo',
-    description: 'Step-by-step walkthrough with 2 users creating bets manually',
-    icon: '🎯',
-    href: '/demo',
-    features: [
-      '2 users step-by-step',
-      'Manual wallet creation',
-      'Profile customization',
-      'Group & bet setup',
-      'Interactive controls',
-    ],
-    color: 'secondary',
   },
   {
     id: 'expenses',

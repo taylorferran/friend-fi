@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { Logo } from '@/components/ui/Logo';
 import { MobileNav } from './MobileNav';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
@@ -29,7 +29,7 @@ const bottomNavItems: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = usePrivy();
+  const { logout } = useAuth();
   const { wallet: moveWallet } = useMoveWallet();
   const [userSettings, setUserSettings] = useState<{ username?: string; avatarUrl?: string } | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<number>(0);
@@ -104,7 +104,7 @@ export function Sidebar() {
     return pathname.startsWith(href);
   };
 
-  const displayName = userSettings?.username || user?.email?.address?.split('@')[0] || 'Anonymous';
+  const displayName = userSettings?.username || 'Anonymous';
   const fallbackAvatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=default&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
   const avatarUrl = userSettings?.avatarUrl || fallbackAvatarUrl;
 
@@ -120,7 +120,7 @@ export function Sidebar() {
             </div>
 
             {/* User Info */}
-            {user && (
+            {moveWallet && (
               <div className="border-b-2 border-text">
                 <Link href="/settings" className="flex gap-3 px-4 py-4 group hover:bg-primary/20 transition-colors">
                   <img 
@@ -180,7 +180,7 @@ export function Sidebar() {
               </Link>
             ))}
             
-            {user && (
+            {moveWallet && (
               <button
                 onClick={() => logout()}
                 className="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-secondary/20 transition-colors font-mono uppercase text-sm tracking-wider"

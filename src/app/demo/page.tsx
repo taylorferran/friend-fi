@@ -665,7 +665,7 @@ export default function DemoPage() {
             <div className="flex items-center gap-4">
               <Logo />
               <div>
-                <h1 className="text-3xl font-display font-bold text-text">Prediction Market Manual Demo</h1>
+                <h1 className="text-3xl font-display font-bold text-text">Private Prediction Market Manual Demo</h1>
                 <p className="text-accent font-mono text-sm">Step-by-step walkthrough with 2 users</p>
               </div>
             </div>

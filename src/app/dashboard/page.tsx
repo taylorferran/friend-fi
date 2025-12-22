@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
-import { useUnifiedMoveWallet, usePrivyMoveWallet } from '@/hooks/usePrivyMoveWallet';
-import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile, getProfileWithFallback } from '@/lib/contract';
+import { useBiometricWallet } from '@/hooks/useBiometricWallet';
+import { checkIfMemberInGroup, getGroupMembers, getGroupBets, getGroupsCount, getGroupName, getProfile } from '@/lib/contract';
 import { ProfileSetupModal } from '@/components/ui/ProfileSetupModal';
 import { useToast } from '@/components/ui/Toast';
 import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
@@ -22,11 +22,10 @@ interface GroupData {
 }
 
 export default function DashboardPage() {
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const router = useRouter();
   const { wallet, loading: walletLoading, setProfile } = useMoveWallet();
-  const { isPrivyWallet } = useUnifiedMoveWallet();
-  const privyWallet = usePrivyMoveWallet(); // Get Privy wallet info to access public key
+  const { isRegistered, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
   const { showToast } = useToast();
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
@@ -136,16 +135,12 @@ export default function DashboardPage() {
         // Check if we have a stored actual address from a previous transaction
         const storedActualAddress = sessionStorage.getItem('friendfi_actual_address');
         
-        // Use fallback function if we have Privy wallet with Ethereum address
-        // This will try derived address first, then padded address
+        // Use stored address if available, otherwise use wallet address
         let profile;
         if (storedActualAddress) {
           // Use the stored actual address (from when profile was created)
           console.log('[Dashboard] Using stored actual address from previous transaction:', storedActualAddress);
           profile = await getProfile(storedActualAddress);
-        } else if (privyWallet && privyWallet.address && isPrivyWallet) {
-          // Try with public key if available, otherwise will fallback to padded
-          profile = await getProfileWithFallback(privyWallet.address, privyWallet.publicKey || undefined);
         } else {
           // Regular profile lookup
           profile = await getProfile(wallet.address);
@@ -208,8 +203,7 @@ export default function DashboardPage() {
     try {
       const result = await setProfile(username, avatarId);
       
-      // If the result includes an address (from Privy transaction), store it
-      // This is the actual on-chain address used, which may differ from the padded address
+      // Store the address used for the transaction
       if ((result as any).address) {
         const actualAddress = (result as any).address;
         console.log('[Dashboard] Storing actual transaction address:', actualAddress);
@@ -249,7 +243,14 @@ export default function DashboardPage() {
     }
   };
 
-  // Auth redirect is handled by AuthWrapper - no need here
+  // Handle login
+  const handleLogin = async () => {
+    if (isRegistered) {
+      await authenticate();
+    } else {
+      await register();
+    }
+  };
 
   // Load user's groups - PARALLEL queries for speed
   useEffect(() => {
@@ -334,19 +335,7 @@ export default function DashboardPage() {
     router.push(`/groups/${group.id}`);
   };
 
-  // Show loading while auth is checking
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-        </div>
-      </div>
-    );
-  }
+  // Show login banner if not authenticated, but still show dashboard content
 
   // Determine if we're in a loading state
   const isLoading = walletLoading || groupsLoading;
@@ -364,6 +353,52 @@ export default function DashboardPage() {
 
         <main className="flex-1 mobile-content lg:p-0 lg:py-16">
         <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+          {/* Login Banner - shown when not authenticated */}
+          {!authenticated && (
+            <Card className="mb-6 border-2 border-primary">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/20 border-2 border-text flex items-center justify-center">
+                      <span className="material-symbols-outlined text-2xl text-text">fingerprint</span>
+                    </div>
+                    <div>
+                      <h3 className="text-text font-display font-bold text-lg">Sign In to Access Your Groups</h3>
+                      <p className="text-accent text-sm font-mono">
+                        {isRegistered 
+                          ? 'Use biometric authentication to access your wallet and groups.'
+                          : 'Create a secure biometric wallet to get started.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    onClick={handleLogin}
+                    disabled={isAuthenticating || isRegistering}
+                    className="w-full sm:w-auto"
+                  >
+                    {isAuthenticating || isRegistering ? (
+                      <>
+                        <div className="brutalist-spinner-instant">
+                          <div className="brutalist-spinner-box-instant" />
+                          <div className="brutalist-spinner-box-instant" />
+                          <div className="brutalist-spinner-box-instant" />
+                          <div className="brutalist-spinner-box-instant" />
+                        </div>
+                        {isRegistering ? 'Setting up...' : 'Authenticating...'}
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined">fingerprint</span>
+                        {isRegistered ? 'Sign In' : 'Create Wallet'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
@@ -390,8 +425,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Loading State */}
-          {isLoading ? (
+          {/* Loading State - only show if authenticated and loading */}
+          {authenticated && isLoading ? (
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="brutalist-spinner-instant mx-auto mb-4">
@@ -403,6 +438,18 @@ export default function DashboardPage() {
                 <p className="text-accent font-mono text-sm">Loading your groups from the blockchain...</p>
               </CardContent>
             </Card>
+          ) : !authenticated ? (
+            <Card>
+              <CardContent className="p-8 sm:p-12 text-center">
+                <div className="w-20 h-20 bg-primary/20 border-2 border-text flex items-center justify-center mx-auto mb-6">
+                  <span className="material-symbols-outlined text-4xl text-text">groups</span>
+                </div>
+                <h2 className="text-text text-2xl font-display font-bold mb-3">Sign In to View Groups</h2>
+                <p className="text-accent max-w-md mx-auto mb-8 font-mono">
+                  Create or join groups to start wagering with friends. Sign in above to get started.
+                </p>
+              </CardContent>
+            </Card>
           ) : groups.length === 0 ? (
             <Card>
               <CardContent className="p-8 sm:p-12 text-center">
@@ -411,7 +458,7 @@ export default function DashboardPage() {
                 </div>
                 <h2 className="text-text text-2xl font-display font-bold mb-3">No Groups Yet</h2>
                 <p className="text-accent max-w-md mx-auto mb-8 font-mono">
-                  Create a group for each trip, event, or shared activity. Each group has its own expense tracker and prediction market.
+                  Create a group for each trip, event, or shared activity. Each group has its own expense tracker and private prediction market.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <Link href="/groups/create">

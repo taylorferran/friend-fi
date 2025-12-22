@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
@@ -50,7 +50,7 @@ const getUSDCAmount = (tx: AccountTransaction): number | null => {
 };
 
 export default function TransactionsPage() {
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useAuth();
   const { wallet, loading: walletLoading } = useMoveWallet();
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,18 +117,6 @@ export default function TransactionsPage() {
   };
 
   // Show loading while auth is checking
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-background">

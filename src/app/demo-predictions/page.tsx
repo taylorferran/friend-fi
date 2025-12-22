@@ -212,19 +212,19 @@ export default function DemoPredictionsPage() {
       };
       setAdminUser(admin);
       
-      // Fund admin with 0.2 USDC
-      setCurrentAction('Funding admin with 0.2 USDC...');
+      // Fund admin with 0.1 USDC
+      setCurrentAction('Funding admin with 0.1 USDC...');
       const fundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         admin.address,
-        0.2
+        0.1
       );
       
       if (!fundResult.success) {
         throw new Error('Failed to fund admin account');
       }
       
-      recordTx(admin.name, 'Funded 0.2 USDC', fundResult.hash, 'success');
+      recordTx(admin.name, 'Funded 0.1 USDC', fundResult.hash, 'success');
       
       // Small delay to ensure account state is propagated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -304,13 +304,13 @@ export default function DemoPredictionsPage() {
         : 0;
       setBetId(newBetId);
       
-      // Admin places wager (95% of 0.2 USDC = 0.19 USDC = 190,000 micro-USDC)
+      // Admin places wager (95% of 0.1 USDC = 0.095 USDC = 95,000 micro-USDC)
       setCurrentAction('Admin placing wager on Yes...');
-      const adminWagerPayload = buildPlaceWagerPayload(newBetId, 0, 190000);
+      const adminWagerPayload = buildPlaceWagerPayload(newBetId, 0, 95000);
       await executeDemoTransaction(
         admin.walletData,
         adminWagerPayload,
-        'Wager 0.19 USDC on Yes',
+        'Wager 0.095 USDC on Yes',
         admin.name
       );
       
@@ -338,18 +338,18 @@ export default function DemoPredictionsPage() {
         
         setCurrentAction(`Creating ${name}...`);
         
-        // Fund user with 0.2 USDC
+        // Fund user with 0.1 USDC
         const fundResult = await transferUSDCFromFaucet(
           FAUCET_PRIVATE_KEY,
           user.address,
-          0.2
+          0.1
         );
         
         if (!fundResult.success) {
           throw new Error(`Failed to fund ${name}'s account`);
         }
         
-        recordTx(user.name, 'Funded 0.2 USDC', fundResult.hash, 'success');
+        recordTx(user.name, 'Funded 0.1 USDC', fundResult.hash, 'success');
         
         // Small delay to ensure account state is propagated
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -381,14 +381,14 @@ export default function DemoPredictionsPage() {
         
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.2 = 0.19 USDC = 190,000 micro-USDC
+        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.1 = 0.095 USDC = 95,000 micro-USDC
         const outcome = idx < 3 ? 0 : 1;
         const outcomeName = outcome === 0 ? 'Yes' : 'No';
-        const wagerPayload = buildPlaceWagerPayload(newBetId, outcome, 190000);
+        const wagerPayload = buildPlaceWagerPayload(newBetId, outcome, 95000);
         await executeDemoTransaction(
           user.walletData,
           wagerPayload,
-          `Wager 0.19 USDC on ${outcomeName}`,
+          `Wager 0.095 USDC on ${outcomeName}`,
           user.name
         );
       });
@@ -435,7 +435,7 @@ export default function DemoPredictionsPage() {
       const netPool = totalPool - feeCollected;
       
       // Calculate payouts (proportional to wager) - all winners wagered 190,000
-      const winnerWagers = [190000, 190000, 190000, 190000]; // admin + 3 users
+      const winnerWagers = [95000, 95000, 95000, 95000]; // admin + 3 users
       const totalWinnerWagers = winnerWagers.reduce((a, b) => a + b, 0);
       const payouts = winners.map((winner, idx) => ({
         user: winner.name,
@@ -485,7 +485,7 @@ export default function DemoPredictionsPage() {
             <div className="flex items-center gap-4">
               <Logo />
               <div>
-                <h1 className="text-3xl font-display font-bold text-text">Prediction Market Speed Demo</h1>
+                <h1 className="text-3xl font-display font-bold text-text">Private Prediction Market Speed Demo</h1>
                 <p className="text-accent font-mono text-sm">Watch the full flow in action</p>
               </div>
             </div>
@@ -568,7 +568,7 @@ export default function DemoPredictionsPage() {
                 <div>
                   <h2 className="text-3xl font-display font-bold text-text mb-2">Speed Demo</h2>
                   <p className="text-accent font-mono">
-                    Watch a complete prediction market cycle in seconds
+                    Watch a complete private prediction market cycle in seconds
                   </p>
                 </div>
                 
@@ -577,8 +577,8 @@ export default function DemoPredictionsPage() {
                   <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
                     <li>Admin creates wallet, profile, group, and bet</li>
                     <li>6 users created with random names</li>
-                    <li>All funded with 0.2 USDC from faucet</li>
-                    <li>Each user bets 95% (0.19 USDC) - 3 Yes, 3 No</li>
+                    <li>All funded with 0.1 USDC from faucet</li>
+                    <li>Each user bets 95% (0.095 USDC) - 3 Yes, 3 No</li>
                     <li>Admin settles bet</li>
                     <li>Winners paid out proportionally</li>
                     <li>0.3% platform fee collected</li>
@@ -602,7 +602,7 @@ export default function DemoPredictionsPage() {
                 <div className="text-center">
                   <div className="text-8xl mb-4">🎉</div>
                   <h2 className="text-3xl font-display font-bold text-text mb-2">Demo Complete!</h2>
-                  <p className="text-accent font-mono">Full prediction market cycle completed on-chain</p>
+                  <p className="text-accent font-mono">Full private prediction market cycle completed on-chain</p>
                 </div>
 
                 {/* Bet Summary */}

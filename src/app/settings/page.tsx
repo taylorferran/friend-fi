@@ -74,7 +74,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (ready && !authenticated) {
-      router.push('/login');
+      // Removed /login redirect - show login prompt instead
     }
   }, [ready, authenticated, router]);
 
@@ -200,18 +200,6 @@ export default function SettingsPage() {
     }
   };
 
-  if (!ready || !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-background">

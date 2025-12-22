@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePrivy } from '@privy-io/react-auth';
+import { useAuth } from '@/hooks/useAuth';
+import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -12,9 +13,18 @@ import { useMoveWallet } from '@/hooks/useMoveWallet';
 export default function CreateBetPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { authenticated, ready } = usePrivy();
+  const { authenticated } = useAuth();
+  const { isRegistered, register, authenticate, isRegistering, isAuthenticating } = useBiometricWallet();
   const { wallet, createBet } = useMoveWallet();
   const { showToast } = useToast();
+  
+  const handleLogin = async () => {
+    if (isRegistered) {
+      await authenticate();
+    } else {
+      await register();
+    }
+  };
   
   const [question, setQuestion] = useState('');
   const [betType, setBetType] = useState<'yesno' | 'multiple'>('yesno');
@@ -48,10 +58,7 @@ export default function CreateBetPage() {
     }
   }, [searchParams]);
 
-  if (ready && !authenticated) {
-    router.push('/login');
-    return null;
-  }
+  // Show login prompt if not authenticated, but still show the page
 
   const getOutcomes = (): string[] => {
     if (betType === 'yesno') {
@@ -127,6 +134,52 @@ export default function CreateBetPage() {
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="max-w-3xl mx-auto relative z-10">
+        {/* Login Banner - shown when not authenticated */}
+        {!authenticated && (
+          <Card className="mb-6 border-2 border-primary">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/20 border-2 border-text flex items-center justify-center">
+                    <span className="material-symbols-outlined text-2xl text-text">fingerprint</span>
+                  </div>
+                  <div>
+                    <h3 className="text-text font-display font-bold text-lg">Sign In to Create Bets</h3>
+                    <p className="text-accent text-sm font-mono">
+                      {isRegistered 
+                        ? 'Use biometric authentication to create bets.'
+                        : 'Create a secure biometric wallet to get started.'}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  size="lg" 
+                  onClick={handleLogin}
+                  disabled={isAuthenticating || isRegistering}
+                  className="w-full sm:w-auto"
+                >
+                  {isAuthenticating || isRegistering ? (
+                    <>
+                      <div className="brutalist-spinner-instant">
+                        <div className="brutalist-spinner-box-instant" />
+                        <div className="brutalist-spinner-box-instant" />
+                        <div className="brutalist-spinner-box-instant" />
+                        <div className="brutalist-spinner-box-instant" />
+                      </div>
+                      {isRegistering ? 'Setting up...' : 'Authenticating...'}
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">fingerprint</span>
+                      {isRegistered ? 'Sign In' : 'Create Wallet'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex flex-wrap justify-between gap-3 items-center mb-6 sm:mb-8">
           <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight">Create a New Bet</h1>
           <Link href="/dashboard">

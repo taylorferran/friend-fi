@@ -1,46 +1,59 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useState, useEffect, useCallback } from 'react';
 
 const BIOMETRIC_AUTH_KEY = 'friendfi_biometric_authenticated';
 
 /**
- * Combined auth hook that checks both Privy and biometric authentication
+ * Auth hook for biometric authentication only
  */
 export function useAuth() {
-  const { authenticated: privyAuthenticated, ready: privyReady, user, logout: privyLogout } = usePrivy();
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
 
-  useEffect(() => {
+  // Check auth status
+  const checkAuth = useCallback(() => {
     if (typeof window !== 'undefined') {
-      setBiometricAuthenticated(localStorage.getItem(BIOMETRIC_AUTH_KEY) === 'true');
+      const isAuth = localStorage.getItem(BIOMETRIC_AUTH_KEY) === 'true';
+      setBiometricAuthenticated(isAuth);
     }
   }, []);
 
-  // User is authenticated if either Privy OR biometric auth is active
-  const authenticated = privyAuthenticated || biometricAuthenticated;
-  
-  // Ready when Privy is ready OR when biometric is authenticated (biometric doesn't need Privy)
-  const ready = privyReady || biometricAuthenticated;
+  useEffect(() => {
+    checkAuth();
+    
+    // Listen for storage changes (when login happens in another component)
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom auth events
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('auth-changed', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-changed', handleAuthChange);
+    };
+  }, [checkAuth]);
 
-  // Logout function that handles both Privy and biometric
+  // Logout function for biometric auth
   const logout = () => {
-    if (privyAuthenticated) {
-      privyLogout();
-    }
-    if (biometricAuthenticated) {
-      localStorage.removeItem(BIOMETRIC_AUTH_KEY);
-      setBiometricAuthenticated(false);
-    }
+    localStorage.removeItem(BIOMETRIC_AUTH_KEY);
+    setBiometricAuthenticated(false);
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('auth-changed'));
   };
 
   return {
-    authenticated,
-    ready,
-    user, // Only available for Privy users
+    authenticated: biometricAuthenticated,
+    ready: true, // Always ready - no need to wait for Privy
     logout,
-    isPrivyAuth: privyAuthenticated,
+    isPrivyAuth: false, // Always false - Privy removed
     isBiometricAuth: biometricAuthenticated,
   };
 }

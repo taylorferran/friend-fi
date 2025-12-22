@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUnifiedMoveWallet } from '@/hooks/usePrivyMoveWallet';
 import { 
   getOrCreateMoveWallet, 
   getWalletBalance, 
@@ -12,36 +11,16 @@ import {
 import { buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, buildSetProfilePayload, getGroupsCount, getBetsCount } from '@/lib/contract';
 
 export function useMoveWallet() {
-  const { isPrivyAuth, isBiometricAuth } = useAuth();
-  const { wallet: privyWallet, signAndSubmitTransaction: privySign, isPrivyWallet } = useUnifiedMoveWallet();
+  const { isBiometricAuth } = useAuth();
   const [wallet, setWallet] = useState<MoveWallet | null>(null);
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize wallet - use Privy wallet if available, otherwise use localStorage wallet
-  // CRITICAL: Never create a fallback wallet if Privy is authenticated or loading
+  // Initialize wallet - use biometric wallet if available, otherwise create/load localStorage wallet
   useEffect(() => {
-    // Priority 1: Privy wallet (if available and authenticated)
-    if (isPrivyWallet && privyWallet) {
-      // Use Privy wallet - this is the primary method
-      // Clear any localStorage wallet reference to prevent confusion
-      setWallet(privyWallet);
-      setLoading(false);
-      return; // Exit early - don't check other sources
-    }
-    
-    // Priority 2: Wait for Privy if authenticated (don't load fallback)
-    if (isPrivyAuth && !privyWallet) {
-      // Privy is authenticated but wallet not ready yet - wait, don't create fallback
-      setLoading(true);
-      // Don't set wallet to null here - wait for Privy wallet to load
-      return; // Exit early - don't load fallback wallet
-    }
-    
-    // Priority 3: Biometric wallet (only if Privy is NOT authenticated)
-    if (isBiometricAuth && !isPrivyAuth) {
-      // Use biometric wallet from localStorage - only if Privy is not available
+    // Priority 1: Biometric wallet (if authenticated)
+    if (isBiometricAuth) {
       try {
         const stored = localStorage.getItem('friendfi_move_wallet');
         if (stored) {
@@ -55,25 +34,19 @@ export function useMoveWallet() {
         setError('Failed to load biometric wallet');
         setLoading(false);
       }
-      return; // Exit early
+      return;
     }
     
-    // Priority 4: Fallback wallet (only if neither Privy nor biometric)
-    // Only create if Privy is NOT being used
-    if (!isPrivyAuth && !isBiometricAuth) {
-      try {
-        const w = getOrCreateMoveWallet();
-        setWallet(w);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to initialize wallet');
-        setLoading(false);
-      }
-    } else {
-      // If we get here, we're waiting for a wallet to load
-      setLoading(true);
+    // Priority 2: Fallback wallet (if not using biometric)
+    try {
+      const w = getOrCreateMoveWallet();
+      setWallet(w);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to initialize wallet');
+      setLoading(false);
     }
-  }, [isPrivyWallet, privyWallet, isBiometricAuth, isPrivyAuth]);
+  }, [isBiometricAuth]);
 
   // Refresh balance
   const refreshBalance = useCallback(async () => {
@@ -93,7 +66,7 @@ export function useMoveWallet() {
     }
   }, [wallet, refreshBalance]);
 
-  // Use Privy signing if available, otherwise direct signing
+  // Use direct signing (biometric or localStorage wallet)
   const signAndSubmitTransaction = useCallback(async (
     payload: {
       function: `${string}::${string}::${string}`;
@@ -101,11 +74,8 @@ export function useMoveWallet() {
       functionArguments: (string | string[])[];
     }
   ): Promise<{ hash: string; success: boolean }> => {
-    if (isPrivyWallet && privySign) {
-      return privySign(payload);
-    }
     return signDirectly(payload);
-  }, [isPrivyWallet, privySign]);
+  }, []);
 
   // Create a group on-chain
   const createGroup = useCallback(async (name: string, password: string, description: string = '') => {
