@@ -98,7 +98,7 @@ export function useMoveWallet() {
     payload: {
       function: `${string}::${string}::${string}`;
       typeArguments: string[];
-      functionArguments: (string | string[])[];
+      functionArguments: (string | string[] | number[])[];
     }
   ): Promise<{ hash: string; success: boolean }> => {
     if (isPrivyWallet && privySign) {

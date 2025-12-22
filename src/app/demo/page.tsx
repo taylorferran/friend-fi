@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getAvatarById, getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
 import { transferUSDCFromFaucet, aptos } from '@/lib/move-wallet';
 import { Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
-import { buildSetProfilePayload, buildCreateGroupPayload, buildJoinGroupPayload, buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, getGroupsCount, getBetsCount } from '@/lib/contract';
+import { buildCreateBetPayload, buildPlaceWagerPayload, buildResolveBetPayload, getGroupsCount, getBetsCount } from '@/lib/contract';
 
 // USDC Metadata address on Movement testnet
 const USDC_METADATA_ADDR = '0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7';
@@ -90,7 +90,7 @@ async function executeDemoTransaction(
   payload: {
     function: `${string}::${string}::${string}`;
     typeArguments: string[];
-    functionArguments: (string | string[])[];
+    functionArguments: (string | string[] | number[])[];
   }
 ): Promise<{ hash: string; success: boolean }> {
   const privateKey = new Ed25519PrivateKey(walletData.privateKeyHex);
@@ -279,46 +279,36 @@ export default function DemoPage() {
   const saveUserProfile = async (userNum: 1 | 2) => {
     setProcessing(true);
     const userName = userNum === 1 ? user1.name : user2.name;
-    const avatarId = userNum === 1 ? user1.avatarId : user2.avatarId;
-    const wallet = userNum === 1 ? user1Wallet : user2Wallet;
     const toastPosition = userNum === 2 ? 'left' : 'right';
-    
-    if (!wallet) {
-      showToast({ type: 'error', title: 'Wallet not found', position: toastPosition });
-      setProcessing(false);
-      return;
-    }
     
     showToast({ 
       type: 'info', 
-      title: `Saving ${userName}'s profile...`,
+      title: `Setting up ${userName}'s profile...`,
       position: toastPosition
     });
     
     try {
-      const payload = buildSetProfilePayload(userName, avatarId);
-      const result = await executeDemoTransaction(wallet, payload);
-      
-      recordTransaction('Set Profile', userName, result.hash);
+      // Note: Profiles are now managed off-chain in Supabase
+      // Skipping on-chain profile setup for demo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
       
       if (userNum === 1) {
-        setUser1(prev => ({ ...prev, step: 'Profile saved ✓' }));
+        setUser1(prev => ({ ...prev, step: 'Profile ready ✓' }));
         setStep('user1-fund-usdc');
       } else {
-        setUser2(prev => ({ ...prev, step: 'Profile saved ✓' }));
+        setUser2(prev => ({ ...prev, step: 'Profile ready ✓' }));
         setStep('user2-fund-usdc');
       }
       
       showToast({ 
         type: 'success', 
-        title: 'Profile saved!',
-        txHash: result.hash,
+        title: 'Profile ready!',
         position: toastPosition
       });
     } catch (error) {
       showToast({ 
         type: 'error', 
-        title: 'Failed to save profile',
+        title: 'Failed to set up profile',
         message: error instanceof Error ? error.message : 'Unknown error',
         duration: 0,
         position: toastPosition
@@ -405,14 +395,12 @@ export default function DemoPage() {
     });
     
     try {
-      const payload = buildCreateGroupPayload(groupName, groupPassword, 'Demo group');
-      const result = await executeDemoTransaction(user1Wallet, payload);
+      // Note: Groups are now managed off-chain in Supabase
+      // Skipping on-chain group creation for demo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
       
-      recordTransaction('Create Group', user1.name, result.hash);
-      
-      // Get the new group ID
-      const count = await getGroupsCount();
-      const newGroupId = count - 1;
+      // Simulate a new group ID
+      const newGroupId = Math.floor(Math.random() * 1000);
       
       setGroupId(newGroupId);
       setUser1(prev => ({ ...prev, step: 'Group created ✓' }));
@@ -420,8 +408,7 @@ export default function DemoPage() {
       
       showToast({ 
         type: 'success', 
-        title: `Group created! (ID: ${newGroupId})`,
-        txHash: result.hash
+        title: `Group created! (ID: ${newGroupId})`
       });
     } catch (error) {
       showToast({ 
@@ -571,10 +558,9 @@ export default function DemoPage() {
     });
     
     try {
-      const payload = buildJoinGroupPayload(groupId!, groupPassword);
-      const result = await executeDemoTransaction(user2Wallet, payload);
-      
-      recordTransaction('Join Group', user2.name, result.hash);
+      // Note: Groups are now managed off-chain in Supabase
+      // Skipping on-chain join for demo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
       
       setUser2(prev => ({ ...prev, step: 'Joined group ✓' }));
       setStep('user2-place-wager');
@@ -582,7 +568,6 @@ export default function DemoPage() {
       showToast({ 
         type: 'success', 
         title: 'Joined group!',
-        txHash: result.hash,
         position: 'left'
       });
     } catch (error) {

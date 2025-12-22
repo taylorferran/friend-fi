@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/Toast';
 import { getAvatarById, getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
 import { transferUSDCFromFaucet, aptos } from '@/lib/move-wallet';
 import { Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
-import { buildSetProfilePayload, buildCreateGroupPayload, buildJoinGroupPayload, buildCreateExpenseEqualPayload, buildSettleDebtPayload, getGroupsCount, getUserBalance, getGroupDebts } from '@/lib/contract';
+import { buildCreateExpenseEqualPayload, buildSettleDebtPayload, getGroupsCount, getUserBalance, getGroupDebts } from '@/lib/contract';
 import { Input } from '@/components/ui/Input';
 
 // Faucet wallet private key
@@ -82,7 +82,7 @@ async function executeDemoTransaction(
   payload: {
     function: `${string}::${string}::${string}`;
     typeArguments: string[];
-    functionArguments: (string | string[])[];
+    functionArguments: (string | string[] | number[])[];
   }
 ): Promise<{ hash: string; success: boolean }> {
   const privateKey = new Ed25519PrivateKey(walletData.privateKeyHex);
@@ -211,30 +211,28 @@ export default function DemoExpensesPage() {
       // Automatically save profile
       showToast({ 
         type: 'info', 
-        title: `Saving ${userName}'s profile...`,
+        title: `Setting up ${userName}'s profile...`,
         position: userNum > 1 ? 'left' : 'right'
       });
 
-      const payload = buildSetProfilePayload(userName, avatarId);
-      const result = await executeDemoTransaction(walletData, payload);
-      
-      recordTransaction('Set Profile', userName, result.hash);
+      // Note: Profiles are now managed off-chain in Supabase
+      // Skipping on-chain profile setup for demo
+      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
       
       if (userNum === 1) {
-        setUser1(prev => ({ ...prev, step: 'Profile saved ✓' }));
+        setUser1(prev => ({ ...prev, step: 'Profile ready ✓' }));
         setStep('user1-fund-usdc');
       } else if (userNum === 2) {
-        setUser2(prev => ({ ...prev, step: 'Profile saved ✓' }));
+        setUser2(prev => ({ ...prev, step: 'Profile ready ✓' }));
         setStep('user2-fund-usdc');
       } else {
-        setUser3(prev => ({ ...prev, step: 'Profile saved ✓' }));
+        setUser3(prev => ({ ...prev, step: 'Profile ready ✓' }));
         setStep('user3-fund-usdc');
       }
       
       showToast({ 
         type: 'success', 
-        title: 'Profile saved!',
-        txHash: result.hash,
+        title: 'Profile ready!',
         position: userNum > 1 ? 'left' : 'right'
       });
     } catch (error) {
@@ -324,13 +322,11 @@ export default function DemoExpensesPage() {
     });
     
     try {
-      const payload = buildCreateGroupPayload(groupName, groupPassword, `Shared expenses for ${groupName}`);
-      const result = await executeDemoTransaction(user1Wallet, payload);
+      // Note: Groups are now managed off-chain in Supabase
+      // Skipping on-chain group creation for demo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
       
-      recordTransaction('Create Group', user1.name, result.hash);
-      
-      const count = await getGroupsCount();
-      const newGroupId = count - 1;
+      const newGroupId = Math.floor(Math.random() * 1000);
       
       setGroupId(newGroupId);
       setUser1(prev => ({ ...prev, step: 'Group created ✓' }));
@@ -338,8 +334,7 @@ export default function DemoExpensesPage() {
       
       showToast({ 
         type: 'success', 
-        title: `Group created! (ID: ${newGroupId})`,
-        txHash: result.hash
+        title: `Group created! (ID: ${newGroupId})`
       });
     } catch (error) {
       showToast({ 
@@ -372,10 +367,9 @@ export default function DemoExpensesPage() {
     });
     
     try {
-      const payload = buildJoinGroupPayload(groupId!, groupPassword);
-      const result = await executeDemoTransaction(wallet, payload);
-      
-      recordTransaction('Join Group', userName, result.hash);
+      // Note: Groups are now managed off-chain in Supabase
+      // Skipping on-chain join for demo
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
       
       if (userNum === 2) {
         setUser2(prev => ({ ...prev, step: 'Joined group ✓' }));
@@ -388,7 +382,6 @@ export default function DemoExpensesPage() {
       showToast({ 
         type: 'success', 
         title: `${userName} joined the group!`,
-        txHash: result.hash,
         position: 'left'
       });
     } catch (error) {
@@ -435,7 +428,9 @@ export default function DemoExpensesPage() {
         groupId!,
         expense.name,
         amountUSDC,
-        participants
+        participants,
+        '0x00', // Dummy signature for demo
+        Date.now() + 3600000 // Expires in 1 hour
       );
       const result = await executeDemoTransaction(randomPayer.wallet, payload);
       

@@ -76,7 +76,7 @@ export async function signAndSubmitTransaction(
   payload: {
     function: `${string}::${string}::${string}`;
     typeArguments: string[];
-    functionArguments: (string | string[])[];
+    functionArguments: (string | string[] | number[])[];
   }
 ): Promise<{ hash: string; success: boolean }> {
   const account = getMoveAccount();
@@ -120,7 +120,7 @@ export async function signAndSubmitGaslessTransaction(
   payload: {
     function: `${string}::${string}::${string}`;
     typeArguments: string[];
-    functionArguments: (string | string[])[];
+    functionArguments: (string | string[] | number[])[];
   }
 ): Promise<{ hash: string; success: boolean }> {
   const account = getMoveAccount();

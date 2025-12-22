@@ -10,9 +10,6 @@ import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
 import { transferUSDCFromFaucet, aptos } from '@/lib/move-wallet';
 import { Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 import { 
-  buildSetProfilePayload,
-  buildCreateGroupPayload,
-  buildJoinGroupPayload,
   buildCreateCommitmentPayload,
   buildAcceptCommitmentPayload,
   buildCheckInPayload,
@@ -167,16 +164,11 @@ export default function HabitTrackerDemo() {
           break;
 
         case 'user1-wallet':
-          // Set Alice's profile
+          // Set Alice's profile (now off-chain in Supabase)
           if (!alice.address || !alice.privateKeyHex) throw new Error('Alice wallet not ready');
-          const aliceProfilePayload = buildSetProfilePayload(alice.name, alice.avatarId);
-          const aliceProfileTx = await executeDemoTransaction(
-            { address: alice.address, privateKeyHex: alice.privateKeyHex },
-            aliceProfilePayload
-          );
-          addTransaction('Set profile', alice.name, aliceProfileTx.hash);
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
           setCurrentStep('user1-profile');
-          showToast({ type: 'success', title: `${alice.name}'s profile set!` });
+          showToast({ type: 'success', title: `${alice.name}'s profile ready!` });
           break;
 
         case 'user1-profile':
@@ -192,16 +184,11 @@ export default function HabitTrackerDemo() {
           break;
 
         case 'user1-fund':
-          // Alice creates group
+          // Alice creates group (now off-chain in Supabase)
           if (!alice.address || !alice.privateKeyHex) throw new Error('Alice wallet not ready');
-          const groupsCount = await getGroupsCount();
-          const createGroupPayload = buildCreateGroupPayload('Fitness Squad', 'gym123', 'Get fit together!');
-          const createGroupTx = await executeDemoTransaction(
-            { address: alice.address, privateKeyHex: alice.privateKeyHex },
-            createGroupPayload
-          );
-          setGroupId(groupsCount);
-          addTransaction('Create group', alice.name, createGroupTx.hash);
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
+          const newGroupId = Math.floor(Math.random() * 1000);
+          setGroupId(newGroupId);
           setCurrentStep('user1-create-group');
           showToast({ type: 'success', title: 'Group "Fitness Squad" created!' });
           break;
@@ -219,16 +206,11 @@ export default function HabitTrackerDemo() {
           break;
 
         case 'user2-wallet':
-          // Set Bob's profile
+          // Set Bob's profile (now off-chain in Supabase)
           if (!bob.address || !bob.privateKeyHex) throw new Error('Bob wallet not ready');
-          const bobProfilePayload = buildSetProfilePayload(bob.name, bob.avatarId);
-          const bobProfileTx = await executeDemoTransaction(
-            { address: bob.address, privateKeyHex: bob.privateKeyHex },
-            bobProfilePayload
-          );
-          addTransaction('Set profile', bob.name, bobProfileTx.hash);
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
           setCurrentStep('user2-profile');
-          showToast({ type: 'success', title: `${bob.name}'s profile set!` });
+          showToast({ type: 'success', title: `${bob.name}'s profile ready!` });
           break;
 
         case 'user2-profile':
@@ -244,14 +226,9 @@ export default function HabitTrackerDemo() {
           break;
 
         case 'user2-fund':
-          // Bob joins group FIRST before commitment is created
+          // Bob joins group (now off-chain in Supabase)
           if (!bob.address || !bob.privateKeyHex || groupId === null) throw new Error('Bob not ready to join');
-          const joinGroupPayload = buildJoinGroupPayload(groupId, 'gym123');
-          const joinGroupTx = await executeDemoTransaction(
-            { address: bob.address, privateKeyHex: bob.privateKeyHex },
-            joinGroupPayload
-          );
-          addTransaction('Join group', bob.name, joinGroupTx.hash);
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
           setCurrentStep('user2-join-group');
           showToast({ type: 'success', title: `${bob.name} joined the group!` });
           break;

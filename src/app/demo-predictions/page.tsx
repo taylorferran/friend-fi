@@ -230,11 +230,7 @@ export default function DemoPredictionsPage() {
       
       // Set profile in Supabase (off-chain, instant, no gas)
       setCurrentAction('Setting admin profile...');
-      await upsertProfile({
-        address: admin.address,
-        name: admin.name,
-        avatar_id: admin.avatarId,
-      });
+      await upsertProfile(admin.address, admin.name, admin.avatarId);
       recordTx(admin.name, 'Set Profile (Supabase)', 'supabase-profile', 'success');
       
       // Phase 2: Create Group (off-chain in Supabase)
@@ -365,11 +361,7 @@ export default function DemoPredictionsPage() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Set profile in Supabase
-        await upsertProfile({
-          address: user.address,
-          name: user.name,
-          avatar_id: user.avatarId,
-        });
+        await upsertProfile(user.address, user.name, user.avatarId);
         recordTx(user.name, 'Set Profile (Supabase)', 'supabase-profile', 'success');
       }
       setUsers(newUsers);

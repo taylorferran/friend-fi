@@ -318,7 +318,7 @@ export function useUnifiedMoveWallet() {
     payload: {
       function: `${string}::${string}::${string}`;
       typeArguments: string[];
-      functionArguments: (string | string[])[];
+      functionArguments: (string | string[] | number[])[];
     }
   ): Promise<{ hash: string; success: boolean; address?: string }> => {
     // Log transaction signing attempt
