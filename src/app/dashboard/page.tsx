@@ -333,7 +333,7 @@ export default function DashboardPage() {
           <Sidebar />
 
           <main className="flex-1 mobile-content lg:p-0 lg:py-16">
-            <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+            <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-8 lg:pb-8">
               {/* Login Banner */}
               <Card className="mb-6 border-4 border-primary bg-primary/10">
                 <CardContent className="p-6 text-center">
@@ -481,7 +481,7 @@ export default function DashboardPage() {
         <Sidebar />
 
         <main className="flex-1 mobile-content lg:p-0 lg:py-16">
-        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-0 lg:pb-0">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-8 lg:pb-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>

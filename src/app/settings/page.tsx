@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (ready && !authenticated) {
-      router.push('/login');
+      router.push('/dashboard');
     }
   }, [ready, authenticated, router]);
 
