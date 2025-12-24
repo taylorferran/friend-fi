@@ -111,7 +111,7 @@ export function ProfileSetupModal({ isOpen, onComplete, onSaving }: ProfileSetup
             {onSaving ? 'Saving...' : 'Complete Setup'}
           </Button>
           <p className="text-accent text-xs font-mono text-center mt-3">
-            Your profile will be saved to the blockchain
+            Your profile will be saved
           </p>
         </div>
       </div>

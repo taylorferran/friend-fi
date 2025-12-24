@@ -27,7 +27,7 @@ const groupApps = [
     name: 'Expense Tracker',
     icon: 'receipt_long',
     description: 'Split expenses equally and settle debts with USDC',
-    features: ['Shared expense ledger', 'Auto-split calculation', 'On-chain settlement'],
+    features: ['Shared expense ledger', 'Auto-split calculation', 'USDC settlement'],
     status: 'active',
   },
   {

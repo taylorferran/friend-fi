@@ -76,7 +76,7 @@ export default function CreateGroupPage() {
       showToast({
         type: 'success',
         title: 'Group created!',
-        message: `${groupName} - 100% off-chain, instant & free! 🎉`,
+        message: 'Group created successfully',
       });
 
       // Redirect after a moment
@@ -143,7 +143,7 @@ export default function CreateGroupPage() {
                   <div className="group relative">
                     <span className="material-symbols-outlined text-accent text-base cursor-help">help</span>
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-surface border-2 border-text p-3 text-center text-xs text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 font-mono">
-                      This password encrypts all group data on-chain. Members need it to view and participate in bets.
+                      This password encrypts all group data. Members need it to view and participate in bets.
                     </span>
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export default function CreateGroupPage() {
                 <div>
                   <p className="text-text text-sm font-mono font-bold uppercase tracking-wider">End-to-End Encryption</p>
                   <p className="text-accent text-xs mt-1 font-mono">
-                    All group data is encrypted with your password before being stored on-chain. Even we can&apos;t see your bets!
+                    All group data is encrypted with your password. Even we can&apos;t see your bets!
                   </p>
                 </div>
               </div>

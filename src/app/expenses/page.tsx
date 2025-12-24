@@ -31,7 +31,7 @@ export default function ExpensesPage() {
               COMING SOON
             </div>
             <h1 className="text-text text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Split Expenses</h1>
-            <p className="text-accent font-mono">On-chain shared expense ledger</p>
+            <p className="text-accent font-mono">Shared expense ledger</p>
           </div>
 
           <Card>
@@ -41,7 +41,7 @@ export default function ExpensesPage() {
               </div>
               <h3 className="text-text text-xl font-display font-bold mb-2">Coming Soon</h3>
               <p className="text-accent text-sm font-mono mb-6">
-                Split Expenses will feature an on-chain shared expense ledger, rolling balances, 
+                Split Expenses will feature a shared expense ledger, rolling balances, 
                 and USDC settlements with full transparency.
               </p>
             </CardContent>

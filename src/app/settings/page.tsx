@@ -41,7 +41,7 @@ export default function SettingsPage() {
     }
   };
 
-  // Load on-chain profile
+  // Load profile
   useEffect(() => {
     async function loadProfile() {
       if (!moveWallet?.address) return;
@@ -93,7 +93,7 @@ export default function SettingsPage() {
     setSaving(true);
     
     try {
-      // 🎉 NEW: Save to Supabase (off-chain, instant, no gas!)
+      // Save to Supabase
       await upsertProfile(
         moveWallet.address,
         username,
@@ -114,8 +114,8 @@ export default function SettingsPage() {
       setHasOnChainProfile(true);
       showToast({ 
         type: 'success', 
-        title: '✨ Profile saved to database!', 
-        message: 'Instant, gasless, permanent storage'
+        title: 'Profile saved!', 
+        message: 'Your profile has been updated'
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save profile';
@@ -242,12 +242,6 @@ export default function SettingsPage() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h2 className="text-text text-lg sm:text-xl font-display font-bold">Profile</h2>
-                {hasOnChainProfile && (
-                  <span className="px-2 py-1 bg-green-600/20 border border-green-600 text-green-600 text-xs font-mono font-bold uppercase flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">cloud_done</span>
-                    Off-Chain
-                  </span>
-                )}
               </div>
 
               {loadingProfile ? (
@@ -281,7 +275,6 @@ export default function SettingsPage() {
                       placeholder="Enter your display name"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      hint="💾 Saved to database - instant, gasless, permanent"
                     />
                   </div>
 
@@ -323,7 +316,7 @@ export default function SettingsPage() {
                     disabled={loadingProfile}
                   >
                     <span className="material-symbols-outlined">cloud_upload</span>
-                    Save Profile (Instant, No Gas)
+                    Save Profile
                   </Button>
                 </>
               )}
@@ -390,16 +383,6 @@ export default function SettingsPage() {
               <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">Account</h2>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border-2 border-text bg-background">
-                  <div>
-                    <p className="text-text font-mono font-bold">Email</p>
-                    <p className="text-accent text-sm font-mono">
-                    {moveWallet?.address ? `${moveWallet.address.slice(0, 10)}...${moveWallet.address.slice(-8)}` : 'Not connected'}
-                  </p>
-                  </div>
-                  <span className="material-symbols-outlined text-green-600">verified</span>
-                </div>
-
                 {/* Move Wallet Address - Copyable */}
                 <div className="p-4 border-2 border-primary bg-primary/10">
                   <div className="flex items-center justify-between mb-2">

@@ -29,7 +29,33 @@ export default function DashboardPage() {
   const { showToast } = useToast();
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
-  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  // Initialize showProfileSetup based on sessionStorage - check synchronously on mount
+  const [showProfileSetup, setShowProfileSetup] = useState(() => {
+    // Check sessionStorage immediately - if profile exists, never show modal
+    const savedSettings = sessionStorage.getItem('friendfi_user_settings');
+    const profileExists = sessionStorage.getItem('friendfi_profile_exists') === 'true';
+    
+    if (profileExists) {
+      console.log('[Dashboard] Initial state: Profile exists in sessionStorage, modal will not show');
+      return false;
+    }
+    
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.username && settings.username.trim()) {
+          console.log('[Dashboard] Initial state: Username found in sessionStorage, modal will not show');
+          sessionStorage.setItem('friendfi_profile_exists', 'true');
+          return false;
+        }
+      } catch (e) {
+        // Invalid JSON, will check later
+      }
+    }
+    
+    // Default to false - only show after confirming no profile exists
+    return false;
+  });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
 
@@ -48,7 +74,7 @@ export default function DashboardPage() {
     }
   };
   
-  // Check if user has a profile on-chain
+  // Check if user has a profile
   useEffect(() => {
     // CRITICAL: Check sessionStorage FIRST - if profile exists there, use it and NEVER show modal
     const savedSettings = sessionStorage.getItem('friendfi_user_settings');
@@ -60,10 +86,10 @@ export default function DashboardPage() {
           setShowProfileSetup(false);
           setProfileChecked(true);
           sessionStorage.setItem('friendfi_profile_exists', 'true');
-          return; // Don't check on-chain if we have it in sessionStorage
+          return; // Don't check if we have it in sessionStorage
         }
       } catch (e) {
-        // Invalid JSON, continue to on-chain check
+        // Invalid JSON, continue to profile check
       }
     }
     
@@ -156,28 +182,49 @@ export default function DashboardPage() {
           profile = await getProfileFromSupabase(wallet.address) || null;
         }
         console.log('[Dashboard] Profile check completed:', profile);
+        console.log('[Dashboard] Profile details:', {
+          exists: !!profile,
+          username: profile?.username,
+          usernameTrimmed: profile?.username?.trim(),
+          hasUsername: !!(profile && profile.username && profile.username.trim())
+        });
         
-        // CRITICAL: If profile exists with a name, immediately hide modal and NEVER show it again
-        if (profile && profile.name) {
-          console.log('[Dashboard] Profile found! Hiding modal permanently for this session.');
+        // CRITICAL: If profile exists with a username, immediately hide modal and NEVER show it again
+        const hasValidUsername = profile && profile.username && typeof profile.username === 'string' && profile.username.trim().length > 0;
+        if (hasValidUsername) {
+          console.log('[Dashboard] ✅ Profile found with username:', profile.username, '- Hiding modal permanently for this session.');
           setShowProfileSetup(false);
           setProfileChecked(true);
           // Store in sessionStorage to prevent any future checks from showing the modal
           sessionStorage.setItem('friendfi_profile_exists', 'true');
+          // Also update user settings in sessionStorage if not already set
+          const savedSettings = sessionStorage.getItem('friendfi_user_settings');
+          if (!savedSettings || !JSON.parse(savedSettings || '{}').username) {
+            sessionStorage.setItem('friendfi_user_settings', JSON.stringify({
+              username: profile.username,
+              avatarId: profile.avatar_id,
+              avatarUrl: getAvatarUrl(AVATAR_OPTIONS[profile.avatar_id]?.seed || '', AVATAR_OPTIONS[profile.avatar_id]?.style || 'adventurer')
+            }));
+          }
           // Don't check again - we have the profile
-          return;
+          checkingRef.current = false;
+          hasCheckedRef.current = true;
+          return; // CRITICAL: Exit early - profile exists!
         }
         
         // Only show modal if profile doesn't exist AND we haven't already confirmed it exists
         const profileExists = sessionStorage.getItem('friendfi_profile_exists') === 'true';
-        if (!profileExists) {
-          // No profile found, show setup modal
+        if (!profileExists && (!profile || !profile.username || !profile.username.trim())) {
+          // No profile found - only show modal if we've confirmed there's no profile
+          console.log('[Dashboard] ❌ No profile found - showing setup modal');
           setShowProfileSetup(true);
         } else {
-          // We know profile exists from previous check, don't show modal
+          // Profile exists or we've already confirmed it exists, don't show modal
+          console.log('[Dashboard] ✅ Profile exists or confirmed - not showing modal');
           setShowProfileSetup(false);
         }
         setProfileChecked(true);
+        checkingRef.current = false;
       } catch (error) {
         // On error, don't show profile setup - might be a temporary network issue
         console.error('[Dashboard] Error checking profile:', error);
@@ -231,6 +278,7 @@ export default function DashboardPage() {
         avatarUrl: getAvatarUrl(AVATAR_OPTIONS[avatarId].seed, AVATAR_OPTIONS[avatarId].style),
       };
       sessionStorage.setItem('friendfi_user_settings', JSON.stringify(settings));
+      sessionStorage.setItem('friendfi_profile_exists', 'true'); // Mark profile as existing
       
       // Dispatch event to trigger sidebar refresh
       window.dispatchEvent(new CustomEvent('profile-updated', { detail: settings }));
@@ -243,6 +291,7 @@ export default function DashboardPage() {
       });
       
       setShowProfileSetup(false);
+      setProfileChecked(true); // Mark as checked so we don't check again
     } catch (error) {
       showToast({
         type: 'error',
@@ -256,7 +305,7 @@ export default function DashboardPage() {
 
   // Auth redirect is handled by AuthWrapper - no need here
 
-  // Load user's groups - FROM SUPABASE ONLY (100% off-chain)
+  // Load user's groups
   useEffect(() => {
     if (!authenticated) {
       setGroups([]);
@@ -442,7 +491,7 @@ export default function DashboardPage() {
                   <CardContent className="p-6 text-center">
                     <span className="material-symbols-outlined text-5xl text-primary mb-3">receipt_long</span>
                     <h3 className="text-text text-lg font-display font-bold mb-2">Split Expenses</h3>
-                    <p className="text-accent text-sm font-mono">Track and settle shared costs on-chain</p>
+                    <p className="text-accent text-sm font-mono">Track and settle shared costs</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -471,11 +520,14 @@ export default function DashboardPage() {
 
   return (
     <>
-      <ProfileSetupModal 
-        isOpen={showProfileSetup}
-        onComplete={handleProfileSetup}
-        onSaving={savingProfile}
-      />
+      {/* Only show modal if we've checked and confirmed no profile exists */}
+      {profileChecked && showProfileSetup && (
+        <ProfileSetupModal 
+          isOpen={showProfileSetup}
+          onComplete={handleProfileSetup}
+          onSaving={savingProfile}
+        />
+      )}
       
       <div className="flex min-h-screen bg-background">
         <Sidebar />
@@ -518,7 +570,7 @@ export default function DashboardPage() {
                   <div className="brutalist-spinner-box-instant" />
                   <div className="brutalist-spinner-box-instant" />
                 </div>
-                <p className="text-accent font-mono text-sm">Loading your groups from the blockchain...</p>
+                <p className="text-accent font-mono text-sm">Loading your groups...</p>
               </CardContent>
             </Card>
           ) : groups.length === 0 ? (

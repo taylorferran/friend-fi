@@ -527,7 +527,7 @@ export default function GroupExpenseTrackerPage() {
                             <div>
                               <p className="text-text font-mono font-bold text-lg">{expensesCount} Expense{expensesCount !== 1 ? 's' : ''} Recorded</p>
                               <p className="text-accent text-sm font-mono">
-                                All expenses are tracked on-chain. Check the "Debts" tab to see who owes what.
+                                All expenses are tracked. Check the "Debts" tab to see who owes what.
                               </p>
                             </div>
                             <span className="material-symbols-outlined text-primary text-4xl">receipt_long</span>
