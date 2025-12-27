@@ -36,7 +36,7 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Start content animation immediately (PrivyProvider handles initial loading)
+  // Start content animation immediately
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
     return () => clearTimeout(timer);
@@ -517,7 +517,7 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { step: '01', icon: 'mail', title: 'Sign In', desc: 'Email login via Privy. Your Move wallet is created automatically.' },
+                { step: '01', icon: 'mail', title: 'Sign In', desc: 'Biometric authentication via WebAuthn. Your Move wallet is created automatically.' },
                 { step: '02', icon: 'group_add', title: 'Create Group', desc: 'Set up a private group with an ID and encryption password.' },
                 { step: '03', icon: 'apps', title: 'Pick an App', desc: 'Choose from predictions, accountability tracking, and more.' },
                 { step: '04', icon: 'emoji_events', title: 'Play & Win', desc: 'Wager with friends. Winners get paid automatically.' },

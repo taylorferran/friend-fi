@@ -56,7 +56,6 @@ export function useAuth() {
     ready,
     user: null, // No user object for biometric auth
     logout,
-    isPrivyAuth: false, // No Privy
     isBiometricAuth: biometricAuthenticated,
   };
 }

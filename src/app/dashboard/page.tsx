@@ -170,7 +170,7 @@ export default function DashboardPage() {
         // Check if we have a stored actual address from a previous transaction
         const storedActualAddress = sessionStorage.getItem('friendfi_actual_address');
         
-        // Use fallback function if we have Privy wallet with Ethereum address
+        // Use fallback function if address is Ethereum-style
         // This will try derived address first, then padded address
         let profile;
         if (storedActualAddress) {
@@ -191,7 +191,7 @@ export default function DashboardPage() {
         
         // CRITICAL: If profile exists with a username, immediately hide modal and NEVER show it again
         const hasValidUsername = profile && profile.username && typeof profile.username === 'string' && profile.username.trim().length > 0;
-        if (hasValidUsername) {
+        if (hasValidUsername && profile) {
           console.log('[Dashboard] ✅ Profile found with username:', profile.username, '- Hiding modal permanently for this session.');
           setShowProfileSetup(false);
           setProfileChecked(true);
@@ -260,7 +260,7 @@ export default function DashboardPage() {
     try {
       const result = await setProfile(username, avatarId);
       
-      // If the result includes an address (from Privy transaction), store it
+      // If the result includes an address, store it
       // This is the actual on-chain address used, which may differ from the padded address
       if ((result as any).address) {
         const actualAddress = (result as any).address;

@@ -1,0 +1,202 @@
+graph TB
+    %% ========================================
+    %% FRONTEND COMPONENTS
+    %% ========================================
+    subgraph Frontend["Frontend (Next.js)"]
+        LandingPage[Landing Page<br/>src/app/page.tsx]
+        Dashboard[Dashboard<br/>src/app/dashboard/page.tsx]
+        GroupCreate[Create Group Page<br/>src/app/groups/create/page.tsx]
+        GroupView[Group View Page<br/>src/app/groups/id/page.tsx]
+        BetCreate[Create Bet Page<br/>src/app/bets/create/page.tsx]
+        BetView[View Bet Page<br/>src/app/bets/id/page.tsx]
+        ProfileModal[Profile Setup Modal<br/>src/components/ui/ProfileSetupModal.tsx]
+        BiometricAuthWrapper[Biometric Auth Wrapper<br/>src/components/providers/BiometricAuthWrapper.tsx]
+    end
+
+    %% ========================================
+    %% FRONTEND HOOKS & LIBS
+    %% ========================================
+    subgraph FrontendLogic["Frontend Logic (Hooks & Libs)"]
+        UseMoveWallet[useMoveWallet Hook<br/>src/hooks/useMoveWallet.ts]
+        UseBiometricWallet[useBiometricWallet Hook<br/>src/hooks/useBiometricWallet.ts]
+        SignatureService[Signature Service<br/>src/lib/signature-service.ts]
+        ContractLib[Contract Lib<br/>src/lib/contract.ts]
+        SupabaseServices[Supabase Services<br/>src/lib/supabase-services.ts]
+        CryptoLib[Crypto Lib<br/>src/lib/crypto.ts]
+        BiometricWalletLib[Biometric Wallet Lib<br/>src/lib/biometric-wallet.ts]
+    end
+
+    %% ========================================
+    %% BACKEND API ROUTES
+    %% ========================================
+    subgraph Backend["Backend API (Next.js API Routes)"]
+        MembershipProofAPI[Membership Proof API<br/>src/app/api/groups/groupId/membership-proof/route.ts]
+        SponsorTxAPI[Sponsor Transaction API<br/>src/app/api/sponsor-transaction/route.ts]
+    end
+
+    %% ========================================
+    %% EXTERNAL SERVICES
+    %% ========================================
+    subgraph External["External Services"]
+        WebAuthn[WebAuthn API<br/>Browser biometric authentication]
+        Shinami[Shinami Gas Station<br/>Transaction sponsorship]
+        MovementRPC[Movement Network RPC<br/>Blockchain node]
+    end
+
+    %% ========================================
+    %% DATABASE
+    %% ========================================
+    subgraph Database["Database (Supabase)"]
+        ProfilesTable[(profiles table<br/>wallet_address, username, avatar_id)]
+        GroupsTable[(groups table<br/>id, name, password_hash, admin_address)]
+        GroupMembersTable[(group_members table<br/>group_id, wallet_address)]
+        BetsTable[(bets table<br/>on_chain_bet_id, group_id, description)]
+    end
+
+    %% ========================================
+    %% BLOCKCHAIN
+    %% ========================================
+    subgraph Blockchain["Blockchain (Movement Network)"]
+        SignatureAuthModule[signature_auth Module<br/>move_contracts/sources/signature_auth.move<br/>Verifies backend signatures]
+        PredictionModule[private_prediction_refactored Module<br/>move_contracts/sources/private_prediction_refactored.move<br/>create_bet, place_wager, resolve_bet]
+        GroupsModule[groups Module<br/>move_contracts/sources/groups.move<br/>Group management]
+        USDCContract[USDC Token Contract<br/>Fungible Asset Standard]
+    end
+
+    %% ========================================
+    %% USER FLOWS & CONNECTIONS
+    %% ========================================
+    
+    %% Login Flow with Biometric WebAuthn
+    LandingPage -->|User clicks login| BiometricWalletLib
+    BiometricWalletLib -->|Check if wallet exists| BiometricWalletLib
+    BiometricWalletLib -->|New User: registerBiometricWallet| WebAuthn
+    WebAuthn -->|Create biometric credential| BiometricWalletLib
+    BiometricWalletLib -->|Generate master seed| BiometricWalletLib
+    BiometricWalletLib -->|Derive Ed25519 private key| BiometricWalletLib
+    BiometricWalletLib -->|Encrypt seed with credential| BiometricWalletLib
+    BiometricWalletLib -->|Store in localStorage| BiometricWalletLib
+    
+    BiometricWalletLib -->|Existing User: authenticateBiometricWallet| WebAuthn
+    WebAuthn -->|Verify biometric| BiometricWalletLib
+    BiometricWalletLib -->|Decrypt seed from localStorage| BiometricWalletLib
+    BiometricWalletLib -->|Derive private key| BiometricWalletLib
+    BiometricWalletLib -->|Return wallet info| UseBiometricWallet
+    
+    UseBiometricWallet -->|Set authenticated flag| BiometricAuthWrapper
+    BiometricAuthWrapper -->|Check profile| SupabaseServices
+    SupabaseServices -->|Query| ProfilesTable
+    ProfilesTable -->|Profile exists?| BiometricAuthWrapper
+    BiometricAuthWrapper -->|No profile| ProfileModal
+    ProfileModal -->|Save profile| SupabaseServices
+    SupabaseServices -->|Insert/Update| ProfilesTable
+    
+    %% Dashboard Navigation
+    BiometricAuthWrapper -->|Authenticated| Dashboard
+    Dashboard -->|Load groups| SupabaseServices
+    SupabaseServices -->|Query user groups| GroupMembersTable
+    GroupMembersTable -->|Join with| GroupsTable
+    GroupsTable -->|Return groups| Dashboard
+    
+    %% Create Group Flow
+    Dashboard -->|Click create group| GroupCreate
+    GroupCreate -->|Hash password| CryptoLib
+    CryptoLib -->|bcrypt hash| GroupCreate
+    GroupCreate -->|Save group| SupabaseServices
+    SupabaseServices -->|Insert group| GroupsTable
+    SupabaseServices -->|Add admin member| GroupMembersTable
+    GroupsTable -->|Group created| GroupView
+    
+    %% Create Bet Flow
+    GroupView -->|Click create bet| BetCreate
+    BetCreate -->|Request signature| SignatureService
+    SignatureService -->|POST /api/membership-proof| MembershipProofAPI
+    MembershipProofAPI -->|Verify membership| GroupMembersTable
+    GroupMembersTable -->|Is member?| MembershipProofAPI
+    MembershipProofAPI -->|Sign with backend key| MembershipProofAPI
+    MembershipProofAPI -->|Return signature + expiry| SignatureService
+    SignatureService -->|Cache signature| BetCreate
+    
+    BetCreate -->|Build transaction| UseMoveWallet
+    UseMoveWallet -->|Get wallet from biometric| UseBiometricWallet
+    UseBiometricWallet -->|Get private key| BiometricWalletLib
+    BiometricWalletLib -->|Return wallet| UseMoveWallet
+    UseMoveWallet -->|Sign transaction with private key| UseMoveWallet
+    UseMoveWallet -->|Sponsor transaction| SponsorTxAPI
+    SponsorTxAPI -->|Submit to Shinami| Shinami
+    Shinami -->|Sponsor + submit| MovementRPC
+    
+    MovementRPC -->|Execute transaction| SignatureAuthModule
+    SignatureAuthModule -->|Verify backend signature| PredictionModule
+    PredictionModule -->|Create bet struct| PredictionModule
+    PredictionModule -->|Emit BetCreatedEvent| MovementRPC
+    MovementRPC -->|Transaction success| UseMoveWallet
+    UseMoveWallet -->|Save metadata| SupabaseServices
+    SupabaseServices -->|Insert bet| BetsTable
+    BetsTable -->|Bet created| BetView
+    
+    %% View Bet Flow
+    BetView -->|Load bet data| ContractLib
+    ContractLib -->|Query chain| MovementRPC
+    MovementRPC -->|Return bet struct| ContractLib
+    ContractLib -->|Parse data| BetView
+    BetView -->|Load metadata| SupabaseServices
+    SupabaseServices -->|Query| BetsTable
+    BetsTable -->|Return description| BetView
+    
+    %% Place Wager Flow
+    BetView -->|User places wager| SignatureService
+    SignatureService -->|Request signature| MembershipProofAPI
+    MembershipProofAPI -->|Verify + sign| SignatureService
+    
+    BetView -->|Build wager transaction| UseMoveWallet
+    UseMoveWallet -->|Get wallet| UseBiometricWallet
+    UseBiometricWallet -->|Get private key| BiometricWalletLib
+    UseMoveWallet -->|Sign with private key| UseMoveWallet
+    UseMoveWallet -->|Sponsor| SponsorTxAPI
+    SponsorTxAPI -->|Shinami| Shinami
+    Shinami -->|Submit| MovementRPC
+    
+    MovementRPC -->|Verify signature| SignatureAuthModule
+    SignatureAuthModule -->|Verify| PredictionModule
+    PredictionModule -->|Transfer USDC| USDCContract
+    USDCContract -->|Transfer to escrow| PredictionModule
+    PredictionModule -->|Update pools| PredictionModule
+    PredictionModule -->|Record wager| PredictionModule
+    PredictionModule -->|Emit WagerPlacedEvent| MovementRPC
+    MovementRPC -->|Success| BetView
+    
+    %% Settle Bet Flow
+    BetView -->|Admin resolves bet| UseMoveWallet
+    UseMoveWallet -->|Get wallet| UseBiometricWallet
+    UseBiometricWallet -->|Get private key| BiometricWalletLib
+    UseMoveWallet -->|Sign with private key| UseMoveWallet
+    UseMoveWallet -->|Sponsor| SponsorTxAPI
+    SponsorTxAPI -->|Shinami| Shinami
+    Shinami -->|Submit| MovementRPC
+    
+    MovementRPC -->|Execute resolve_bet| PredictionModule
+    PredictionModule -->|Verify admin| PredictionModule
+    PredictionModule -->|Calculate payouts| PredictionModule
+    PredictionModule -->|Transfer USDC from escrow| USDCContract
+    USDCContract -->|Pay winners| PredictionModule
+    PredictionModule -->|Emit BetResolvedEvent| MovementRPC
+    PredictionModule -->|Emit PayoutPaidEvents| MovementRPC
+    MovementRPC -->|Success| BetView
+    
+    %% ========================================
+    %% STYLING
+    %% ========================================
+    classDef frontend fill:#e1f5ff,stroke:#1e88e5,stroke-width:3px,color:#000
+    classDef backend fill:#fff4e1,stroke:#f57c00,stroke-width:3px,color:#000
+    classDef blockchain fill:#e1ffe1,stroke:#43a047,stroke-width:3px,color:#000
+    classDef database fill:#ffe1f5,stroke:#e91e63,stroke-width:3px,color:#000
+    classDef external fill:#f3e5f5,stroke:#8e24aa,stroke-width:3px,color:#000
+    classDef logic fill:#e8f5e9,stroke:#66bb6a,stroke-width:2px,color:#000
+    
+    class LandingPage,Dashboard,GroupCreate,GroupView,BetCreate,BetView,ProfileModal,BiometricAuthWrapper frontend
+    class UseMoveWallet,UseBiometricWallet,SignatureService,ContractLib,SupabaseServices,CryptoLib,BiometricWalletLib logic
+    class MembershipProofAPI,SponsorTxAPI backend
+    class ProfilesTable,GroupsTable,GroupMembersTable,BetsTable database
+    class WebAuthn,Shinami,MovementRPC external
+    class SignatureAuthModule,PredictionModule,GroupsModule,USDCContract blockchain

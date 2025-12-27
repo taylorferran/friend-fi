@@ -120,7 +120,7 @@ async function decryptSeedWithBiometric(encryptedHex: string, credentialId: stri
  */
 export async function registerBiometricWallet(): Promise<{
   credentialId: string;
-  privateKey: string; // Move private key (Ed25519) - works with Privy for Movement network
+  privateKey: string; // Move private key (Ed25519)
   address: string;
 }> {
   // Step 1: Generate master seed
@@ -188,7 +188,7 @@ export async function registerBiometricWallet(): Promise<{
  * Authenticate with biometric and derive private key
  */
 export async function authenticateBiometricWallet(): Promise<{
-  privateKey: string; // Move private key (Ed25519) - works with Privy for Movement network
+  privateKey: string; // Move private key (Ed25519)
   address: string;
 }> {
   // Step 1: Get stored credential ID

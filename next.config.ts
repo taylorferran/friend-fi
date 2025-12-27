@@ -2,11 +2,6 @@ import type { NextConfig } from "next";
 import withPWA from 'next-pwa';
 
 const nextConfig: NextConfig = {
-  // Transpile Privy packages
-  transpilePackages: [
-    '@privy-io/react-auth',
-  ],
-  
   // Empty turbopack config to use defaults
   turbopack: {},
   
