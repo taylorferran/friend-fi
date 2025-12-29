@@ -12,8 +12,8 @@ const demos = [
     icon: '⚡',
     href: '/demo-predictions',
     features: [
-      '7 users with 0.2 USDC each',
-      'Each bets 95% (0.19 USDC)',
+      '7 users with 0.05 USDC each',
+      'Each bets 95% (0.0475 USDC)',
       'Real-time transaction feed',
       '0.3% platform fee collected',
       'Parallel voting execution',
@@ -21,24 +21,9 @@ const demos = [
     color: 'primary',
   },
   {
-    id: 'predictions-slow',
-    title: 'Prediction Market Manual Demo',
-    description: 'Step-by-step walkthrough with 2 users creating bets manually',
-    icon: '🎯',
-    href: '/demo',
-    features: [
-      '2 users step-by-step',
-      'Manual wallet creation',
-      'Profile customization',
-      'Group & bet setup',
-      'Interactive controls',
-    ],
-    color: 'secondary',
-  },
-  {
     id: 'expenses',
-    title: 'Expense Splitting Demo',
-    description: 'See 3 friends split expenses from a holiday with automatic debt calculation',
+    title: 'Expense Splitting Speed Demo',
+    description: 'Watch 3 friends split expenses from a holiday with automatic debt calculation',
     icon: '💰',
     href: '/demo-expenses',
     features: [
@@ -52,12 +37,12 @@ const demos = [
   },
   {
     id: 'habits',
-    title: 'Habit Tracker Demo',
+    title: 'Habit Tracker Speed Demo',
     description: 'Watch 2 users create a gym commitment, compete, and see who wins the stakes',
     icon: '💪',
     href: '/demo-habits',
     features: [
-      '2 users with 0.1 USDC each',
+      '2 users with 0.05 USDC each',
       'Gym 3x/week challenge',
       'Check-in tracking',
       'Winner takes pool',
@@ -150,10 +135,7 @@ export default function DemoSelectorPage() {
                     All demos use real on-chain transactions on Movement Testnet. Every action you see is actually happening on the blockchain.
                   </p>
                   <p>
-                    <strong className="text-text">Speed Demos</strong> run automatically and complete in ~60 seconds.
-                  </p>
-                  <p>
-                    <strong className="text-text">Manual Demos</strong> let you control each step and customize user profiles.
+                    <strong className="text-text">Speed Demos</strong> run automatically and complete in ~60 seconds with full transaction history.
                   </p>
                   <p className="text-primary font-bold">
                     ⚡ Gas fees are sponsored by Shinami - users don't need MOVE tokens!

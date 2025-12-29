@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-friend_fi = "0xb51f98645aa50776e7d40bf1713ba46e235f16c785cf8cefeeed310f5a2a01aa"
+friend_fi = "0x92fc2d6ee1330193f039a0f87b221743ec77ac08e640a1470d4f45c566783448"
 
 [dependencies.AptosFramework]
 git = "https://github.com/movementlabsxyz/aptos-core.git"

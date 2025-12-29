@@ -3,7 +3,7 @@ import { getGroupFromSupabase, getProfileFromSupabase, getBetFromSupabase } from
 import { executeWithFallback } from './transaction-helper';
 
 // Contract configuration - NEW MODULAR ARCHITECTURE (ALL 4 MODULES)
-export const CONTRACT_ADDRESS = "0xb51f98645aa50776e7d40bf1713ba46e235f16c785cf8cefeeed310f5a2a01aa";
+export const CONTRACT_ADDRESS = "0x92fc2d6ee1330193f039a0f87b221743ec77ac08e640a1470d4f45c566783448";
 
 // Module names
 export const GROUPS_MODULE = "groups";
@@ -819,18 +819,32 @@ export async function isWeekProcessed(groupId: number, commitmentLocalId: number
 
 export function buildCreateCommitmentPayload(
   groupId: number,
+  signature: string,
+  expiresAtMs: number,
   participantB: string,
   weeklyPayout: number,
   weeklyCheckInsRequired: number,
   durationWeeks: number,
   commitmentName: string
 ) {
+  // Pad address to Aptos format (64 hex chars) if needed
+  const normalizedAddress = participantB.startsWith('0x') 
+    ? `0x${participantB.slice(2).padStart(64, '0')}`
+    : `0x${participantB.padStart(64, '0')}`;
+  
+  // Convert hex signature to byte array
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.replace(/^0x/, ''), 'hex')
+  );
+  
   return {
     function: getFunctionId(HABIT_MODULE, "create_commitment"),
     typeArguments: [],
     functionArguments: [
       groupId.toString(),
-      participantB,
+      Array.from(signatureBytes),
+      expiresAtMs.toString(),
+      normalizedAddress,
       weeklyPayout.toString(),
       weeklyCheckInsRequired.toString(),
       durationWeeks.toString(),
@@ -839,11 +853,26 @@ export function buildCreateCommitmentPayload(
   };
 }
 
-export function buildAcceptCommitmentPayload(groupId: number, commitmentLocalId: number) {
+export function buildAcceptCommitmentPayload(
+  groupId: number,
+  signature: string,
+  expiresAtMs: number,
+  commitmentLocalId: number
+) {
+  // Convert hex signature to byte array
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.replace(/^0x/, ''), 'hex')
+  );
+  
   return {
     function: getFunctionId(HABIT_MODULE, "accept_commitment"),
     typeArguments: [],
-    functionArguments: [groupId.toString(), commitmentLocalId.toString()],
+    functionArguments: [
+      groupId.toString(),
+      Array.from(signatureBytes),
+      expiresAtMs.toString(),
+      commitmentLocalId.toString()
+    ],
   };
 }
 

@@ -130,8 +130,17 @@ export default function GroupHabitTrackerPage() {
 
     setProcessing(true);
     try {
+      // Step 1: Request membership signature
+      console.log('[CreateCommitment] Requesting membership signature...');
+      const { requestMembershipSignature } = await import('@/lib/signature-service');
+      const proof = await requestMembershipSignature(groupId, wallet.address);
+      console.log('[CreateCommitment] Signature received');
+      
+      // Step 2: Build payload with signature
       const payload = buildCreateCommitmentPayload(
         groupId,
+        proof.signature,
+        proof.expiresAt,
         selectedParticipant,
         Math.floor(payoutAmount * 1_000_000), // Convert to micro USDC
         parseInt(weeklyCheckIns),
@@ -177,7 +186,14 @@ export default function GroupHabitTrackerPage() {
 
     setProcessing(true);
     try {
-      const payload = buildAcceptCommitmentPayload(groupId, commitmentId);
+      // Step 1: Request membership signature
+      console.log('[AcceptCommitment] Requesting membership signature...');
+      const { requestMembershipSignature } = await import('@/lib/signature-service');
+      const proof = await requestMembershipSignature(groupId, wallet.address);
+      console.log('[AcceptCommitment] Signature received');
+      
+      // Step 2: Build payload with signature
+      const payload = buildAcceptCommitmentPayload(groupId, proof.signature, proof.expiresAt, commitmentId);
       const result = await signAndSubmitTransaction(payload);
 
       if (result.success) {

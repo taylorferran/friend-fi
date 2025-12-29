@@ -211,19 +211,19 @@ export default function DemoPredictionsPage() {
       };
       setAdminUser(admin);
       
-      // Fund admin with 0.2 USDC
-      setCurrentAction('Funding admin with 0.2 USDC...');
+      // Fund admin with 0.05 USDC
+      setCurrentAction('Funding admin with 0.05 USDC...');
       const fundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         admin.address,
-        0.2
+        0.05
       );
       
       if (!fundResult.success) {
         throw new Error('Failed to fund admin account');
       }
       
-      recordTx(admin.name, 'Funded 0.2 USDC', fundResult.hash, 'success');
+      recordTx(admin.name, 'Funded 0.05 USDC', fundResult.hash, 'success');
       
       // Small delay to ensure account state is propagated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -263,8 +263,14 @@ export default function DemoPredictionsPage() {
       const membershipResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: admin.address }),
+        body: JSON.stringify({ walletAddress: admin.address }),
       });
+      
+      if (!membershipResponse.ok) {
+        const error = await membershipResponse.json();
+        throw new Error(`Failed to get membership proof: ${error.error || 'Unknown error'}`);
+      }
+      
       const membershipProof = await membershipResponse.json();
       
       const betPayload = buildCreateBetPayload(
@@ -295,28 +301,34 @@ export default function DemoPredictionsPage() {
         : 0;
       setBetId(newBetId);
       
-      // Admin places wager (95% of 0.2 USDC = 0.19 USDC = 190,000 micro-USDC)
+      // Admin places wager (95% of 0.05 USDC = 0.0475 USDC = 47,500 micro-USDC)
       setCurrentAction('Admin placing wager on Yes...');
       
       // Request fresh signature for wager
       const wagerResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userAddress: admin.address }),
+        body: JSON.stringify({ walletAddress: admin.address }),
       });
+      
+      if (!wagerResponse.ok) {
+        const error = await wagerResponse.json();
+        throw new Error(`Failed to get wager proof: ${error.error || 'Unknown error'}`);
+      }
+      
       const wagerProof = await wagerResponse.json();
       
       const adminWagerPayload = buildPlaceWagerPayload(
         newBetId,
         0,
-        190000,
+        47500,
         wagerProof.signature,
         wagerProof.expiresAt
       );
       await executeDemoTransaction(
         admin.walletData,
         adminWagerPayload,
-        'Wager 0.19 USDC on Yes',
+        'Wager 0.0475 USDC on Yes',
         admin.name
       );
       
@@ -344,18 +356,18 @@ export default function DemoPredictionsPage() {
         
         setCurrentAction(`Creating ${name}...`);
         
-        // Fund user with 0.2 USDC
+        // Fund user with 0.05 USDC
         const fundResult = await transferUSDCFromFaucet(
           FAUCET_PRIVATE_KEY,
           user.address,
-          0.2
+          0.05
         );
         
         if (!fundResult.success) {
           throw new Error(`Failed to fund ${name}'s account`);
         }
         
-        recordTx(user.name, 'Funded 0.2 USDC', fundResult.hash, 'success');
+        recordTx(user.name, 'Funded 0.05 USDC', fundResult.hash, 'success');
         
         // Small delay to ensure account state is propagated
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -375,31 +387,50 @@ export default function DemoPredictionsPage() {
         await addGroupMember(newGroupId, user.address);
         recordTx(user.name, 'Join Group (Supabase)', 'supabase-join', 'success');
         
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait longer to ensure Supabase membership is fully propagated
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.2 = 0.19 USDC = 190,000 micro-USDC
+        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.05 = 0.0475 USDC = 47,500 micro-USDC
         const outcome = idx < 3 ? 0 : 1;
         const outcomeName = outcome === 0 ? 'Yes' : 'No';
         
-        // Request membership signature
-        const voteResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userAddress: user.address }),
-        });
-        const voteProof = await voteResponse.json();
+        // Request membership signature with retry logic
+        let voteProof;
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const voteResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ walletAddress: user.address }),
+            });
+            
+            if (!voteResponse.ok) {
+              const error = await voteResponse.json();
+              throw new Error(`Failed to get vote proof for ${user.name}: ${error.error || 'Unknown error'}`);
+            }
+            
+            voteProof = await voteResponse.json();
+            break; // Success, exit retry loop
+          } catch (error) {
+            retries--;
+            if (retries === 0) throw error;
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
         
         const wagerPayload = buildPlaceWagerPayload(
           newBetId,
           outcome,
-          190000,
+          47500,
           voteProof.signature,
           voteProof.expiresAt
         );
         await executeDemoTransaction(
           user.walletData,
           wagerPayload,
-          `Wager 0.19 USDC on ${outcomeName}`,
+          `Wager 0.0475 USDC on ${outcomeName}`,
           user.name
         );
       });
@@ -445,8 +476,8 @@ export default function DemoPredictionsPage() {
       const feeCollected = Math.floor(totalPool * feePercentage);
       const netPool = totalPool - feeCollected;
       
-      // Calculate payouts (proportional to wager) - all winners wagered 190,000
-      const winnerWagers = [190000, 190000, 190000, 190000]; // admin + 3 users
+      // Calculate payouts (proportional to wager) - all winners wagered 47,500
+      const winnerWagers = [47500, 47500, 47500, 47500]; // admin + 3 users
       const totalWinnerWagers = winnerWagers.reduce((a, b) => a + b, 0);
       const payouts = winners.map((winner, idx) => ({
         user: winner.name,
@@ -588,8 +619,8 @@ export default function DemoPredictionsPage() {
                   <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
                     <li>Admin creates wallet, profile, group, and bet</li>
                     <li>6 users created with random names</li>
-                    <li>All funded with 0.2 USDC from faucet</li>
-                    <li>Each user bets 95% (0.19 USDC) - 3 Yes, 3 No</li>
+                    <li>All funded with 0.05 USDC from faucet</li>
+                    <li>Each user bets 95% (0.0475 USDC) - 3 Yes, 3 No</li>
                     <li>Admin settles bet</li>
                     <li>Winners paid out proportionally</li>
                     <li>0.3% platform fee collected</li>
