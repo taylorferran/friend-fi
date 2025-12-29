@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
-import { getProfile } from '@/lib/contract';
 import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { useBiometricWallet } from '@/hooks/useBiometricWallet';
 import { useAuth } from '@/hooks/useAuth';
 import { AVATAR_OPTIONS, getAvatarUrl } from '@/lib/avatars';
-import { upsertProfile } from '@/lib/supabase-services';
+import { upsertProfile, getProfileFromSupabase } from '@/lib/supabase-services';
+import { transferUSDCFromFaucet } from '@/lib/move-wallet';
 import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
 export default function SettingsPage() {
@@ -31,6 +31,9 @@ export default function SettingsPage() {
   const [withdrawAddress, setWithdrawAddress] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
+  const [funding, setFunding] = useState(false);
+
+  const FAUCET_PRIVATE_KEY = process.env.NEXT_PUBLIC_FAUCET_PRIVATE_KEY || '';
 
   const copyAddress = async () => {
     if (moveWallet?.address) {
@@ -47,14 +50,15 @@ export default function SettingsPage() {
       if (!moveWallet?.address) return;
       
       try {
-        const profile = await getProfile(moveWallet.address);
-        if (profile.exists) {
-          setUsername(profile.name);
-          const avatar = AVATAR_OPTIONS.find(a => a.id === profile.avatarId);
+        // Load profile from Supabase (off-chain)
+        const profile = await getProfileFromSupabase(moveWallet.address);
+        if (profile) {
+          setUsername(profile.username || '');
+          const avatar = AVATAR_OPTIONS.find(a => a.id === profile.avatar_id);
           if (avatar) setSelectedAvatar(avatar);
           setHasOnChainProfile(true);
         } else {
-          // Fall back to session storage
+          // Fall back to session storage if no Supabase profile
           const savedSettings = sessionStorage.getItem('friendfi_user_settings');
           if (savedSettings) {
             const settings = JSON.parse(savedSettings);
@@ -122,6 +126,51 @@ export default function SettingsPage() {
       showToast({ type: 'error', title: 'Save failed', message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFundAccount = async () => {
+    if (!moveWallet?.address) {
+      showToast({ type: 'error', title: 'Wallet not found' });
+      return;
+    }
+
+    if (!FAUCET_PRIVATE_KEY) {
+      showToast({ type: 'error', title: 'Faucet not configured', message: 'Contact administrator' });
+      return;
+    }
+
+    setFunding(true);
+
+    try {
+      showToast({ type: 'info', title: 'Funding account with 1 USDC...' });
+      
+      const result = await transferUSDCFromFaucet(
+        FAUCET_PRIVATE_KEY,
+        moveWallet.address,
+        1.0 // 1 USDC
+      );
+
+      if (result.success) {
+        showToast({ 
+          type: 'success', 
+          title: 'Account funded!',
+          message: 'Received 1 USDC from faucet',
+          txHash: result.hash
+        });
+        refreshBalance();
+      } else {
+        throw new Error('Faucet transfer failed');
+      }
+    } catch (error) {
+      console.error('Funding failed:', error);
+      showToast({ 
+        type: 'error', 
+        title: 'Funding failed',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setFunding(false);
     }
   };
 
@@ -213,11 +262,7 @@ export default function SettingsPage() {
   if (!ready || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin">
         </div>
       </div>
     );
@@ -246,11 +291,7 @@ export default function SettingsPage() {
 
               {loadingProfile ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="brutalist-spinner-instant">
-                    <div className="brutalist-spinner-box-instant"></div>
-                    <div className="brutalist-spinner-box-instant"></div>
-                    <div className="brutalist-spinner-box-instant"></div>
-                    <div className="brutalist-spinner-box-instant"></div>
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin">
                   </div>
                 </div>
               ) : (
@@ -336,6 +377,32 @@ export default function SettingsPage() {
 
             {/* Right Column - Account */}
             <div className="space-y-6">
+          {/* Fund Account Section - Testnet Only */}
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-text text-lg sm:text-xl font-display font-bold">Fund Account</h2>
+                  <span className="text-[10px] font-mono font-bold uppercase bg-accent text-background px-2 py-0.5">
+                    TESTNET
+                  </span>
+                </div>
+              </div>
+              <p className="text-accent text-sm font-mono mb-4">
+                Get 1 USDC from the testnet faucet for testing
+              </p>
+              
+              <Button 
+                onClick={handleFundAccount}
+                loading={funding}
+                className="w-full"
+              >
+                <span className="material-symbols-outlined">water_drop</span>
+                Fund with 1 USDC
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Withdraw Section */}
           <Card>
             <CardContent className="p-4 sm:p-6">
@@ -474,11 +541,7 @@ export default function SettingsPage() {
                   >
                     {isRegistering ? (
                       <>
-                        <div className="brutalist-spinner-instant">
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
+                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin">
                         </div>
                         Setting up...
                       </>

@@ -35,6 +35,8 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Safe area insets for iOS notch and bottom bar */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Touch optimization for mobile */

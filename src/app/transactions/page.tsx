@@ -161,10 +161,10 @@ export default function TransactionsPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="brutalist-spinner-instant mx-auto mb-4">
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
+                  
+                  
+                  
+                  
                 </div>
                 <p className="text-accent font-mono text-sm">Loading transaction history...</p>
               </CardContent>
@@ -233,15 +233,15 @@ export default function TransactionsPage() {
                               <div className="space-y-1">
                                 {/* Transaction Version */}
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-accent text-xs font-mono">
+                                  <span className="text-accent text-xs font-mono break-all">
                                     Transaction {formatVersion(tx.version)}
                                   </span>
-                                  <span className="material-symbols-outlined text-accent text-sm">open_in_new</span>
+                                  <span className="material-symbols-outlined text-accent text-sm flex-shrink-0">open_in_new</span>
                                 </div>
                                 
                                 {/* Module (if available) */}
                                 {tx.functionModule && (
-                                  <p className="text-accent text-xs font-mono">
+                                  <p className="text-accent text-xs font-mono break-all">
                                     {tx.functionModule}
                                   </p>
                                 )}

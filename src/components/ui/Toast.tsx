@@ -60,7 +60,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
     <>
       {/* Left toasts */}
       {leftToasts.length > 0 && (
-        <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-3 max-w-md w-full">
+        <div className="fixed bottom-4 left-2 sm:left-4 z-[100] flex flex-col gap-3 max-w-[calc(100vw-1rem)] sm:max-w-md w-full pr-2 sm:pr-0">
           {leftToasts.map((toast) => (
             <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
           ))}
@@ -69,7 +69,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
       
       {/* Right toasts */}
       {rightToasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-3 max-w-md w-full">
+        <div className="fixed bottom-4 right-2 sm:right-4 z-[100] flex flex-col gap-3 max-w-[calc(100vw-1rem)] sm:max-w-md w-full pl-2 sm:pl-0">
           {rightToasts.map((toast) => (
             <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
           ))}

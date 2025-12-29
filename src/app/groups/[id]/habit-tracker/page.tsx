@@ -375,10 +375,10 @@ export default function GroupHabitTrackerPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="brutalist-spinner-instant mx-auto mb-4">
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
+                  
+                  
+                  
+                  
                 </div>
                 <p className="text-accent font-mono text-sm">Loading habit tracker...</p>
               </CardContent>
@@ -534,10 +534,10 @@ export default function GroupHabitTrackerPage() {
                 <Card>
                   <CardContent className="p-12 text-center">
                     <div className="brutalist-spinner-instant mx-auto mb-4">
-                      <div className="brutalist-spinner-box-instant" />
-                      <div className="brutalist-spinner-box-instant" />
-                      <div className="brutalist-spinner-box-instant" />
-                      <div className="brutalist-spinner-box-instant" />
+                      
+                      
+                      
+                      
                     </div>
                     <p className="text-accent font-mono text-sm">Loading commitments...</p>
                   </CardContent>

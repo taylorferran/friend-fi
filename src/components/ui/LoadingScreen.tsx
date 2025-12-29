@@ -43,12 +43,7 @@ export function LoadingScreen({ show, minimumDisplayTime = 300 }: LoadingScreenP
         </div>
         
         {/* Spinner */}
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-        </div>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     </div>
   );
@@ -57,24 +52,14 @@ export function LoadingScreen({ show, minimumDisplayTime = 300 }: LoadingScreenP
 // Minimal spinner for inline use
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-12 h-12',
-    lg: 'w-16 h-16',
-  };
-  
-  const boxSizes = {
-    sm: 'w-3 h-3',
-    md: 'w-5 h-5', 
-    lg: 'w-6 h-6',
+    sm: 'w-4 h-4 border-2',
+    md: 'w-12 h-12 border-4',
+    lg: 'w-16 h-16 border-4',
   };
 
   return (
-    <div className={`brutalist-spinner-instant ${sizeClasses[size]}`}>
-      <div className={`brutalist-spinner-box-instant ${boxSizes[size]}`} />
-      <div className={`brutalist-spinner-box-instant ${boxSizes[size]}`} />
-      <div className={`brutalist-spinner-box-instant ${boxSizes[size]}`} />
-      <div className={`brutalist-spinner-box-instant ${boxSizes[size]}`} />
-    </div>
+    <div className={`${sizeClasses[size]} border-primary border-t-transparent rounded-full animate-spin`} />
   );
 }
+
 

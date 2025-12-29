@@ -118,10 +118,6 @@ export default function LeaderboardPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="brutalist-spinner-instant mx-auto mb-4">
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
                 </div>
                 <p className="text-accent font-mono text-sm">Loading leaderboard...</p>
               </CardContent>

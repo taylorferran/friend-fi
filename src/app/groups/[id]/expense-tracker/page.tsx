@@ -334,11 +334,7 @@ export default function GroupExpenseTrackerPage() {
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
-          <div className="brutalist-spinner-box-instant"></div>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin">
         </div>
       </div>
     );
@@ -362,11 +358,7 @@ export default function GroupExpenseTrackerPage() {
           {loading ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <div className="brutalist-spinner-instant mx-auto">
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
-                  <div className="brutalist-spinner-box-instant"></div>
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto">
                 </div>
                 <p className="text-accent text-sm font-mono mt-4">Loading group...</p>
               </CardContent>
@@ -557,10 +549,6 @@ export default function GroupExpenseTrackerPage() {
                     {processing ? (
                       <div className="text-center py-8">
                         <div className="brutalist-spinner-instant mx-auto mb-4">
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
-                          <div className="brutalist-spinner-box-instant"></div>
                         </div>
                         <p className="text-accent font-mono text-sm">Loading debts...</p>
                       </div>

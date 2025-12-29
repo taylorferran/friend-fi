@@ -188,6 +188,29 @@ export async function signAndSubmitGaslessTransaction(
 // Movement Testnet USDC metadata address
 const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
 
+// Transfer USDC from current user to another address (uses gasless if enabled)
+export async function transferUSDC(
+  toAddress: string,
+  amountUSDC: number
+): Promise<{ hash: string; success: boolean }> {
+  // Convert USDC amount to micro-units (6 decimals)
+  const amountMicroUSDC = Math.floor(amountUSDC * 1_000_000);
+  
+  const payload = {
+    function: "0x1::primary_fungible_store::transfer" as const,
+    typeArguments: ["0x1::fungible_asset::Metadata"],
+    functionArguments: [
+      USDC_METADATA_ADDR,
+      toAddress.startsWith('0x') 
+        ? `0x${toAddress.slice(2).padStart(64, '0')}`
+        : `0x${toAddress.padStart(64, '0')}`,
+      amountMicroUSDC.toString()
+    ],
+  };
+
+  return signAndSubmitTransaction(payload);
+}
+
 // Transfer USDC from a faucet account to a target address (pays its own gas)
 export async function transferUSDCFromFaucet(
   faucetPrivateKeyHex: string,

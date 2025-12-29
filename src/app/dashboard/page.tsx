@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useBiometricWallet } from '@/hooks/useBiometricWallet';
@@ -12,7 +12,8 @@ import { useMoveWallet } from '@/hooks/useMoveWallet';
 import { getAllGroupsForUser, getProfileFromSupabase } from '@/lib/supabase-services';
 import { ProfileSetupModal } from '@/components/ui/ProfileSetupModal';
 import { useToast } from '@/components/ui/Toast';
-import { getAvatarUrl, AVATAR_OPTIONS } from '@/lib/avatars';
+import { getAvatarUrl, getAvatarById, AVATAR_OPTIONS } from '@/lib/avatars';
+import { getUSDCBalance } from '@/lib/indexer';
 
 interface GroupData {
   id: number;
@@ -58,12 +59,70 @@ export default function DashboardPage() {
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [userSettings, setUserSettings] = useState<{ username?: string; avatarUrl?: string } | null>(null);
+  const [usdcBalance, setUsdcBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(false);
 
   // Track the last checked address to avoid duplicate checks
   const lastCheckedAddressRef = useRef<string | null>(null);
   const checkingRef = useRef(false);
   const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasCheckedRef = useRef(false);
+
+  // Load USDC balance from indexer
+  const loadUSDCBalance = useCallback(async () => {
+    if (!wallet?.address) return;
+    
+    setLoadingBalance(true);
+    try {
+      const balance = await getUSDCBalance(wallet.address);
+      setUsdcBalance(balance);
+    } catch (error) {
+      console.error('Error loading USDC balance:', error);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, [wallet?.address]);
+
+  // Load user settings from session storage and Supabase
+  const loadSettings = useCallback(async () => {
+    if (!wallet?.address) return;
+    
+    // First, check session storage for immediate display
+    const saved = sessionStorage.getItem('friendfi_user_settings');
+    if (saved) {
+      setUserSettings(JSON.parse(saved));
+    }
+    
+    // Then load from Supabase (off-chain profiles)
+    try {
+      const profile = await getProfileFromSupabase(wallet.address);
+      if (profile) {
+        const avatar = getAvatarById(profile.avatar_id);
+        const url = avatar ? getAvatarUrl(avatar.seed, avatar.style) : `https://api.dicebear.com/7.x/adventurer/svg?seed=default&backgroundColor=F5C301,E60023,593D2C&backgroundType=gradientLinear`;
+        
+        const settings = {
+          username: profile.username,
+          avatarId: profile.avatar_id,
+          avatarUrl: url,
+        };
+        
+        // Update session storage
+        sessionStorage.setItem('friendfi_user_settings', JSON.stringify(settings));
+        setUserSettings(settings);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  }, [wallet?.address]);
+
+  // Load balance and settings when wallet changes
+  useEffect(() => {
+    if (wallet?.address && authenticated) {
+      loadUSDCBalance();
+      loadSettings();
+    }
+  }, [wallet?.address, authenticated, loadUSDCBalance, loadSettings]);
 
   // Handle biometric login
   const handleLogin = async () => {
@@ -361,11 +420,11 @@ export default function DashboardPage() {
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="brutalist-spinner-instant">
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
-          <div className="brutalist-spinner-box-instant" />
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin">
+          
+          
+          
+          
         </div>
       </div>
     );
@@ -534,6 +593,45 @@ export default function DashboardPage() {
 
         <main className="flex-1 mobile-content lg:p-0 lg:py-16">
         <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-8 lg:pb-8">
+          {/* Profile & Balance Card - Mobile Only */}
+          <Card className="mb-6 lg:hidden">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-4">
+                {/* Left: Profile */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {userSettings?.avatarUrl && (
+                    <img
+                      src={userSettings.avatarUrl}
+                      alt={userSettings.username || 'Profile'}
+                      className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-text flex-shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="text-text text-lg sm:text-xl font-display font-bold truncate">
+                      {userSettings?.username || 'Anonymous'}
+                    </h2>
+                    <p className="text-accent text-xs sm:text-sm font-mono truncate">
+                      {wallet?.address ? `${wallet.address.slice(0, 8)}...${wallet.address.slice(-6)}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Balance */}
+                <div className="text-right flex-shrink-0">
+                  <p className="text-accent text-xs sm:text-sm font-mono uppercase tracking-wider mb-1">
+                    Balance
+                  </p>
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="text-text text-xl sm:text-2xl font-display font-bold">
+                      ${(usdcBalance / 1_000_000).toFixed(2)}
+                    </span>
+                    <span className="text-accent text-sm sm:text-base font-mono">USDC</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
@@ -565,10 +663,10 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="brutalist-spinner-instant mx-auto mb-4">
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
-                  <div className="brutalist-spinner-box-instant" />
+                  
+                  
+                  
+                  
                 </div>
                 <p className="text-accent font-mono text-sm">Loading your groups...</p>
               </CardContent>
