@@ -83,7 +83,7 @@ export default function LandingPage() {
   const words = ['DeFi', 'with', 'friends.'];
 
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background mobile-content">
       {/* Grid pattern background */}
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
@@ -357,14 +357,24 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 
-                <div className="mt-auto">
+                <div className="mt-auto flex gap-2">
                   <Button 
-                    className="w-full" 
+                    className="flex-1" 
                     onClick={handleLaunchApp}
                   >
                     Launch App
                     <span className="material-symbols-outlined">
                       arrow_forward
+                    </span>
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    className="flex-1"
+                    onClick={() => window.open('/demo-predictions', '_blank', 'noopener,noreferrer')}
+                  >
+                    Demo
+                    <span className="material-symbols-outlined">
+                      play_arrow
                     </span>
                   </Button>
                 </div>
@@ -395,14 +405,24 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 
-                <div className="mt-auto">
+                <div className="mt-auto flex gap-2">
                   <Button 
-                    className="w-full" 
+                    className="flex-1" 
                     onClick={handleLaunchApp}
                   >
                     Launch App
                     <span className="material-symbols-outlined">
                       arrow_forward
+                    </span>
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    className="flex-1"
+                    onClick={() => window.open('/demo-expenses', '_blank', 'noopener,noreferrer')}
+                  >
+                    Demo
+                    <span className="material-symbols-outlined">
+                      play_arrow
                     </span>
                   </Button>
                 </div>
@@ -433,14 +453,24 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 
-                <div className="mt-auto">
+                <div className="mt-auto flex gap-2">
                   <Button 
-                    className="w-full" 
+                    className="flex-1" 
                     onClick={handleLaunchApp}
                   >
                     Launch App
                     <span className="material-symbols-outlined">
                       arrow_forward
+                    </span>
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    className="flex-1"
+                    onClick={() => window.open('/demo-habits', '_blank', 'noopener,noreferrer')}
+                  >
+                    Demo
+                    <span className="material-symbols-outlined">
+                      play_arrow
                     </span>
                   </Button>
                 </div>
@@ -545,7 +575,7 @@ export default function LandingPage() {
         </section>
 
         {/* CTA Section */}
-        <section ref={ctaRef} className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-secondary">
+        <section ref={ctaRef} className="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-black border-y-4 border-text">
           <div className="max-w-3xl mx-auto text-center">
             <div className="scroll-reveal-scale">
               <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
@@ -558,7 +588,7 @@ export default function LandingPage() {
                 
               <Button 
                 size="lg" 
-                className="bg-white text-secondary border-white hover:bg-white/90" 
+                className="bg-primary text-text border-primary hover:bg-primary/90" 
                 onClick={handleLaunchApp}
               >
                 Launch App

@@ -93,7 +93,7 @@ export default function CreateGroupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 pt-20 pb-24 lg:pt-4 lg:pb-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 pt-20 lg:pt-4 lg:pb-4 bg-background mobile-content">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-lg relative z-10">

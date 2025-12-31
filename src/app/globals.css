@@ -326,7 +326,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 /* Mobile content wrapper - adjusted for new nav height (no header) */
 .mobile-content {
   padding-top: 0 !important;
-  padding-bottom: 72px !important;
+  /* Add extra padding for bottom nav + safe area */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 12px)) !important;
   min-height: calc(100vh - 72px);
   padding-left: 1rem;
   padding-right: 1rem;

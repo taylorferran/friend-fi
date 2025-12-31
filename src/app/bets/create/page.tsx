@@ -157,7 +157,7 @@ export default function CreateBetPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-24 lg:pt-12 lg:pb-12 px-4 sm:px-6 lg:px-8 bg-background">
+    <div className="min-h-screen pt-20 lg:pt-12 lg:pb-12 px-4 sm:px-6 lg:px-8 bg-background mobile-content">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="max-w-3xl mx-auto relative z-10">

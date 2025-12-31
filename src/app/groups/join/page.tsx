@@ -99,7 +99,7 @@ export default function JoinGroupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 pt-20 pb-24 lg:pt-12 lg:pb-12 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 pt-20 lg:pt-12 lg:pb-12 bg-background mobile-content">
       <div className="fixed inset-0 -z-10 grid-pattern" />
 
       <div className="w-full max-w-md relative z-10">

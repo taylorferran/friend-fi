@@ -54,7 +54,7 @@ const demos = [
 
 export default function DemoSelectorPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background mobile-content">
       {/* Header */}
       <div className="border-b-4 border-text bg-surface">
         <div className="max-w-7xl mx-auto px-6 py-6">
