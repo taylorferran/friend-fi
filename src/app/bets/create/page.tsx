@@ -20,6 +20,8 @@ export default function CreateBetPage() {
   const [question, setQuestion] = useState('');
   const [betType, setBetType] = useState<'yesno' | 'multiple'>('yesno');
   const [options, setOptions] = useState<string[]>(['', '']);
+  const [initialOutcomeIndex, setInitialOutcomeIndex] = useState<number>(0);
+  const [initialWager, setInitialWager] = useState<string>('0.05'); // Default minimum
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [groupId, setGroupId] = useState<number | null>(null);
@@ -96,6 +98,13 @@ export default function CreateBetPage() {
       setLoading(false);
       return;
     }
+    
+    const wagerAmount = parseFloat(initialWager);
+    if (isNaN(wagerAmount) || wagerAmount < 0.05) {
+      showToast({ type: 'error', title: 'Invalid wager', message: 'Minimum wager is 0.05 USDC' });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Step 1: Request membership signature
@@ -109,20 +118,22 @@ export default function CreateBetPage() {
       const proof = await requestMembershipSignature(groupId, wallet.address);
       console.log('[CreateBet] Signature received, expires at:', new Date(proof.expiresAt).toLocaleTimeString());
       
-      // Step 2: Create bet with signature
-      console.log('[CreateBet] Creating bet with signature...');
+      // Step 2: Create bet with initial wager
+      console.log('[CreateBet] Creating bet with initial wager...');
       const result = await createBet(
         groupId,
         question,
         outcomes,
         proof.signature,
-        proof.expiresAt
+        proof.expiresAt,
+        initialOutcomeIndex,
+        wagerAmount
       );
       
       showToast({
         type: 'success',
         title: 'Bet created!',
-        message: question.substring(0, 50) + (question.length > 50 ? '...' : ''),
+        message: `${question.substring(0, 40)}... with ${wagerAmount} USDC wager`,
         txHash: result.hash,
       });
       
@@ -147,6 +158,12 @@ export default function CreateBetPage() {
           type: 'error', 
           title: 'Signature expired', 
           message: 'Please try again' 
+        });
+      } else if (message.includes('Minimum wager')) {
+        showToast({ 
+          type: 'error', 
+          title: 'Wager too low', 
+          message: 'Minimum wager is 0.05 USDC' 
         });
       } else {
         showToast({ type: 'error', title: 'Transaction failed', message });
@@ -301,11 +318,47 @@ export default function CreateBetPage() {
                 </div>
               )}
 
+              {/* Initial Wager (NEW - Required) */}
+              <div className="mb-6 p-4 border-2 border-primary bg-primary/10">
+                <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-2">Your Initial Wager (Required)</label>
+                <p className="text-accent text-xs font-mono mb-3">
+                  Show confidence in your bet! Minimum 0.05 USDC. Fee: 0.3% + 0.1% on resolution = ~0.4% total.
+                </p>
+                
+                <div className="flex gap-3 items-start">
+                  <div className="flex-1">
+                    <label className="text-accent text-xs font-mono block mb-1">Which outcome will you bet on?</label>
+                    <select
+                      value={initialOutcomeIndex}
+                      onChange={(e) => setInitialOutcomeIndex(parseInt(e.target.value))}
+                      className="w-full h-12 border-2 border-text bg-surface text-text px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {getOutcomes().map((outcome, idx) => (
+                        <option key={idx} value={idx}>{outcome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="w-32">
+                    <label className="text-accent text-xs font-mono block mb-1">Amount (USDC)</label>
+                    <input
+                      type="number"
+                      min="0.05"
+                      step="0.01"
+                      value={initialWager}
+                      onChange={(e) => setInitialWager(e.target.value)}
+                      placeholder="0.05"
+                      className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {step === 1 && (
                 <Button 
                   type="button" 
                   onClick={() => setStep(2)}
-                  disabled={!question || (betType === 'multiple' && getOutcomes().length < 2)}
+                  disabled={!question || (betType === 'multiple' && getOutcomes().length < 2) || parseFloat(initialWager) < 0.05}
                 >
                   Continue
                   <span className="material-symbols-outlined">arrow_forward</span>

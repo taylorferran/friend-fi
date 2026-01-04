@@ -143,28 +143,42 @@ export function useMoveWallet() {
     }
   }, [wallet]);
 
-  // Create a bet on-chain
+  // Create a bet on-chain WITH mandatory initial wager
   const createBet = useCallback(async (
     groupId: number,
     description: string,
     outcomes: string[],
     signature: string,
-    expiresAtMs: number
+    expiresAtMs: number,
+    initialOutcomeIndex: number,
+    initialWagerUSDC: number  // Amount in USDC (e.g., 0.05)
   ) => {
     if (!wallet) throw new Error('Wallet not initialized');
     
+    // Verify minimum wager (0.05 USDC)
+    if (initialWagerUSDC < 0.05) {
+      throw new Error('Minimum wager is 0.05 USDC');
+    }
+    
     setError(null);
     try {
-      // The creator is automatically the admin
-      const payload = buildCreateBetPayload(
+      // Convert USDC to micro-USDC (6 decimals)
+      const initialWagerMicro = Math.floor(initialWagerUSDC * 1_000_000);
+      
+      // Build payload using new function
+      const { buildCreateBetWithWagerPayload } = await import('@/lib/contract');
+      const payload = buildCreateBetWithWagerPayload(
         groupId,
         signature,
         expiresAtMs,
         description,
         outcomes,
-        wallet.address,
-        []
+        wallet.address,  // admin
+        [],  // encrypted_payload (empty)
+        initialOutcomeIndex,
+        initialWagerMicro
       );
+      
       const result = await signAndSubmitTransaction(payload);
       
       if (!result.success) {

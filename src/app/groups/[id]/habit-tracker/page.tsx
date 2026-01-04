@@ -17,10 +17,10 @@ import {
   getCommitmentData,
   buildCreateCommitmentPayload,
   buildAcceptCommitmentPayload,
-  buildCheckInPayload,
   buildProcessWeekPayload,
   type CommitmentData
 } from '@/lib/contract';
+import { createCheckInInSupabase, getCheckInsForCommitment, type CheckIn } from '@/lib/supabase-services';
 import { getAvatarById, getAvatarUrl } from '@/lib/avatars';
 import { useToast } from '@/components/ui/Toast';
 
@@ -43,6 +43,7 @@ export default function GroupHabitTrackerPage() {
   const [loading, setLoading] = useState(true);
   const [commitments, setCommitments] = useState<CommitmentData[]>([]);
   const [loadingCommitments, setLoadingCommitments] = useState(false);
+  const [checkIns, setCheckIns] = useState<Map<number, CheckIn[]>>(new Map());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [processing, setProcessing] = useState(false);
 
@@ -105,7 +106,18 @@ export default function GroupHabitTrackerPage() {
         }
 
         const results = await Promise.all(commitmentPromises);
-        setCommitments(results.filter((c): c is CommitmentData => c !== null));
+        const validCommitments = results.filter((c): c is CommitmentData => c !== null);
+        setCommitments(validCommitments);
+
+        // Load check-ins from Supabase for each commitment
+        const checkInsMap = new Map<number, CheckIn[]>();
+        for (const commitment of validCommitments) {
+          if (commitment.accepted) {
+            const commitmentCheckIns = await getCheckInsForCommitment(commitment.id, commitment.currentWeek);
+            checkInsMap.set(commitment.id, commitmentCheckIns);
+          }
+        }
+        setCheckIns(checkInsMap);
       } catch (error) {
         console.error('Error loading commitments:', error);
       } finally {
@@ -227,27 +239,33 @@ export default function GroupHabitTrackerPage() {
 
     setProcessing(true);
     try {
-      const payload = buildCheckInPayload(groupId, commitmentId);
-      const result = await signAndSubmitTransaction(payload);
-
-      if (result.success) {
-        showToast({
-          type: 'success',
-          title: 'Check-in recorded!',
-          txHash: result.hash,
-        });
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      } else {
-        showToast({ type: 'error', title: 'Failed to check in' });
+      // Create check-in in Supabase (off-chain)
+      const commitment = commitments.find(c => c.id === commitmentId);
+      if (!commitment) {
+        showToast({ type: 'error', title: 'Commitment not found' });
+        return;
       }
+
+      await createCheckInInSupabase(commitmentId, wallet.address, commitment.currentWeek);
+
+      showToast({
+        type: 'success',
+        title: 'Check-in recorded!',
+        message: 'Your progress has been saved off-chain.',
+      });
+
+      // Reload check-ins from Supabase
+      const updatedCheckIns = await getCheckInsForCommitment(commitmentId, commitment.currentWeek);
+      setCheckIns(prev => {
+        const newMap = new Map(prev);
+        newMap.set(commitmentId, updatedCheckIns);
+        return newMap;
+      });
     } catch (error) {
       console.error('Error checking in:', error);
       showToast({ 
         type: 'error', 
-        title: 'Transaction failed',
+        title: 'Check-in failed',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
     } finally {
@@ -563,8 +581,18 @@ export default function GroupHabitTrackerPage() {
                     const participantBAvatar = getMemberAvatar(commitment.participantB);
                     const isUserParticipant = isParticipant(commitment);
                     const userIsA = isParticipantA(commitment);
-                    const userCheckIns = userIsA ? commitment.participantACheckIns : commitment.participantBCheckIns;
-                    const otherCheckIns = userIsA ? commitment.participantBCheckIns : commitment.participantACheckIns;
+                    
+                    // Get check-ins from Supabase
+                    const commitmentCheckIns = checkIns.get(commitment.id) || [];
+                    const userCheckInsData = commitmentCheckIns.find(ci => 
+                      ci.wallet_address.toLowerCase() === wallet?.address?.toLowerCase()
+                    );
+                    const otherAddress = userIsA ? commitment.participantB : commitment.participantA;
+                    const otherCheckInsData = commitmentCheckIns.find(ci => 
+                      ci.wallet_address.toLowerCase() === otherAddress.toLowerCase()
+                    );
+                    const userCheckIns = userCheckInsData?.check_in_count || 0;
+                    const otherCheckIns = otherCheckInsData?.check_in_count || 0;
 
                     return (
                       <Card key={commitment.id}>
@@ -608,7 +636,11 @@ export default function GroupHabitTrackerPage() {
                               </div>
                               {commitment.accepted && (
                                 <p className="text-accent text-xs font-mono">
-                                  Check-ins: {commitment.participantACheckIns ?? 0} / {commitment.weeklyCheckInsRequired}
+                                  Check-ins: {
+                                    commitmentCheckIns.find(ci => 
+                                      ci.wallet_address.toLowerCase() === commitment.participantA.toLowerCase()
+                                    )?.check_in_count || 0
+                                  } / {commitment.weeklyCheckInsRequired}
                                 </p>
                               )}
                             </div>
@@ -628,7 +660,11 @@ export default function GroupHabitTrackerPage() {
                               </div>
                               {commitment.accepted && (
                                 <p className="text-accent text-xs font-mono">
-                                  Check-ins: {commitment.participantBCheckIns ?? 0} / {commitment.weeklyCheckInsRequired}
+                                  Check-ins: {
+                                    commitmentCheckIns.find(ci => 
+                                      ci.wallet_address.toLowerCase() === commitment.participantB.toLowerCase()
+                                    )?.check_in_count || 0
+                                  } / {commitment.weeklyCheckInsRequired}
                                 </p>
                               )}
                             </div>

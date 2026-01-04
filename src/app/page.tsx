@@ -494,9 +494,9 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
-                  icon: 'lock',
-                  title: 'End-to-End Encrypted',
-                  desc: 'Your data is encrypted with your group password before going on-chain. Not even we can see it.',
+                  icon: 'groups',
+                  title: 'Friend-Only Groups',
+                  desc: 'Private groups with passwords. Only interact with people you actually know and trust.',
                   delay: 0,
                 },
                 {
@@ -512,9 +512,9 @@ export default function LandingPage() {
                   delay: 200,
                 },
                 {
-                  icon: 'groups',
-                  title: 'Friend-Only Access',
-                  desc: 'Private groups with invite codes. Only interact with people you actually know and trust.',
+                  icon: 'verified',
+                  title: 'On-Chain Settlement',
+                  desc: 'All bets and payments are recorded on Movement blockchain. Transparent and trustless.',
                   delay: 300,
                 },
               ].map((feature, i) => (

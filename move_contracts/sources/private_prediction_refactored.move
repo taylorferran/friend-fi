@@ -391,8 +391,114 @@ module friend_fi::private_prediction_refactored {
     // BET FUNCTIONS
     // =========================================================================
 
-    /// Create a new bet within a group.
-    /// User must be a member of the group (checked via groups module).
+    /// Create a new bet within a group WITH mandatory initial wager.
+    /// This prevents spam and ensures gas costs are covered by fees.
+    /// 
+    /// Minimum wager: 50,000 micro-USDC (0.05 USDC)
+    /// Fee collected: 0.3% of initial wager
+    public entry fun create_bet_with_wager(
+        account: &signer,
+        group_id: u64,
+        signature: vector<u8>,
+        expires_at_ms: u64,
+        description: String,
+        outcomes: vector<String>,
+        admin: address,
+        encrypted_payload: vector<u8>,
+        initial_outcome_index: u64,
+        initial_wager_amount: u64,
+    ) acquires State, AppConfig {
+        let caller = signer::address_of(account);
+
+        // Verify minimum wager (0.05 USDC = 50,000 micro-USDC)
+        assert!(initial_wager_amount >= 50_000, E_INSUFFICIENT_AMOUNT);
+
+        // Verify membership using signature authentication
+        signature_auth::assert_membership(group_id, caller, expires_at_ms, signature);
+
+        let num_outcomes = vector::length(&outcomes);
+        assert!(num_outcomes > 1, E_NEED_AT_LEAST_TWO_OUTCOMES);
+        assert!(initial_outcome_index < num_outcomes, E_INVALID_OUTCOME_INDEX);
+
+        // Step 1: Deposit initial wager and collect fee
+        let net_initial_wager = internal_deposit_from_user(account, initial_wager_amount);
+
+        let state = borrow_state_mut();
+
+        // Step 2: Initialize outcome pools with initial wager
+        let outcome_pools = vector::empty<u64>();
+        let i = 0;
+        while (i < num_outcomes) {
+            if (i == initial_outcome_index) {
+                vector::push_back(&mut outcome_pools, net_initial_wager);
+            } else {
+                vector::push_back(&mut outcome_pools, 0);
+            };
+            i = i + 1;
+        };
+
+        let encrypted_len = vector::length(&encrypted_payload);
+
+        // Step 3: Create bet with initial wager included
+        let initial_wager = Wager {
+            amount: net_initial_wager,
+            outcome: initial_outcome_index,
+        };
+
+        let bet = Bet {
+            description,
+            outcomes,
+            admin,
+            resolved: false,
+            winning_outcome_index: 0,
+            total_pool: net_initial_wager,
+            group_id,
+            outcome_pools,
+            members_wagered: vector::singleton(caller),
+            wagers: vector::singleton(initial_wager),
+            encrypted_payload,
+        };
+
+        let bet_id = vector::length(&state.bets);
+        vector::push_back(&mut state.bets, bet);
+
+        // Step 4: Add bet to group's bet list
+        let group_bets = borrow_group_bets_mut(state, group_id);
+        vector::push_back(&mut group_bets.bet_ids, bet_id);
+        
+        // Track creator's wagered amount in group
+        let (found, idx) = find_member_in_group_bets(group_bets, caller);
+        if (found) {
+            let tw_ref = vector::borrow_mut(&mut group_bets.total_wagered, idx);
+            *tw_ref = *tw_ref + initial_wager_amount;
+        } else {
+            vector::push_back(&mut group_bets.members, caller);
+            vector::push_back(&mut group_bets.total_wagered, initial_wager_amount);
+        };
+
+        // Step 5: Emit events
+        event::emit(BetCreatedEvent {
+            bet_id,
+            group_id,
+            creator: caller,
+            admin,
+            encrypted_len,
+        });
+
+        event::emit(WagerPlacedEvent {
+            bet_id,
+            group_id: group_id,
+            user: caller,
+            outcome_index: initial_outcome_index,
+            amount_gross: initial_wager_amount,
+            amount_net: net_initial_wager,
+            fee: initial_wager_amount - net_initial_wager,
+        });
+    }
+
+    /// DEPRECATED: Use create_bet_with_wager() instead.
+    /// This function is kept for backwards compatibility but should not be used
+    /// as it creates bets without collecting any fees (gas sponsorship abuse vector).
     public entry fun create_bet(
         account: &signer,
         group_id: u64,
@@ -580,6 +686,14 @@ module friend_fi::private_prediction_refactored {
     // =========================================================================
 
     /// Resolve a bet by declaring the winning outcome.
+    /// 
+    /// NEW: Takes 0.1% resolution fee from total pool before payouts.
+    /// This covers gas costs and generates additional revenue.
+    /// 
+    /// Fee breakdown:
+    /// - 0.3% on each wager (already collected)
+    /// - 0.1% on resolution (new)
+    /// - Total effective rate: ~0.4%
     public entry fun resolve_bet(
         account: &signer,
         bet_id: u64,
@@ -587,7 +701,7 @@ module friend_fi::private_prediction_refactored {
     ) acquires State, AppConfig {
         let caller = signer::address_of(account);
 
-        let (group_id, total_pool_u128, winning_pool_u128, members_snapshot, wagers_snapshot) = {
+        let (group_id, total_pool_after_fee_u128, winning_pool_u128, members_snapshot, wagers_snapshot) = {
             let state = borrow_state_mut();
             let bet = borrow_bet_mut(state, bet_id);
 
@@ -598,7 +712,16 @@ module friend_fi::private_prediction_refactored {
             bet.resolved = true;
             bet.winning_outcome_index = winning_outcome_index;
 
-            let total_pool_u128 = (bet.total_pool as u128);
+            // Take 0.1% resolution fee from total pool (10 basis points)
+            let resolution_fee_bps: u64 = 10;  // 0.1%
+            let resolution_fee = (bet.total_pool * resolution_fee_bps) / BPS_DENOMINATOR;
+            let total_pool_after_fee = bet.total_pool - resolution_fee;
+
+            // Accumulate resolution fee
+            let app = borrow_app_config_mut();
+            app.fee_accumulator = app.fee_accumulator + resolution_fee;
+
+            let total_pool_after_fee_u128 = (total_pool_after_fee as u128);
             let winning_pool = *vector::borrow(&bet.outcome_pools, winning_outcome_index);
             let winning_pool_u128 = (winning_pool as u128);
 
@@ -621,12 +744,12 @@ module friend_fi::private_prediction_refactored {
                 winning_outcome_index,
             });
 
-            (bet.group_id, total_pool_u128, winning_pool_u128, members_snapshot, wagers_snapshot)
+            (bet.group_id, total_pool_after_fee_u128, winning_pool_u128, members_snapshot, wagers_snapshot)
         };
 
         if (winning_pool_u128 == 0) return;
 
-        // Pay winners
+        // Pay winners proportionally from pool after resolution fee
         let len = vector::length(&members_snapshot);
         let i = 0;
         while (i < len) {
@@ -634,7 +757,7 @@ module friend_fi::private_prediction_refactored {
             let w = vector::borrow(&wagers_snapshot, i);
 
             if (w.amount > 0 && w.outcome == winning_outcome_index) {
-                let payout_u128 = ((w.amount as u128) * total_pool_u128) / winning_pool_u128;
+                let payout_u128 = ((w.amount as u128) * total_pool_after_fee_u128) / winning_pool_u128;
                 internal_payout_to_user(bet_id, user, (payout_u128 as u64));
             };
 

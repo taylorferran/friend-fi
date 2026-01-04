@@ -472,25 +472,50 @@ export async function createCheckInInSupabase(
   notes?: string,
   photoUrl?: string
 ): Promise<CheckIn> {
-  // Upsert to handle multiple check-ins in same week
-  const { data, error } = await supabase
+  // First, check if a check-in already exists for this commitment/wallet/week
+  const { data: existing, error: fetchError } = await supabase
     .from('check_ins')
-    .upsert({
-      commitment_id: commitmentId,
-      wallet_address: walletAddress,
-      week,
-      check_in_count: 1, // Will be incremented if already exists
-      notes,
-      photo_url: photoUrl,
-    }, {
-      onConflict: 'commitment_id,wallet_address,week',
-      ignoreDuplicates: false,
-    })
-    .select()
-    .single();
+    .select('*')
+    .eq('commitment_id', commitmentId)
+    .eq('wallet_address', walletAddress)
+    .eq('week', week)
+    .maybeSingle();
   
-  if (error) throw error;
-  return data;
+  if (fetchError) throw fetchError;
+
+  if (existing) {
+    // Increment the check_in_count
+    const { data, error } = await supabase
+      .from('check_ins')
+      .update({
+        check_in_count: existing.check_in_count + 1,
+        notes: notes || existing.notes,
+        photo_url: photoUrl || existing.photo_url,
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } else {
+    // Create a new check-in record
+    const { data, error } = await supabase
+      .from('check_ins')
+      .insert({
+        commitment_id: commitmentId,
+        wallet_address: walletAddress,
+        week,
+        check_in_count: 1,
+        notes,
+        photo_url: photoUrl,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
 }
 
 export async function getCheckInsForCommitment(

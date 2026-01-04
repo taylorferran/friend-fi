@@ -181,9 +181,9 @@ export default function CreateGroupPage() {
               <div className="flex items-start gap-3 p-4 bg-primary/20 border-2 border-primary">
                 <span className="material-symbols-outlined text-text text-xl">lock</span>
                 <div>
-                  <p className="text-text text-sm font-mono font-bold uppercase tracking-wider">End-to-End Encryption</p>
+                  <p className="text-text text-sm font-mono font-bold uppercase tracking-wider">Password Protected</p>
                   <p className="text-accent text-xs mt-1 font-mono">
-                    All group data is encrypted with your password. Even we can&apos;t see your bets!
+                    Your group password controls who can join and participate. Share it only with trusted friends.
                   </p>
                 </div>
               </div>

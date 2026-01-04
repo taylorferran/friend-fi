@@ -487,6 +487,61 @@ export function buildCreateBetPayload(
   
   // Convert hex signature to byte array (Ed25519 signatures are 64 bytes)
   const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.startsWith('0x') ? signature.slice(2) : signature, 'hex')
+  );
+
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "create_bet"),
+    typeArguments: [],
+    functionArguments: [
+      groupId.toString(),           // 1. group_id
+      Array.from(signatureBytes),   // 2. signature (vector<u8>)
+      expiresAtMs.toString(),       // 3. expires_at_ms
+      description,                  // 4. description (String)
+      outcomes,                     // 5. outcomes (vector<String>)
+      normalizedAddress,            // 6. admin address
+      encryptedPayload,             // 7. encrypted_payload (vector<u8>)
+    ],
+  };
+}
+
+export function buildCreateBetWithWagerPayload(
+  groupId: number,
+  signature: string,
+  expiresAtMs: number,
+  description: string,
+  outcomes: string[],
+  adminAddress: string,
+  encryptedPayload: number[] = [],
+  initialOutcomeIndex: number,
+  initialWagerAmount: number  // in micro-USDC
+) {
+  // Pad address to Aptos format (64 hex chars) if needed
+  const normalizedAddress = adminAddress.startsWith('0x') 
+    ? `0x${adminAddress.slice(2).padStart(64, '0')}`
+    : `0x${adminAddress.padStart(64, '0')}`;
+  
+  // Convert hex signature to byte array (Ed25519 signatures are 64 bytes)
+  const signatureBytes = Uint8Array.from(
+    Buffer.from(signature.startsWith('0x') ? signature.slice(2) : signature, 'hex')
+  );
+
+  return {
+    function: getFunctionId(PREDICTION_MODULE, "create_bet_with_wager"),
+    typeArguments: [],
+    functionArguments: [
+      groupId.toString(),              // 1. group_id
+      Array.from(signatureBytes),      // 2. signature (vector<u8>)
+      expiresAtMs.toString(),          // 3. expires_at_ms
+      description,                     // 4. description (String)
+      outcomes,                        // 5. outcomes (vector<String>)
+      normalizedAddress,               // 6. admin address
+      encryptedPayload,                // 7. encrypted_payload (vector<u8>)
+      initialOutcomeIndex.toString(),  // 8. initial_outcome_index
+      initialWagerAmount.toString(),   // 9. initial_wager_amount (u64)
+    ],
+  };
+}
     Buffer.from(signature.replace(/^0x/, ''), 'hex')
   );
   
