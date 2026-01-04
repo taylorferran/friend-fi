@@ -542,23 +542,6 @@ export function buildCreateBetWithWagerPayload(
     ],
   };
 }
-    Buffer.from(signature.replace(/^0x/, ''), 'hex')
-  );
-  
-  return {
-    function: getFunctionId(PREDICTION_MODULE, "create_bet"),
-    typeArguments: [],
-    functionArguments: [
-      groupId.toString(),
-      Array.from(signatureBytes), // Must be byte array
-      expiresAtMs.toString(),
-      description,
-      outcomes,
-      normalizedAddress,
-      encryptedPayload.map(n => n.toString())
-    ],
-  };
-}
 
 export function buildPlaceWagerPayload(
   betId: number,
