@@ -143,19 +143,19 @@ export default function SettingsPage() {
     setFunding(true);
 
     try {
-      showToast({ type: 'info', title: 'Funding account with 1 USDC...' });
+      showToast({ type: 'info', title: 'Funding account with 100 test USDC...' });
       
       const result = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         moveWallet.address,
-        1.0 // 1 USDC
+        100.0 // 100 USDC
       );
 
       if (result.success) {
         showToast({ 
           type: 'success', 
           title: 'Account funded!',
-          message: 'Received 1 USDC from faucet',
+          message: 'Received 100 test USDC from faucet',
           txHash: result.hash
         });
         refreshBalance();
@@ -196,8 +196,8 @@ export default function SettingsPage() {
     try {
       showToast({ type: 'info', title: `Withdrawing $${amount}...` });
       
-      // Movement Testnet USDC metadata address
-      const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
+      // Movement Testnet Test USDC metadata address (custom deployed)
+      const USDC_METADATA_ADDR = "0x9cdf923fb59947421487b61b19f9cacb172d971a755d6bb34f69474148c11ada";
       
       const config = new AptosConfig({
         network: Network.CUSTOM,
@@ -389,16 +389,16 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-accent text-sm font-mono mb-4">
-                Get 1 USDC from the testnet faucet for testing
+                Get 100 test USDC from our faucet for testing (tUSDC)
               </p>
               
-              <Button 
+                <Button 
                 onClick={handleFundAccount}
                 loading={funding}
                 className="w-full"
               >
                 <span className="material-symbols-outlined">water_drop</span>
-                Fund with 1 USDC
+                Fund with 100 test USDC
               </Button>
             </CardContent>
           </Card>
@@ -406,9 +406,9 @@ export default function SettingsPage() {
           {/* Withdraw Section */}
           <Card>
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">Withdraw USDC</h2>
+              <h2 className="text-text text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">Withdraw Test USDC</h2>
               <p className="text-accent text-sm font-mono mb-4">
-                Send USDC to any Movement wallet address
+                Send test USDC (tUSDC) to any Movement wallet address
               </p>
               
               <div className="space-y-4">

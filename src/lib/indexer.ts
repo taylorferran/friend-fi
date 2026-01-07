@@ -12,9 +12,9 @@ import { CONTRACT_ADDRESS, PREDICTION_MODULE, GROUPS_MODULE } from './contract';
 
 const INDEXER_URL = 'https://indexer.testnet.movementnetwork.xyz/v1/graphql';
 
-// USDC.E on Movement testnet
-// This matches the asset type pattern from the explorer
-const USDC_ASSET_TYPE = '0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7';
+// Test USDC on Movement testnet (custom deployed)
+// This matches the metadata address from our test_usdc module
+const USDC_ASSET_TYPE = '0x9cdf923fb59947421487b61b19f9cacb172d971a755d6bb34f69474148c11ada';
 
 // Note: The indexer queries events from different modules:
 // - Prediction events (WagerPlacedEvent, BetResolvedEvent, etc.) come from PREDICTION_MODULE
@@ -99,6 +99,28 @@ export async function getTokenBalances(ownerAddress: string): Promise<TokenBalan
  * Returns the balance in smallest units (6 decimals)
  */
 export async function getUSDCBalance(ownerAddress: string): Promise<number> {
+  // FAST PATH: Query blockchain directly first (for immediate balance)
+  // This bypasses the indexer which can be slow to update
+  try {
+    const { aptos } = await import('./contract');
+    const directBalance = await aptos.view({
+      payload: {
+        function: '0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f::test_usdc::balance_of' as `${string}::${string}::${string}`,
+        typeArguments: [],
+        functionArguments: [ownerAddress],
+      },
+    });
+    
+    if (directBalance && directBalance[0]) {
+      const balance = Number(directBalance[0]);
+      console.log(`[USDC Balance] Direct query: ${balance} micro-USDC (${balance / 1_000_000} USDC)`);
+      return balance;
+    }
+  } catch (directError) {
+    console.log('[USDC Balance] Direct query failed, falling back to indexer:', directError);
+  }
+
+  // FALLBACK: Use indexer (slower but more reliable for older balances)
   // Get ALL balances for this user and find USDC.E
   const query = `
     query GetAllBalances($owner: String!) {
@@ -126,9 +148,11 @@ export async function getUSDCBalance(ownerAddress: string): Promise<number> {
     );
 
     if (usdcBalance) {
+      console.log(`[USDC Balance] Indexer query: ${usdcBalance.amount} micro-USDC`);
       return Number(usdcBalance.amount);
     }
     
+    console.log('[USDC Balance] No USDC found in indexer');
     return 0;
   } catch (error) {
     console.error('Error fetching USDC balance:', error);

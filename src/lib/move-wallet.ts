@@ -4,7 +4,11 @@ import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey, AccountAddress
 
 const WALLET_STORAGE_KEY = 'friendfi_move_wallet';
 
+// Contract address for test USDC minting
+const CONTRACT_ADDRESS = "0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
+
 // Enable/disable gasless transactions
+// ENABLED: Shinami tries first, falls back to direct (user pays gas) if it fails
 export const GASLESS_ENABLED = true;
 
 // Movement Testnet configuration
@@ -126,10 +130,7 @@ export async function signAndSubmitGaslessTransaction(
   const account = getMoveAccount();
   
   try {
-    // Step 1: Build a feePayer SimpleTransaction
-    // Set a 5 minute expiration since we're making an API call
-    const FIVE_MINUTES_FROM_NOW = Math.floor(Date.now() / 1000) + (5 * 60);
-    
+    // Step 1: Build transaction WITHOUT feePayer (Shinami will add it)
     const transaction = await aptos.transaction.build.simple({
       sender: account.accountAddress,
       data: {
@@ -137,14 +138,9 @@ export async function signAndSubmitGaslessTransaction(
         typeArguments: payload.typeArguments,
         functionArguments: payload.functionArguments,
       },
-      withFeePayer: true,
-      options: {
-        expireTimestamp: FIVE_MINUTES_FROM_NOW,
-      },
     });
 
     // Step 2: Sign the transaction with our account
-    // The feePayer is set to 0x0 at this point, Shinami will fill it in
     const senderAuthenticator = aptos.transaction.sign({
       signer: account,
       transaction,
@@ -181,12 +177,55 @@ export async function signAndSubmitGaslessTransaction(
     };
   } catch (error) {
     console.error('Gasless transaction failed:', error);
-    throw error;
+    
+    // TEMPORARY FALLBACK: If Shinami fails, use direct transaction (user pays gas)
+    // TODO: Remove this fallback once Shinami is stable after testnet rollback
+    console.warn('⚠️ Falling back to direct transaction (user pays gas)');
+    
+    // Wait 2 seconds before fallback to avoid spamming
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Only try direct transaction ONCE (no retry loop)
+    return signAndSubmitTransactionDirect(payload);
   }
 }
 
-// Movement Testnet USDC metadata address
-const USDC_METADATA_ADDR = "0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7";
+// Direct transaction (non-gasless) - user pays gas
+async function signAndSubmitTransactionDirect(
+  payload: {
+    function: `${string}::${string}::${string}`;
+    typeArguments: string[];
+    functionArguments: (string | string[] | number[])[];
+  }
+): Promise<{ hash: string; success: boolean }> {
+  const account = getMoveAccount();
+  
+  const transaction = await aptos.transaction.build.simple({
+    sender: account.accountAddress,
+    data: {
+      function: payload.function,
+      typeArguments: payload.typeArguments,
+      functionArguments: payload.functionArguments,
+    },
+  });
+
+  const pendingTxn = await aptos.signAndSubmitTransaction({
+    signer: account,
+    transaction,
+  });
+
+  const response = await aptos.waitForTransaction({
+    transactionHash: pendingTxn.hash,
+  });
+
+  return {
+    hash: pendingTxn.hash,
+    success: response.success,
+  };
+}
+
+// Movement Testnet Test USDC metadata address (custom deployed)
+const USDC_METADATA_ADDR = "0x9cdf923fb59947421487b61b19f9cacb172d971a755d6bb34f69474148c11ada";
 
 // Transfer USDC from current user to another address (uses gasless if enabled)
 export async function transferUSDC(
@@ -229,8 +268,44 @@ export async function transferUSDCFromFaucet(
   // Convert USDC amount to micro-units (6 decimals)
   const amountMicroUSDC = Math.floor(amountUSDC * 1_000_000);
   
+  // Normalize recipient address
+  const normalizedRecipient = toAddress.startsWith('0x') 
+    ? `0x${toAddress.slice(2).padStart(64, '0')}`
+    : `0x${toAddress.padStart(64, '0')}`;
+  
   try {
-    // Transfer USDC to the target address
+    // Step 1: Ensure recipient has a primary store for test USDC
+    // This is necessary for new accounts that have never received USDC
+    try {
+      const ensureStoreTransaction = await aptos.transaction.build.simple({
+        sender: faucetAccount.accountAddress,
+        data: {
+          function: "0x1::primary_fungible_store::ensure_primary_store_exists",
+          typeArguments: ["0x1::fungible_asset::Metadata"],
+          functionArguments: [
+            AccountAddress.from(normalizedRecipient),  // owner
+            USDC_METADATA_ADDR,  // metadata
+          ],
+        },
+      });
+
+      const ensureStoreTxn = await aptos.signAndSubmitTransaction({
+        signer: faucetAccount,
+        transaction: ensureStoreTransaction,
+      });
+
+      // Wait for store creation to complete
+      await aptos.waitForTransaction({
+        transactionHash: ensureStoreTxn.hash,
+      });
+      
+      console.log('Primary store ensured for recipient');
+    } catch (storeError) {
+      // Ignore if store already exists
+      console.log('Primary store creation skipped (may already exist):', storeError);
+    }
+
+    // Step 2: Transfer USDC to the target address
     const transaction = await aptos.transaction.build.simple({
       sender: faucetAccount.accountAddress,
       data: {
@@ -238,11 +313,7 @@ export async function transferUSDCFromFaucet(
         typeArguments: ["0x1::fungible_asset::Metadata"],
         functionArguments: [
           USDC_METADATA_ADDR,  // metadata address
-          AccountAddress.from(
-            toAddress.startsWith('0x') 
-              ? `0x${toAddress.slice(2).padStart(64, '0')}`
-              : `0x${toAddress.padStart(64, '0')}`
-          ),  // recipient (wrapped in AccountAddress, padded to Aptos format)
+          AccountAddress.from(normalizedRecipient),  // recipient
           amountMicroUSDC.toString()  // amount in micro-USDC
         ],
       },

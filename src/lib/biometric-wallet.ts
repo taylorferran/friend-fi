@@ -63,7 +63,7 @@ async function derivePrivateKeyFromSeed(seed: Uint8Array): Promise<string> {
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: new TextEncoder().encode('friendfi-move-salt'), // Fixed salt for determinism
+      salt: new TextEncoder().encode('friendfi-v2-testnet-jan2026'), // Updated salt for fresh deployment
       iterations: 100000,
       hash: 'SHA-256'
     },

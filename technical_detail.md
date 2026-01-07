@@ -3,7 +3,7 @@
 ## Transaction History Feature
 
 ### Overview
-The transaction history feature displays all on-chain transactions made by the user's Privy-created wallet, with direct links to the Movement testnet explorer.
+The transaction history feature displays all on-chain transactions made by the user's wallet, with direct links to the Movement testnet explorer.
 
 ### Architecture
 
@@ -422,81 +422,61 @@ CREATE TABLE group_members (
 
 ## Wallet Management
 
-### Privy Integration
+### WebAuthn Biometric Authentication
 
-**Primary Authentication Method**: Privy embedded wallets
-- **Email-only authentication**: No wallet extensions required
-- **Automatic wallet creation**: Privy creates embedded wallet on first login for Movement network
-- **Server-managed keys**: Private keys are stored securely on Privy's infrastructure, never exposed to client
-- **Wallet info extraction**: Wallet details extracted from `user.wallet` or `user.linkedAccounts` in `usePrivyMoveWallet` hook
+**Primary Authentication Method**: WebAuthn biometric wallets
+- **Biometric authentication**: Uses Face ID, Touch ID, or fingerprint
+- **Local wallet creation**: Ed25519 keypair generated and stored locally
+- **Client-managed keys**: Private keys stored in browser's localStorage (encrypted with biometric auth)
+- **No third-party dependencies**: Pure WebAuthn standard implementation
 
-**Privy Wallet Structure**:
+**Wallet Structure**:
 ```typescript
-interface PrivyWalletInfo {
-  walletId: string;      // Privy wallet identifier
-  address: string;        // Ethereum-style address (40 hex chars)
-  publicKey: string;      // Ed25519 public key (32 bytes hex)
+interface MoveWallet {
+  address: string;        // Move/Aptos address (64 hex chars)
+  privateKeyHex: string;  // Ed25519 private key (64 hex chars)
 }
 ```
 
-**Address Conversion**:
-- Privy returns Ethereum-style addresses (40 hex characters) and Ed25519 public keys
-- **Primary Method**: Aptos address is derived from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
-  - This is the actual on-chain address used for profiles and transactions
-  - Implemented in `deriveAptosAddressFromPublicKey()` in `src/lib/address-utils.ts`
-  - Uses `@noble/hashes` library for SHA3-256 hashing
-- **Fallback Method**: If public key is unavailable, addresses are padded to 64 hex characters
-  - Fallback: `0x${address.slice(2).padStart(64, '0')}`
-  - Only used when public key cannot be retrieved from Privy
+**Address Generation**:
+- Ed25519 keypair generated using `@aptos-labs/ts-sdk`
+- Address derived from public key using `SHA3-256(public_key_bytes || 0x00)`
+- Implemented in `src/lib/move-wallet.ts` and `src/lib/biometric-wallet.ts`
 
-### Dual Wallet System
+### Biometric Wallet System
 
-The app supports two wallet types:
+**Wallet Storage**:
+- Stored in `localStorage` under `friendfi_move_wallet`
+- Contains `address` and `privateKeyHex`
+- Protected by WebAuthn biometric verification
+- Client-side signing with direct private key access
 
-1. **Privy Embedded Wallets** (Primary)
-   - Managed by Privy's servers
-   - No private key access on client
-   - Signing via Privy's `rawSign()` API
-   - Used when user authenticates via Privy
+**Authentication Flow**:
+1. User clicks "Register with Biometric"
+2. WebAuthn prompts for biometric (Face ID/Touch ID/Fingerprint)
+3. On success, Ed25519 keypair is generated
+4. Wallet stored in localStorage
+5. User marked as authenticated
 
-2. **Biometric/LocalStorage Wallets** (Fallback)
-   - Stored in `localStorage` under `friendfi_move_wallet`
-   - Contains `address` and `privateKeyHex`
-   - Used for biometric authentication or demo mode
-   - Client-side signing with direct private key access
+**Biometric Verification**:
+- Uses `navigator.credentials.create()` for registration
+- Uses `navigator.credentials.get()` for authentication
+- Credentials stored by browser (not in localStorage)
+- Each login requires biometric verification
 
-**Wallet Selection Logic** (`useUnifiedMoveWallet`):
-- Prefers Privy wallet if available and user is authenticated via Privy
-- Falls back to biometric wallet if Privy not available
-- Warns about address mismatches if both exist
+### Transaction Signing Flow
 
-### Privy API Endpoints
-
-**`/api/privy-wallet-info`**:
-- Fetches wallet details from Privy using Node.js SDK
-- Returns `walletId`, `address`, and `publicKey`
-- Uses `privy.wallets().get(walletId)` to retrieve wallet info
-
-**`/api/privy-raw-sign`**:
-- Signs transaction messages using Privy's `rawSign()` method
-- Accepts `walletId` and `message` (hex-encoded)
-- Returns Ed25519 signature
-- Uses `privy.wallets().rawSign(walletId, { params: { hash: message } })`
-
-### Transaction Signing Flow (Privy)
-
-1. **Derive Aptos Address**: Derive actual on-chain address from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
-2. **Build Transaction**: Create raw transaction using Aptos SDK with derived address as sender
-3. **Generate Signing Message**: `generateSigningMessageForTransaction(rawTxn)`
-4. **Sign via API**: POST to `/api/privy-raw-sign` with walletId and message
-5. **Create Authenticator**: Combine signature + public key into `AccountAuthenticatorEd25519`
-6. **Submit Transaction**: POST to `/api/sponsor-transaction` (gasless sponsorship)
-7. **Wait for Confirmation**: Poll for transaction completion
+1. **Get Wallet**: Retrieve wallet from localStorage (requires biometric auth)
+2. **Build Transaction**: Create raw transaction using Aptos SDK with wallet address as sender
+3. **Sign Transaction**: Sign using Ed25519 private key from wallet
+4. **Create Authenticator**: Combine signature + public key into `AccountAuthenticatorEd25519`
+5. **Submit Transaction**: POST to `/api/sponsor-transaction` (gasless sponsorship)
+6. **Wait for Confirmation**: Poll for transaction completion
 
 **Code Flow**:
 ```
-Dashboard → useMoveWallet → useUnifiedMoveWallet → signAndSubmitWithPrivy 
-→ /api/privy-raw-sign → Privy SDK → /api/sponsor-transaction → Movement Network
+Dashboard → useMoveWallet → signAndSubmit 
+→ /api/sponsor-transaction → Movement Network
 ```
 
 ## Indexer Queries
@@ -540,26 +520,24 @@ Dashboard → useMoveWallet → useUnifiedMoveWallet → signAndSubmitWithPrivy
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Authentication**: Privy
+- **Authentication**: WebAuthn biometric authentication
 - **Blockchain SDK**: Aptos TS SDK
 
 ### Key Libraries
 - `@aptos-labs/ts-sdk`: Move blockchain interaction
-- `@privy-io/react-auth`: Authentication and wallet management
 - `next`: React framework with server components
 - `tailwindcss`: Utility-first CSS
+- `@noble/hashes`: Cryptographic hashing (SHA3-256)
 
 ### State Management
 - React hooks (`useState`, `useEffect`)
 - Custom hooks:
   - `useMoveWallet`: Wallet operations and contract interactions
-  - `usePrivyMoveWallet`: Privy wallet integration (being phased out)
-  - `useUnifiedMoveWallet`: Dual wallet support
-  - `useAuth`: Biometric authentication (replacing Privy)
+  - `useAuth`: Biometric authentication state
   - `useBiometricWallet`: WebAuthn biometric wallet management
   - `useToast`: Toast notifications
 - Session storage for user settings and profile cache
-- Local storage for biometric wallet data (WebAuthn)
+- Local storage for biometric wallet data (WebAuthn protected)
 - Supabase for off-chain data (profiles, groups)
 - Signature cache for membership attestations
 
@@ -612,30 +590,25 @@ Dashboard → useMoveWallet → useUnifiedMoveWallet → signAndSubmitWithPrivy
 
 ### Private Key Storage
 
-**Privy Embedded Wallets** (Primary):
-- ✅ **Production-ready**: Private keys stored securely on Privy's infrastructure
-- ✅ **Never exposed**: Private keys never leave Privy's servers
-- ✅ **No client access**: Client only has access to `walletId`, `address`, and `publicKey`
-
-**Biometric/LocalStorage Wallets** (Fallback):
+**WebAuthn Biometric Wallets**:
 - ⚠️ **Development Mode**: Private keys stored in `localStorage` under `friendfi_move_wallet`
-- ⚠️ **Security Risk**: Accessible via browser DevTools
-- 🔒 **Production**: Should migrate to Privy embedded wallets for production use
+- 🔒 **Biometric Protection**: Access requires Face ID/Touch ID/fingerprint verification
+- ⚠️ **Browser Storage**: Keys accessible via browser DevTools (security consideration)
+- 💡 **Future Enhancement**: Consider hardware wallet integration or secure enclave storage for production
+
+**Security Notes**:
+- WebAuthn credentials (biometric data) are never stored by the app
+- Biometric verification handled entirely by the browser/OS
+- Private keys remain in plaintext in localStorage (protected by biometric prompt)
+- For high-value production use, consider MPC wallets or hardware security modules
 
 ### Transaction Signing
 
-**Privy Wallets**:
-- **Server-side signing**: Transactions signed via Privy's Node.js SDK on server
-- **API route**: `/api/privy-raw-sign` calls `privy.wallets().rawSign()` 
-- **Private key security**: Private key never exposed to client or our server
-- **Message signing**: Only transaction hash is sent to Privy for signing
-- **Gasless sponsorship**: Transaction submission via `/api/sponsor-transaction` (Shinami)
-
-**Biometric/LocalStorage Wallets**:
+**Biometric Wallets**:
 - **Client-side signing**: Transactions signed directly in browser using private key
 - **Direct signing**: Uses Aptos SDK `Account.sign()` method
-- **Private key access**: Private key loaded from localStorage (security risk)
-- **Gasless sponsorship**: Same `/api/sponsor-transaction` endpoint
+- **Private key access**: Private key loaded from localStorage after biometric verification
+- **Gasless sponsorship**: Transaction submission via `/api/sponsor-transaction`
 
 ### Input Validation
 - USDC amounts validated (positive numbers only)
@@ -690,10 +663,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key (server-side only)
 
 # Signature Authentication (Backend)
 BACKEND_SIGNER_PRIVATE_KEY=your_ed25519_private_key (server-side only, NEVER expose)
-
-# Privy (Legacy, being phased out)
-NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
-PRIVY_APP_SECRET=your_privy_app_secret (server-side only)
 
 # Gasless Transactions
 SHINAMI_ACCESS_KEY=your_shinami_key (server-side only)
@@ -750,39 +719,14 @@ Use only the available tables:
 
 **Possible Causes**:
 1. Wallet has no transactions yet (new wallet)
-2. Address format mismatch (Ethereum 40-char vs Aptos 64-char)
+2. Address format mismatch
 3. Indexer lag (recent transactions may take a few seconds to appear)
-4. Address padding issue (Privy returns 40-char, queries need 64-char)
 
 **Debugging**:
 - Check console logs for the wallet address being queried
 - Verify address format: should be 64 hex chars (excluding 0x prefix)
-- Check for address padding: `useUnifiedMoveWallet` logs the address conversion
 - Verify transactions exist on the Movement explorer
 - Check for GraphQL errors in the console
-- Compare Privy address vs padded address in console logs
-
-#### Address Format Mismatch (Privy Wallets) - RESOLVED
-
-**Symptoms** (now resolved):
-- Profile not found even though transactions exist
-- Transactions not showing in history
-- "Address mismatch" warnings in console
-
-**Root Cause**:
-Privy returns Ethereum-style addresses (40 hex chars), but Aptos uses 64 hex chars. Previously, the app only padded addresses, which didn't match the actual on-chain address derived from the Ed25519 public key.
-
-**Solution** (implemented):
-- ✅ **Proper Address Derivation**: Aptos address is now derived from Ed25519 public key using `SHA3-256(public_key_bytes || 0x00)`
-- ✅ **Consistent Address Usage**: Both transaction building and profile queries use the same derived address
-- ✅ **Fallback Support**: If public key is unavailable, falls back to padded address with warning
-
-**Implementation**:
-- `deriveAptosAddressFromPublicKey()` in `src/lib/address-utils.ts` uses `@noble/hashes` for SHA3-256
-- `useUnifiedMoveWallet` hook derives address when public key is available
-- `signAndSubmitWithPrivy` uses derived address for transaction sender
-
-**Note**: If you previously saved a profile with the padded address, you may need to save it again. New profiles will use the correct derived address and will be found correctly.
 
 ### Development Tips
 

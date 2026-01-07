@@ -32,7 +32,7 @@ export function useBiometricWallet() {
     setIsRegistered(hasBiometricWallet());
   }, []);
 
-  // Register biometric wallet (no Privy needed - we manage auth ourselves)
+  // Register biometric wallet with WebAuthn
   const register = useCallback(async (): Promise<boolean> => {
     setIsRegistering(true);
     setError(null);
@@ -48,7 +48,7 @@ export function useBiometricWallet() {
       };
       localStorage.setItem('friendfi_move_wallet', JSON.stringify(moveWallet));
 
-      // Step 3: Mark user as authenticated (biometric auth, not Privy)
+      // Step 3: Mark user as authenticated with biometric auth
       localStorage.setItem(BIOMETRIC_AUTH_KEY, 'true');
       setIsRegistered(true);
       setIsAuthenticated(true);
@@ -80,7 +80,7 @@ export function useBiometricWallet() {
     }
   }, [router, showToast]);
 
-  // Authenticate with biometric (no Privy needed - we manage auth ourselves)
+  // Authenticate with biometric using WebAuthn
   const authenticate = useCallback(async (): Promise<boolean> => {
     setIsAuthenticating(true);
     setError(null);
@@ -96,7 +96,7 @@ export function useBiometricWallet() {
       };
       localStorage.setItem('friendfi_move_wallet', JSON.stringify(moveWallet));
 
-      // Step 3: Mark user as authenticated (biometric auth, not Privy)
+      // Step 3: Mark user as authenticated with biometric auth
       localStorage.setItem(BIOMETRIC_AUTH_KEY, 'true');
       setIsAuthenticated(true);
 
@@ -115,12 +115,28 @@ export function useBiometricWallet() {
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Biometric authentication failed';
-      setError(message);
-      showToast({
-        type: 'error',
-        title: 'Authentication failed',
-        message,
-      });
+      
+      // If no passkey found or passkey doesn't match, clear old data and prompt re-registration
+      if (message.includes('passkey') || message.includes('credential') || message.includes('No biometric wallet')) {
+        console.log('[BiometricWallet] Old/mismatched passkey detected, clearing data...');
+        removeBiometricWallet();
+        localStorage.removeItem(BIOMETRIC_AUTH_KEY);
+        setIsRegistered(false);
+        setIsAuthenticated(false);
+        
+        showToast({
+          type: 'error',
+          title: 'Passkey outdated',
+          message: 'Please register again with your biometric',
+        });
+      } else {
+        setError(message);
+        showToast({
+          type: 'error',
+          title: 'Authentication failed',
+          message,
+        });
+      }
       return false;
     } finally {
       setIsAuthenticating(false);

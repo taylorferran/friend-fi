@@ -1,22 +1,45 @@
 # Friend-Fi 🎲
 
-Private Predictions - Create and wager privately within friend groups using USDC on Movement Network.
+Your mobile-first social finance hub - Manage money, track habits, and make predictions with friends using USDC on Movement Network.
 
 ## Features
 
-- **Private & Secure**: On-chain encryption for group data using group passwords
-- **Simple & Social**: Easily create wagers and invite friends
-- **No Gas Fees**: All transaction costs covered via Shinami
-- **USDC Only**: Stable currency for all bets
-- **Twitch-style Payouts**: Fair distribution based on pool proportions
+### 🎲 Private Predictions
+- Create and wager on predictions within groups
+- Proportional payouts
+- Encrypted bet details for privacy
+- Bet admin controlled settlement
+
+### 💰 Expense Splitting
+- Split bills and expenses within friend groups
+- Track who owes what in real-time
+- Settle up with instant USDC transfers
+- Full transaction history
+
+### 🎯 Habit Tracking & Accountability
+- Create personal goals and habits
+- Stake USDC to stay accountable
+- Friends can verify your progress
+- Get your stake back when you succeed
+
+
+### 🔐 Core Benefits
+- **Mobile-First**: Optimized for on-the-go use
+- **Private & Secure**: On-chain encryption for sensitive data
+- **No Gas Fees**: All transaction costs covered
+- **USDC Only**: Stable currency for all interactions
+- **Social by Default**: Everything happens within friend groups
 
 ## Tech Stack
 
 - **Frontend**: Next.js 15 + React + TypeScript
 - **Styling**: Tailwind CSS
-- **Authentication**: Privy (email-only login)
-- **Blockchain**: Movement Network Testnet
-- **Gas Sponsorship**: Shinami
+- **Authentication**: WebAuthn biometric authentication
+- **Blockchain**: Movement Network Testnet (EVM-compatible)
+- **Smart Contracts**: Move language
+- **Database**: Supabase (for off-chain indexing)
+- **Mobile**: Progressive Web App (PWA) with biometric support
+- **Gas Sponsorship**: Transaction fees covered by the app
 
 ## Getting Started
 
@@ -43,22 +66,49 @@ npm install
 cp .env.example .env.local
 ```
 
-4. **Configure Privy** (Required):
-   - Go to [dashboard.privy.io](https://dashboard.privy.io)
-   - Create a new app or use an existing one
-   - Copy your **App ID**
-   - Add it to `.env.local`:
+4. **Configure Supabase** (Optional, for off-chain indexing):
+   - Create a project at [supabase.com](https://supabase.com)
+   - Copy your project URL and anon key
+   - Add them to `.env.local`:
    ```
-   NEXT_PUBLIC_PRIVY_APP_ID=your_app_id_here
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
    ```
-   - In the Privy dashboard, add your domain to allowed origins (localhost:3000 for development)
 
-5. Run the development server:
+5. **Configure Backend Signer** (For signature authentication):
+   - Generate a keypair for backend signing:
+   ```bash
+   npm run generate-keypair
+   ```
+   - Add the private key to `.env.local`:
+   ```
+   BACKEND_SIGNER_PRIVATE_KEY=your_generated_private_key
+   ```
+
+6. Run the development server:
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000)
+7. Open [http://localhost:3000](http://localhost:3000)
+
+## Mobile Installation
+
+Friend-Fi is a Progressive Web App (PWA) and can be installed on mobile devices:
+
+### iOS (Safari)
+1. Open the app in Safari
+2. Tap the Share button
+3. Scroll down and tap "Add to Home Screen"
+4. Tap "Add"
+
+### Android (Chrome)
+1. Open the app in Chrome
+2. Tap the three dots menu
+3. Tap "Add to Home Screen"
+4. Tap "Add"
+
+Once installed, you can use biometric authentication (Face ID, Touch ID, fingerprint) for secure access.
 
 ## Project Structure
 
@@ -66,23 +116,40 @@ npm run dev
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── page.tsx           # Splash/landing page
-│   ├── login/             # Login page
-│   ├── dashboard/         # Main dashboard
+│   ├── dashboard/         # Main dashboard hub
 │   ├── groups/
 │   │   ├── create/        # Create new group
-│   │   └── join/          # Join existing group
-│   ├── bets/
-│   │   ├── page.tsx       # My bets list
-│   │   ├── create/        # Create new bet
-│   │   └── [id]/          # View/wager on bet
-│   └── leaderboard/       # Group leaderboard
+│   │   ├── join/          # Join existing group
+│   │   └── [id]/          # Group details & management
+│   ├── expenses/          # Expense splitting
+│   ├── accountability/    # Habit tracking
+│   ├── bets/              # Private predictions
+│   │   ├── create/        # Create new prediction
+│   │   └── [id]/          # View/wager on prediction
+│   ├── leaderboard/       # Group leaderboard
+│   ├── transactions/      # Transaction history
+│   └── settings/          # User settings
 ├── components/
-│   ├── layout/            # Layout components (Sidebar)
-│   ├── providers/         # React context providers (Privy)
+│   ├── layout/            # Layout components (Sidebar, MobileNav)
+│   ├── providers/         # React context providers
 │   └── ui/                # Reusable UI components
-└── lib/                   # Utilities and config
-    └── privy-config.ts    # Privy & Movement Network config
+└── lib/                   # Utilities and blockchain integration
+    ├── contract.ts        # Smart contract interactions
+    ├── move-wallet.ts     # Wallet management
+    ├── biometric-wallet.ts # Mobile biometric auth
+    └── supabase.ts        # Database client
 ```
+
+## Smart Contracts
+
+The app uses Move smart contracts deployed on Movement Network:
+
+- **groups.move** - Group creation and membership management
+- **private_prediction_refactored.move** - Encrypted prediction markets
+- **expense_splitting.move** - Bill splitting and settlement
+- **habit_tracker.move** - Habit staking and verification
+- **test_usdc.move** - Test USDC token for development
+- **signature_auth.move** - Secure authentication system
 
 ## Movement Network Configuration
 
@@ -92,23 +159,43 @@ The app is configured for Movement Network Testnet:
 - **RPC URL**: https://mevm.testnet.imola.movementlabs.xyz
 - **Explorer**: https://explorer.testnet.imola.movementlabs.xyz
 
-## User Flow
+## User Flows
 
-1. **Login** - Sign in with email via Privy (creates Move wallet automatically)
-2. **Create/Join Group** - Set up a private group with ID + password
-3. **Create Bets** - Propose predictions for the group
-4. **Place Wagers** - Bet USDC on Yes/No outcomes
-5. **Admin Settles** - Designated resolver declares the outcome
-6. **Collect Winnings** - Twitch-style proportional payouts
+### Getting Started
+1. **Login** - Sign in with biometric authentication (Face ID, Touch ID, or fingerprint)
+2. **Create Wallet** - Your Move wallet is created and secured with biometrics
+3. **Create/Join Group** - Set up a private group with ID + password
+4. **Fund Wallet** - Get test USDC for the testnet
+5. **Choose Your Feature** - Expenses, habits, or predictions
 
-## Encryption
+### Expense Splitting Flow
+1. Create an expense (dinner, rent, trip, etc.)
+2. Add group members as participants
+3. System calculates splits automatically
+4. Members pay their share directly
+5. View balance and transaction history
 
-All group data is encrypted using the group password before being stored on-chain:
-- Bet questions and details
-- Wager information
-- Member activity
+### Habit Tracking Flow
+1. Create a habit/goal with a deadline
+2. Stake USDC as commitment
+3. Work on your habit
+4. Submit proof when complete
+5. Friends verify your completion
+6. Get your stake back (or lose it if you fail)
 
-This ensures complete privacy even though data is on a public blockchain.
+### Private Predictions Flow
+1. Propose a prediction question
+2. Group members bet USDC on Yes/No
+3. Wait for the event to resolve
+4. Admin declares the outcome
+5. Winners collect proportional payouts
+
+## Privacy & Security
+
+- **End-to-end encryption** for sensitive group data using group passwords
+- **On-chain privacy** ensures bet details and expenses remain confidential
+- **Non-custodial** wallets - you always control your funds
+- **Biometric authentication** for mobile security (optional)
 
 ## Development
 
@@ -121,16 +208,35 @@ npm run build
 
 # Run linting
 npm run lint
+
+# Deploy smart contracts
+cd move_contracts
+./deploy_all.sh
+
+# Mint test USDC
+./mint_test_usdc.sh <your_address> <amount>
 ```
 
-## TODO
+## Testing
 
-- [ ] Implement Move smart contract for bets
-- [ ] Integrate Shinami for gas sponsorship
-- [ ] Add on-chain encryption/decryption
-- [ ] Implement USDC transfers within app
-- [ ] Add real-time updates via WebSocket
-- [ ] Mobile responsive improvements
+The app includes several test pages for development:
+
+- `/demo-selector` - Choose which feature to demo
+- `/demo-expenses` - Test expense splitting
+- `/demo-habits` - Test habit tracking
+- `/demo-predictions` - Test predictions
+- `/debug` - Blockchain debugging tools
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+For questions or issues:
+- Open an issue on GitHub
+- Check existing documentation in the repo
+- Review the smart contract code in `move_contracts/sources/`
 
 ## License
 

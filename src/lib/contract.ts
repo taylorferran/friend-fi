@@ -3,7 +3,7 @@ import { getGroupFromSupabase, getProfileFromSupabase, getBetFromSupabase } from
 import { executeWithFallback } from './transaction-helper';
 
 // Contract configuration - NEW MODULAR ARCHITECTURE (ALL 4 MODULES)
-export const CONTRACT_ADDRESS = "0x92fc2d6ee1330193f039a0f87b221743ec77ac08e640a1470d4f45c566783448";
+export const CONTRACT_ADDRESS = "0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f";
 
 // Module names
 export const GROUPS_MODULE = "groups";
@@ -637,14 +637,24 @@ export async function getGroupDebts(groupId: number): Promise<{ debtors: string[
 
 export async function getGroupExpensesCount(groupId: number): Promise<number> {
   try {
-    const result = await aptos.view({
-      payload: {
-        function: getFunctionId(EXPENSE_MODULE, "get_group_expenses_count"),
-        typeArguments: [],
-        functionArguments: [groupId.toString()],
-      },
-    });
-    return Number(result[0]);
+    // Expenses are stored in Supabase, not on-chain
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
+    const { count, error } = await supabase
+      .from('expenses')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', groupId);
+    
+    if (error) {
+      console.error('[getGroupExpensesCount] Supabase error:', error);
+      return 0;
+    }
+    
+    return count || 0;
   } catch (error) {
     console.error("Error getting group expenses count:", error);
     return 0;

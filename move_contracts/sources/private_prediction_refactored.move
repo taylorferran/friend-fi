@@ -50,8 +50,9 @@ module friend_fi::private_prediction_refactored {
     // =========================================================================
 
     /// USDC metadata address on Movement testnet.
+    /// Updated to use test_usdc deployed at friend_fi address
     const USDC_METADATA_ADDR: address =
-        @0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7;
+        @0x9cdf923fb59947421487b61b19f9cacb172d971a755d6bb34f69474148c11ada;
 
     /// Escrow object seed (different from expense module).
     const ESCROW_OBJECT_SEED: vector<u8> = b"FRIEND_FI_PREDICTION_ESCROW";

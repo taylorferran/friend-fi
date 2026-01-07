@@ -160,7 +160,7 @@ export default function GroupExpenseTrackerPage() {
   }, [activeTab, members]);
 
   const handleAddExpense = async () => {
-    if (!wallet?.privateKeyHex) {
+    if (!wallet?.address) {
       showToast({ type: 'error', title: 'Wallet not found' });
       return;
     }
@@ -173,68 +173,55 @@ export default function GroupExpenseTrackerPage() {
 
     setProcessing(true);
     try {
-      // Convert to micro-USDC
-      const amountMicroUSDC = Math.floor(amount * 1_000_000);
-      
-      // Step 1: Request membership signature
-      console.log('[AddExpense] Requesting membership signature...');
-      const { requestMembershipSignature } = await import('@/lib/signature-service');
-      const proof = await requestMembershipSignature(groupId, wallet.address);
-      console.log('[AddExpense] Signature received');
-
-      // Step 2: Build payload with signature
-      const payload = buildCreateExpenseEqualPayload(
-        groupId,
-        expenseName,
-        amountMicroUSDC,
-        members.map(m => m.address),
-        proof.signature,
-        proof.expiresAt
+      // Expenses are stored in Supabase, not on-chain
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-
-      const config = new AptosConfig({
-        network: Network.CUSTOM,
-        fullnode: "https://testnet.movementnetwork.xyz/v1",
-        indexer: "https://indexer.testnet.movementnetwork.xyz/v1/graphql",
-      });
-      const aptos = new Aptos(config);
-
-      const privateKey = new Ed25519PrivateKey(wallet.privateKeyHex);
-      const account = Account.fromPrivateKey({ privateKey });
       
-      const transaction = await aptos.transaction.build.simple({
-        sender: account.accountAddress,
-        data: payload,
-        withFeePayer: true,
-      });
-
-      const senderAuthenticator = aptos.transaction.sign({
-        signer: account,
-        transaction,
-      });
-
-      const response = await fetch('/api/sponsor-transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transaction: transaction.bcsToHex().toString(),
-          senderAuth: senderAuthenticator.bcsToHex().toString(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to sponsor transaction');
+      // Calculate split amount per person
+      const amountPerPerson = amount / members.length;
+      
+      // Create expense record
+      const { data: expense, error: expenseError } = await supabase
+        .from('expenses')
+        .insert({
+          group_id: groupId,
+          payer_address: wallet.address,
+          description: expenseName,
+          total_amount: amount,
+          split_type: 'equal', // Required field
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (expenseError) {
+        console.error('[AddExpense] Supabase error:', expenseError);
+        throw new Error('Failed to create expense');
       }
-
-      const result = await response.json();
-      await aptos.waitForTransaction({
-        transactionHash: result.pendingTx.hash,
-      });
+      
+      // Create expense splits for each member (including payer)
+      const splits = members.map(member => ({
+        expense_id: expense.id,
+        debtor_address: member.address,
+        amount: amountPerPerson,
+        settled: member.address === wallet.address, // Payer's share is auto-settled
+      }));
+      
+      const { error: splitsError } = await supabase
+        .from('expense_splits')
+        .insert(splits);
+      
+      if (splitsError) {
+        console.error('[AddExpense] Splits error:', splitsError);
+        throw new Error('Failed to create expense splits');
+      }
 
       showToast({
         type: 'success',
         title: 'Expense added!',
-        txHash: result.pendingTx.hash,
       });
 
       setExpenseName('');

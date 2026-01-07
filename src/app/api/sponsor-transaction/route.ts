@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Calling Shinami Gas Station...');
+    console.log('Request payload:', JSON.stringify(rpcRequest, null, 2));
     
     const response = await fetch(SHINAMI_GAS_STATION_URL, {
       method: 'POST',
@@ -45,6 +46,9 @@ export async function POST(request: NextRequest) {
     });
 
     const responseText = await response.text();
+    
+    console.log('Shinami response status:', response.status);
+    console.log('Shinami response:', responseText);
 
     if (!response.ok) {
       // Try to parse error details
@@ -52,6 +56,7 @@ export async function POST(request: NextRequest) {
       try {
         const errorJson = JSON.parse(responseText);
         errorDetails = JSON.stringify(errorJson, null, 2);
+        console.error('Shinami error details:', errorDetails);
       } catch {
         // Keep as-is if not JSON
       }
@@ -63,8 +68,11 @@ export async function POST(request: NextRequest) {
     }
 
     const result = JSON.parse(responseText);
+    
+    console.log('Shinami result:', JSON.stringify(result, null, 2));
 
     if (result.error) {
+      console.error('Shinami error:', result.error);
       throw new Error(result.error.message || JSON.stringify(result.error));
     }
 

@@ -5,8 +5,7 @@ import { useEffect, useState } from 'react';
 const BIOMETRIC_AUTH_KEY = 'friendfi_biometric_authenticated';
 
 /**
- * Biometric-only auth wrapper
- * No Privy dependency - uses WebAuthn biometric authentication
+ * Biometric-only auth wrapper using WebAuthn
  * No redirects - all routes are accessible, auth state is just tracked
  */
 export function BiometricAuthWrapper({ children }: { children: React.ReactNode }) {

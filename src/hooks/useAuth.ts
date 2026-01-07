@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 const BIOMETRIC_AUTH_KEY = 'friendfi_biometric_authenticated';
 
 /**
- * Biometric-only auth hook (no Privy dependency)
+ * Biometric-only auth hook using WebAuthn
  */
 export function useAuth() {
   const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
