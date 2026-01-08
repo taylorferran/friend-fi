@@ -55,8 +55,20 @@ export function getOrCreateMoveWallet(): MoveWallet {
 // Get Account from stored wallet
 export function getMoveAccount(): Account {
   const wallet = getOrCreateMoveWallet();
+  console.log('[getMoveAccount] Using wallet address:', wallet.address);
+  console.log('[getMoveAccount] Private key (first 10 chars):', wallet.privateKeyHex.substring(0, 10) + '...');
   const privateKey = new Ed25519PrivateKey(wallet.privateKeyHex);
-  return Account.fromPrivateKey({ privateKey });
+  const account = Account.fromPrivateKey({ privateKey });
+  console.log('[getMoveAccount] Derived account address:', account.accountAddress.toString());
+  
+  // Verify they match
+  if (account.accountAddress.toString() !== wallet.address) {
+    console.error('[getMoveAccount] ADDRESS MISMATCH!');
+    console.error('  Stored address:', wallet.address);
+    console.error('  Derived address:', account.accountAddress.toString());
+  }
+  
+  return account;
 }
 
 // Check wallet balance
@@ -84,6 +96,7 @@ export async function signAndSubmitTransaction(
   }
 ): Promise<{ hash: string; success: boolean }> {
   const account = getMoveAccount();
+  console.log('[signAndSubmitTransaction] Building transaction for address:', account.accountAddress.toString());
   
   // Use gasless if enabled
   if (GASLESS_ENABLED) {
@@ -91,14 +104,38 @@ export async function signAndSubmitTransaction(
   }
   
   try {
-    const transaction = await aptos.transaction.build.simple({
-      sender: account.accountAddress,
-      data: {
-        function: payload.function,
-        typeArguments: payload.typeArguments,
-        functionArguments: payload.functionArguments,
-      },
-    });
+    // Retry up to 5 times if account not found (new accounts need time to be indexed)
+    let transaction;
+    let retries = 5;
+    
+    while (retries > 0) {
+      try {
+        console.log(`[signAndSubmitTransaction] Attempt ${6 - retries}/5 to build transaction...`);
+        transaction = await aptos.transaction.build.simple({
+          sender: account.accountAddress,
+          data: {
+            function: payload.function,
+            typeArguments: payload.typeArguments,
+            functionArguments: payload.functionArguments,
+          },
+        });
+        console.log('[signAndSubmitTransaction] Transaction built successfully!');
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        console.error(`[signAndSubmitTransaction] Build failed:`, error.message);
+        if (error.message?.includes('Account not found') && retries > 1) {
+          console.warn(`[signAndSubmitTransaction] Account not found, retrying in 2s... (${retries - 1} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          retries--;
+        } else {
+          throw error; // Not an account error or out of retries
+        }
+      }
+    }
+    
+    if (!transaction) {
+      throw new Error('Failed to build transaction after retries');
+    }
 
     const pendingTxn = await aptos.signAndSubmitTransaction({
       signer: account,
@@ -131,15 +168,36 @@ export async function signAndSubmitGaslessTransaction(
   
   try {
     // Step 1: Build transaction WITH feePayer flag (Shinami will add their signature)
-    const transaction = await aptos.transaction.build.simple({
-      sender: account.accountAddress,
-      data: {
-        function: payload.function,
-        typeArguments: payload.typeArguments,
-        functionArguments: payload.functionArguments,
-      },
-      withFeePayer: true, // Tell SDK a fee payer will be added
-    });
+    // Retry up to 5 times if account not found (new accounts need time to be indexed)
+    let transaction;
+    let retries = 5;
+    
+    while (retries > 0) {
+      try {
+        transaction = await aptos.transaction.build.simple({
+          sender: account.accountAddress,
+          data: {
+            function: payload.function,
+            typeArguments: payload.typeArguments,
+            functionArguments: payload.functionArguments,
+          },
+          withFeePayer: true, // Tell SDK a fee payer will be added
+        });
+        break; // Success, exit retry loop
+      } catch (error: any) {
+        if (error.message?.includes('Account not found') && retries > 1) {
+          console.warn(`Account not found, retrying... (${retries - 1} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          retries--;
+        } else {
+          throw error; // Not an account error or out of retries
+        }
+      }
+    }
+    
+    if (!transaction) {
+      throw new Error('Failed to build transaction after retries');
+    }
 
     // Step 2: Sign the transaction with our account
     const senderAuthenticator = aptos.transaction.sign({
@@ -201,14 +259,35 @@ async function signAndSubmitTransactionDirect(
 ): Promise<{ hash: string; success: boolean }> {
   const account = getMoveAccount();
   
-  const transaction = await aptos.transaction.build.simple({
-    sender: account.accountAddress,
-    data: {
-      function: payload.function,
-      typeArguments: payload.typeArguments,
-      functionArguments: payload.functionArguments,
-    },
-  });
+  // Retry up to 5 times if account not found (new accounts need time to be indexed)
+  let transaction;
+  let retries = 5;
+  
+  while (retries > 0) {
+    try {
+      transaction = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: {
+          function: payload.function,
+          typeArguments: payload.typeArguments,
+          functionArguments: payload.functionArguments,
+        },
+      });
+      break; // Success, exit retry loop
+    } catch (error: any) {
+      if (error.message?.includes('Account not found') && retries > 1) {
+        console.warn(`Account not found, retrying... (${retries - 1} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        retries--;
+      } else {
+        throw error; // Not an account error or out of retries
+      }
+    }
+  }
+  
+  if (!transaction) {
+    throw new Error('Failed to build transaction after retries');
+  }
 
   const pendingTxn = await aptos.signAndSubmitTransaction({
     signer: account,
