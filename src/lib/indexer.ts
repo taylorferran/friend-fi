@@ -99,10 +99,13 @@ export async function getTokenBalances(ownerAddress: string): Promise<TokenBalan
  * Returns the balance in smallest units (6 decimals)
  */
 export async function getUSDCBalance(ownerAddress: string): Promise<number> {
+  console.log(`[getUSDCBalance] Checking balance for address: ${ownerAddress}`);
+  
   // FAST PATH: Query blockchain directly first (for immediate balance)
   // This bypasses the indexer which can be slow to update
   try {
     const { aptos } = await import('./contract');
+    console.log(`[getUSDCBalance] Attempting direct query: test_usdc::balance_of`);
     const directBalance = await aptos.view({
       payload: {
         function: '0x0f436484bf8ea80c6116d728fd1904615ee59ec6606867e80d1fa2c241b3346f::test_usdc::balance_of' as `${string}::${string}::${string}`,
@@ -111,13 +114,17 @@ export async function getUSDCBalance(ownerAddress: string): Promise<number> {
       },
     });
     
+    console.log(`[getUSDCBalance] Direct query raw result:`, directBalance);
+    
     if (directBalance && directBalance[0]) {
       const balance = Number(directBalance[0]);
       console.log(`[USDC Balance] Direct query: ${balance} micro-USDC (${balance / 1_000_000} USDC)`);
       return balance;
+    } else {
+      console.warn(`[getUSDCBalance] Direct query returned falsy result:`, directBalance);
     }
   } catch (directError) {
-    console.log('[USDC Balance] Direct query failed, falling back to indexer:', directError);
+    console.error('[USDC Balance] Direct query failed, falling back to indexer:', directError);
   }
 
   // FALLBACK: Use indexer (slower but more reliable for older balances)

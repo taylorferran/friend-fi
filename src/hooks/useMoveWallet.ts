@@ -160,6 +160,17 @@ export function useMoveWallet() {
       throw new Error('Minimum wager is 0.05 USDC');
     }
     
+    // Check USDC balance before creating bet
+    const { getUSDCBalance } = await import('@/lib/indexer');
+    const usdcBalance = await getUSDCBalance(wallet.address);
+    const usdcBalanceFormatted = usdcBalance / 1_000_000;
+    
+    console.log(`[CreateBet] USDC Balance check: ${usdcBalanceFormatted} USDC (need ${initialWagerUSDC} USDC)`);
+    
+    if (usdcBalanceFormatted < initialWagerUSDC) {
+      throw new Error(`Insufficient USDC balance. You have ${usdcBalanceFormatted.toFixed(2)} USDC but need ${initialWagerUSDC} USDC. Please fund your account in Settings.`);
+    }
+    
     setError(null);
     try {
       // Convert USDC to micro-USDC (6 decimals)

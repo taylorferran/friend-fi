@@ -246,49 +246,49 @@ export default function ViewBetPage() {
               <div className="space-y-6">
                 {/* Bet Header */}
                 <Card>
-                <CardContent className="p-4 lg:p-6">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 border-2 border-text flex items-center justify-center flex-shrink-0 ${bet.resolved ? 'bg-green-600' : 'bg-primary'}`}>
-                        <span className="material-symbols-outlined text-text text-2xl">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4 mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 border-2 border-text flex items-center justify-center flex-shrink-0 ${bet.resolved ? 'bg-green-600' : 'bg-primary'}`}>
+                        <span className="material-symbols-outlined text-text text-xl sm:text-2xl">
                           {bet.resolved ? 'check_circle' : 'casino'}
                         </span>
                       </div>
-                      <div className="min-w-0">
-                        <h1 className="text-text text-xl font-display font-bold truncate">
+                      <div className="min-w-0 flex-1">
+                        <h1 className="text-text text-base sm:text-lg lg:text-xl font-display font-bold break-words">
                           {bet.description || `Bet #${betId}`}
                         </h1>
-                        <p className={`text-xs font-mono font-bold uppercase tracking-wider ${bet.resolved ? 'text-green-600' : 'text-primary'}`}>
+                        <p className={`text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider ${bet.resolved ? 'text-green-600' : 'text-primary'}`}>
                           {bet.resolved ? 'Settled' : 'Active'} · #{betId}
                         </p>
                       </div>
                     </div>
                     {isAdmin && (
-                      <span className={`px-2 py-1 border text-xs font-mono font-bold uppercase flex-shrink-0 ${
+                      <span className={`px-1.5 sm:px-2 py-1 border text-[9px] sm:text-xs font-mono font-bold uppercase flex-shrink-0 ${
                         bet.resolved 
                           ? 'bg-green-600/20 border-green-600 text-green-600' 
                           : 'bg-secondary/20 border-secondary text-secondary'
                       }`}>
-                        {bet.resolved ? 'You Settled' : 'Admin'}
+                        {bet.resolved ? 'Settled' : 'Admin'}
                       </span>
                     )}
                   </div>
 
-                  <div className="p-4 bg-background border-2 border-text">
+                  <div className="p-3 sm:p-4 bg-background border-2 border-text">
                     <div className="flex justify-between items-center">
-                      <span className="text-accent font-mono text-sm">Total Pool</span>
-                      <span className="text-text font-mono font-bold text-lg">{formatUSDC(bet.totalPool)} USDC</span>
+                      <span className="text-accent font-mono text-xs sm:text-sm">Total Pool</span>
+                      <span className="text-text font-mono font-bold text-base sm:text-lg">{formatUSDC(bet.totalPool)} USDC</span>
                     </div>
                     {userWager > 0 && (
                       <div className="flex justify-between items-center mt-2 pt-2 border-t border-text/20">
-                        <span className="text-accent font-mono text-sm">Your Wager</span>
-                        <span className="text-primary font-mono font-bold">{formatUSDC(userWager)} USDC</span>
+                        <span className="text-accent font-mono text-xs sm:text-sm">Your Wager</span>
+                        <span className="text-primary font-mono font-bold text-sm sm:text-base">{formatUSDC(userWager)} USDC</span>
                       </div>
                     )}
                     {bet.resolved && (
                       <div className="flex justify-between items-center mt-2 pt-2 border-t border-text/20">
-                        <span className="text-accent font-mono text-sm">Winner</span>
-                        <span className="text-green-600 font-mono font-bold flex items-center gap-1">
+                        <span className="text-accent font-mono text-xs sm:text-sm">Winner</span>
+                        <span className="text-green-600 font-mono font-bold text-sm sm:text-base flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm">emoji_events</span>
                           {bet.outcomes[bet.winningOutcomeIndex].label}
                         </span>
@@ -300,12 +300,12 @@ export default function ViewBetPage() {
 
               {/* Outcomes / Results */}
               <Card>
-                <CardContent>
-                  <h2 className="text-text text-lg font-display font-bold mb-4">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <h2 className="text-text text-base sm:text-lg font-display font-bold mb-4">
                     {bet.resolved ? 'Final Results' : 'Place Your Bet'}
                   </h2>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {bet.outcomes.map((outcome, index) => {
                       const hasPool = bet.totalPool >= 10000;
                       const percentage = hasPool ? (outcome.pool / bet.totalPool) * 100 : 0;
@@ -318,7 +318,7 @@ export default function ViewBetPage() {
                           key={index}
                           onClick={() => !bet.resolved && setSelectedOutcome(index)}
                           className={`
-                            relative p-4 border-2 transition-all overflow-hidden
+                            relative p-3 sm:p-4 border-2 transition-all overflow-hidden
                             ${isWinner ? 'border-green-600 bg-green-600/10' : ''}
                             ${isLoser ? 'border-text/30 bg-background opacity-60' : ''}
                             ${!bet.resolved && !isWinner && !isLoser ? 'border-text' : ''}
@@ -335,29 +335,29 @@ export default function ViewBetPage() {
                             />
                           )}
                           
-                          <div className="relative flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                          <div className="relative flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                               {!bet.resolved && (
-                                <div className={`w-5 h-5 border-2 flex items-center justify-center ${isSelected ? 'border-primary bg-primary' : 'border-text'}`}>
-                                  {isSelected && <span className="material-symbols-outlined text-text text-sm">check</span>}
+                                <div className={`w-4 h-4 sm:w-5 sm:h-5 border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'border-primary bg-primary' : 'border-text'}`}>
+                                  {isSelected && <span className="material-symbols-outlined text-text text-xs sm:text-sm">check</span>}
                                 </div>
                               )}
                               {isWinner && (
-                                <span className="material-symbols-outlined text-green-600">emoji_events</span>
+                                <span className="material-symbols-outlined text-green-600 text-lg sm:text-xl flex-shrink-0">emoji_events</span>
                               )}
                               {isLoser && (
-                                <span className="material-symbols-outlined text-accent/50">close</span>
+                                <span className="material-symbols-outlined text-accent/50 text-lg sm:text-xl flex-shrink-0">close</span>
                               )}
-                              <span className={`font-mono font-bold ${isLoser ? 'text-accent/50' : 'text-text'}`}>
+                              <span className={`font-mono font-bold text-sm sm:text-base truncate ${isLoser ? 'text-accent/50' : 'text-text'}`}>
                                 {outcome.label}
                               </span>
                             </div>
-                            <div className="text-right">
-                              <p className={`font-mono font-bold ${isLoser ? 'text-accent/50' : 'text-text'}`}>
+                            <div className="text-right flex-shrink-0">
+                              <p className={`font-mono font-bold text-sm sm:text-base ${isLoser ? 'text-accent/50' : 'text-text'}`}>
                                 {formatUSDC(outcome.pool)} USDC
                               </p>
                               {hasPool && (
-                                <p className="text-accent font-mono text-xs">{percentage.toFixed(1)}%</p>
+                                <p className="text-accent font-mono text-[10px] sm:text-xs">{percentage.toFixed(1)}%</p>
                               )}
                             </div>
                           </div>
@@ -369,35 +369,75 @@ export default function ViewBetPage() {
                   {/* Wager Input - Only show if not resolved */}
                   {!bet.resolved && (
                     <div className="mt-6 pt-6 border-t-2 border-text">
-                      <label className="text-text font-mono font-bold text-sm uppercase tracking-wider block mb-2">
-                        Wager Amount (USDC)
+                      <label className="text-text font-mono font-bold text-sm uppercase tracking-wider block mb-3">
+                        Your Initial Wager
                       </label>
-                      <div className="flex gap-3">
-                        <div className="relative flex-1">
+                      
+                      {/* Mobile: Stack vertically, Desktop: Side by side */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        {/* Outcome Selector */}
+                        <div className="flex-1">
+                          <label className="text-accent font-mono text-xs uppercase tracking-wider block mb-2">
+                            Select Outcome
+                          </label>
+                          <select
+                            value={selectedOutcome ?? ''}
+                            onChange={(e) => setSelectedOutcome(e.target.value === '' ? null : Number(e.target.value))}
+                            className="w-full h-12 border-2 border-text bg-surface text-text px-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                            style={{
+                              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3E%3Cpath stroke='%23211408' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 0.75rem center',
+                              backgroundSize: '1.25rem'
+                            }}
+                          >
+                            <option value="">Choose outcome...</option>
+                            {bet.outcomes.map((outcome, idx) => (
+                              <option key={idx} value={idx}>
+                                {outcome.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Amount Input */}
+                        <div className="flex-1">
+                          <label className="text-accent font-mono text-xs uppercase tracking-wider block mb-2">
+                            Amount (USDC)
+                          </label>
                           <input
                             type="number"
                             value={wagerAmount}
                             onChange={(e) => setWagerAmount(e.target.value)}
                             placeholder="0.00"
                             step="0.01"
-                            className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                            min="0"
+                            className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>
-                        <Button
-                          onClick={handlePlaceWager}
-                          disabled={selectedOutcome === null || !wagerAmount || submitting}
-                          loading={submitting}
-                        >
-                          Place Bet
-                        </Button>
+
+                        {/* Place Bet Button - Full width on mobile, fixed width on desktop */}
+                        <div className="sm:flex sm:items-end">
+                          <Button
+                            onClick={handlePlaceWager}
+                            disabled={selectedOutcome === null || !wagerAmount || submitting}
+                            loading={submitting}
+                            className="w-full sm:w-auto h-12 whitespace-nowrap"
+                          >
+                            <span className="material-symbols-outlined text-base">casino</span>
+                            Place Bet
+                          </Button>
+                        </div>
                       </div>
+                      
+                      {/* Preview - Show when both fields filled */}
                       {selectedOutcome !== null && wagerAmount && (
-                        <div className="mt-2 p-3 bg-primary/10 border border-primary">
-                          <p className="text-accent text-xs font-mono">
+                        <div className="mt-3 p-3 sm:p-4 bg-primary/10 border border-primary">
+                          <p className="text-accent text-xs sm:text-sm font-mono">
                             Betting <span className="text-text font-bold">{wagerAmount} USDC</span> on{' '}
                             <span className="text-text font-bold">{bet.outcomes[selectedOutcome].label}</span>
                           </p>
-                          <p className="text-accent text-xs font-mono mt-1">
+                          <p className="text-accent text-xs sm:text-sm font-mono mt-1">
                             Potential payout: <span className="text-green-600 font-bold">
                               {formatUSDC(calculatePotentialPayout(selectedOutcome, parseFloat(wagerAmount) || 0))} USDC
                             </span>
@@ -411,25 +451,25 @@ export default function ViewBetPage() {
               </div>
 
               {/* Right Column - Pool Info, Admin & Summary */}
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
               {/* Bettors Section */}
               <Card>
-                <CardContent>
-                  <h2 className="text-text text-lg font-display font-bold mb-4">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <h2 className="text-text text-base sm:text-lg font-display font-bold mb-4">
                     {bet.resolved ? 'Betting Activity' : 'Who\'s Betting'}
                   </h2>
 
                   {bet.totalPool === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-text/20">
-                      <span className="material-symbols-outlined text-accent/50 text-4xl mb-2">how_to_vote</span>
-                      <p className="text-accent text-sm font-mono">No bets placed yet</p>
-                      <p className="text-accent/60 text-xs font-mono mt-1">Be the first to wager!</p>
+                      <span className="material-symbols-outlined text-accent/50 text-3xl sm:text-4xl mb-2">how_to_vote</span>
+                      <p className="text-accent text-xs sm:text-sm font-mono">No bets placed yet</p>
+                      <p className="text-accent/60 text-[10px] sm:text-xs font-mono mt-1">Be the first to wager!</p>
                     </div>
                   ) : (
                     <>
                       {/* Pool breakdown by outcome */}
                       <div className="mb-4">
-                        <p className="text-accent text-xs font-mono uppercase tracking-wider mb-2">Wagers by Outcome</p>
+                        <p className="text-accent text-[10px] sm:text-xs font-mono uppercase tracking-wider mb-2">Wagers by Outcome</p>
                         <div className="space-y-2">
                           {bet.outcomes.map((outcome, index) => {
                             const isWinner = bet.resolved && bet.winningOutcomeIndex === index;
@@ -440,27 +480,27 @@ export default function ViewBetPage() {
                             return (
                               <div 
                                 key={index}
-                                className={`p-3 border-2 ${
+                                className={`p-2 sm:p-3 border-2 ${
                                   isWinner ? 'border-green-600 bg-green-600/10' : 'border-text/20 bg-background'
                                 }`}
                               >
-                                <div className="flex justify-between items-center">
-                                  <div className="flex items-center gap-2">
+                                <div className="flex justify-between items-center gap-2">
+                                  <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                                     {isWinner && (
-                                      <span className="material-symbols-outlined text-green-600 text-lg">emoji_events</span>
+                                      <span className="material-symbols-outlined text-green-600 text-base sm:text-lg flex-shrink-0">emoji_events</span>
                                     )}
-                                    <span className={`font-mono font-bold ${isWinner ? 'text-green-600' : 'text-text'}`}>
+                                    <span className={`font-mono font-bold text-xs sm:text-sm truncate ${isWinner ? 'text-green-600' : 'text-text'}`}>
                                       {outcome.label}
                                     </span>
                                     {outcomeBettors.length > 0 && (
-                                      <span className="text-accent text-xs font-mono">
-                                        ({outcomeBettors.length} bettor{outcomeBettors.length !== 1 ? 's' : ''})
+                                      <span className="text-accent text-[10px] sm:text-xs font-mono flex-shrink-0">
+                                        ({outcomeBettors.length})
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-right">
-                                    <span className="text-text font-mono font-bold">{formatUSDC(outcome.pool)} USDC</span>
-                                    <span className="text-accent font-mono text-xs ml-2">({percentage.toFixed(1)}%)</span>
+                                  <div className="text-right flex-shrink-0">
+                                    <span className="text-text font-mono font-bold text-xs sm:text-sm">{formatUSDC(outcome.pool)}</span>
+                                    <span className="text-accent font-mono text-[10px] sm:text-xs ml-1 sm:ml-2">({percentage.toFixed(0)}%)</span>
                                   </div>
                                 </div>
                               </div>
@@ -471,14 +511,14 @@ export default function ViewBetPage() {
 
                       {/* Your wager info */}
                       {userWager > 0 && (
-                        <div className="mb-4 p-4 bg-primary/10 border-2 border-primary">
+                        <div className="mb-4 p-3 sm:p-4 bg-primary/10 border-2 border-primary">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="material-symbols-outlined text-primary text-lg">person</span>
-                            <span className="text-text font-mono font-bold">Your Wager</span>
+                            <span className="material-symbols-outlined text-primary text-base sm:text-lg">person</span>
+                            <span className="text-text font-mono font-bold text-xs sm:text-sm">Your Wager</span>
                           </div>
-                          <p className="text-text font-mono">{formatUSDC(userWager)} USDC</p>
+                          <p className="text-text font-mono text-sm sm:text-base">{formatUSDC(userWager)} USDC</p>
                           {userOutcomeIndex !== null && bet.outcomes[userOutcomeIndex] && (
-                            <p className="text-accent text-xs font-mono mt-1">
+                            <p className="text-accent text-[10px] sm:text-xs font-mono mt-1">
                               Betting on: <span className="text-text font-bold">{bet.outcomes[userOutcomeIndex].label}</span>
                               {bet.resolved && (
                                 userOutcomeIndex === bet.winningOutcomeIndex ? (
@@ -490,7 +530,7 @@ export default function ViewBetPage() {
                             </p>
                           )}
                           {bet.resolved && userOutcomeIndex === bet.winningOutcomeIndex && (
-                            <p className="text-green-600 text-sm font-mono font-bold mt-2">
+                            <p className="text-green-600 text-xs sm:text-sm font-mono font-bold mt-2">
                               Payout: {formatUSDC((userWager / bet.outcomes[bet.winningOutcomeIndex].pool) * bet.totalPool)} USDC
                             </p>
                           )}
@@ -500,7 +540,7 @@ export default function ViewBetPage() {
                       {/* Individual bettors */}
                       {bettors.length > 0 && (
                         <div className="space-y-2">
-                          <p className="text-accent text-xs font-mono uppercase tracking-wider mb-2">
+                          <p className="text-accent text-[10px] sm:text-xs font-mono uppercase tracking-wider mb-2">
                             All Bettors ({bettors.length})
                           </p>
                           {bettors.map((bettor, index) => {
@@ -518,7 +558,7 @@ export default function ViewBetPage() {
                             return (
                               <div
                                 key={index}
-                                className={`p-3 border-2 ${
+                                className={`p-2 sm:p-3 border-2 ${
                                   bet.resolved 
                                     ? isWinner 
                                       ? 'border-green-600 bg-green-600/10' 
@@ -526,45 +566,45 @@ export default function ViewBetPage() {
                                     : 'border-text/20 bg-background'
                                 }`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
                                     {avatarUrl ? (
                                       <img 
                                         src={avatarUrl} 
                                         alt={bettor.name || 'Bettor'} 
-                                        className="w-8 h-8 border-2 border-text"
+                                        className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-text flex-shrink-0"
                                       />
                                     ) : (
-                                      <div className="w-8 h-8 border-2 border-text bg-surface flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-text text-sm">person</span>
+                                      <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-text bg-surface flex items-center justify-center flex-shrink-0">
+                                        <span className="material-symbols-outlined text-text text-xs sm:text-sm">person</span>
                                       </div>
                                     )}
-                                    <div>
-                                      <p className="text-text font-mono font-bold text-sm flex items-center gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-text font-mono font-bold text-xs sm:text-sm flex items-center gap-1 truncate">
                                         {bettor.name || `${bettor.address.slice(0, 6)}...${bettor.address.slice(-4)}`}
                                         {isYou && (
-                                          <span className="text-[10px] bg-primary text-text px-2 py-0.5 uppercase tracking-wider">You</span>
+                                          <span className="text-[8px] sm:text-[10px] bg-primary text-text px-1 sm:px-2 py-0.5 uppercase tracking-wider flex-shrink-0">You</span>
                                         )}
                                       </p>
-                                      <p className="text-accent text-xs font-mono">
-                                        {formatUSDC(bettor.amount)} USDC on <span className="text-text">{outcomeLabel}</span>
+                                      <p className="text-accent text-[10px] sm:text-xs font-mono truncate">
+                                        {formatUSDC(bettor.amount)} on <span className="text-text">{outcomeLabel}</span>
                                       </p>
                                     </div>
                                   </div>
                                   {bet.resolved && (
-                                    <div className="text-right">
+                                    <div className="text-right flex-shrink-0">
                                       {isWinner ? (
                                         <>
-                                          <p className="text-green-600 font-mono font-bold text-sm flex items-center gap-1 justify-end">
-                                            <span className="material-symbols-outlined text-sm">emoji_events</span>
+                                          <p className="text-green-600 font-mono font-bold text-xs sm:text-sm flex items-center gap-0.5 justify-end">
+                                            <span className="material-symbols-outlined text-xs sm:text-sm">emoji_events</span>
                                             WON
                                           </p>
-                                          <p className="text-green-600 text-xs font-mono">
-                                            +{formatUSDC(payout)} USDC
+                                          <p className="text-green-600 text-[10px] sm:text-xs font-mono">
+                                            +{formatUSDC(payout)}
                                           </p>
                                         </>
                                       ) : (
-                                        <p className="text-accent/50 font-mono font-bold text-sm">LOST</p>
+                                        <p className="text-accent/50 font-mono font-bold text-xs sm:text-sm">LOST</p>
                                       )}
                                     </div>
                                   )}
@@ -582,24 +622,24 @@ export default function ViewBetPage() {
               {/* Admin Controls */}
               {isAdmin && !bet.resolved && (
                 <Card>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-5 lg:p-6">
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="material-symbols-outlined text-secondary">admin_panel_settings</span>
-                      <h2 className="text-text text-lg font-display font-bold">Admin: Resolve Bet</h2>
+                      <span className="material-symbols-outlined text-secondary text-lg sm:text-xl">admin_panel_settings</span>
+                      <h2 className="text-text text-base sm:text-lg font-display font-bold">Admin: Resolve Bet</h2>
                     </div>
-                    <p className="text-accent text-sm font-mono mb-4">
+                    <p className="text-accent text-xs sm:text-sm font-mono mb-4">
                       Select the winning outcome to settle this bet and pay out winners.
                     </p>
-                    <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {bet.outcomes.map((outcome, index) => (
                         <Button
                           key={index}
                           variant="secondary"
                           onClick={() => handleResolveBet(index)}
                           disabled={submitting}
-                          className="justify-center"
+                          className="justify-center text-sm h-11 sm:h-12"
                         >
-                          <span className="material-symbols-outlined">emoji_events</span>
+                          <span className="material-symbols-outlined text-base">emoji_events</span>
                           {outcome.label} Wins
                         </Button>
                       ))}
@@ -611,10 +651,10 @@ export default function ViewBetPage() {
               {/* Resolved Summary */}
               {bet.resolved && (
                 <Card>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-5 lg:p-6">
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="material-symbols-outlined text-green-600">verified</span>
-                      <h2 className="text-text text-lg font-display font-bold">Settlement Summary</h2>
+                      <span className="material-symbols-outlined text-green-600 text-lg sm:text-xl">verified</span>
+                      <h2 className="text-text text-base sm:text-lg font-display font-bold">Settlement Summary</h2>
                     </div>
                     
                     {(() => {
@@ -626,47 +666,47 @@ export default function ViewBetPage() {
                       return (
                         <div className="space-y-3">
                           {/* Big winner display */}
-                          <div className="p-4 bg-green-600/10 border-2 border-green-600 text-center">
-                            <span className="material-symbols-outlined text-green-600 text-4xl mb-2">emoji_events</span>
-                            <p className="text-green-600 font-display font-bold text-2xl mb-1">
+                          <div className="p-3 sm:p-4 bg-green-600/10 border-2 border-green-600 text-center">
+                            <span className="material-symbols-outlined text-green-600 text-3xl sm:text-4xl mb-2">emoji_events</span>
+                            <p className="text-green-600 font-display font-bold text-xl sm:text-2xl mb-1">
                               {bet.outcomes[bet.winningOutcomeIndex].label}
                             </p>
-                            <p className="text-accent font-mono text-sm">Winning Outcome</p>
+                            <p className="text-accent font-mono text-xs sm:text-sm">Winning Outcome</p>
                           </div>
 
                           {/* Stats grid */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-background border-2 border-text">
-                              <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Winning Pool</p>
-                              <p className="text-text font-mono font-bold">{formatUSDC(winningPool)} USDC</p>
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                            <div className="p-2 sm:p-3 bg-background border-2 border-text">
+                              <p className="text-accent font-mono text-[10px] sm:text-xs uppercase tracking-wider mb-1">Winning Pool</p>
+                              <p className="text-text font-mono font-bold text-sm sm:text-base">{formatUSDC(winningPool)}</p>
                             </div>
-                            <div className="p-3 bg-background border-2 border-text">
-                              <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Total Pool</p>
-                              <p className="text-text font-mono font-bold">{formatUSDC(bet.totalPool)} USDC</p>
+                            <div className="p-2 sm:p-3 bg-background border-2 border-text">
+                              <p className="text-accent font-mono text-[10px] sm:text-xs uppercase tracking-wider mb-1">Total Pool</p>
+                              <p className="text-text font-mono font-bold text-sm sm:text-base">{formatUSDC(bet.totalPool)}</p>
                             </div>
                           </div>
 
                           {/* Payout multiplier */}
                           <div className="p-3 bg-primary/10 border-2 border-primary">
                             <div className="flex justify-between items-center">
-                              <span className="text-accent font-mono text-sm">Payout Multiplier</span>
-                              <span className="text-primary font-mono font-bold text-lg">{payoutMultiplier.toFixed(2)}x</span>
+                              <span className="text-accent font-mono text-xs sm:text-sm">Payout Multiplier</span>
+                              <span className="text-primary font-mono font-bold text-base sm:text-lg">{payoutMultiplier.toFixed(2)}x</span>
                             </div>
-                            <p className="text-accent/70 font-mono text-xs mt-1">
+                            <p className="text-accent/70 font-mono text-[10px] sm:text-xs mt-1">
                               Winners received {payoutMultiplier.toFixed(2)}x their wager
                             </p>
                           </div>
 
                           {/* Winner/Loser counts from indexer */}
                           {bettors.length > 0 && (
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 bg-green-600/10 border-2 border-green-600">
-                                <p className="text-green-600 font-mono text-xs uppercase tracking-wider mb-1">Winners</p>
-                                <p className="text-green-600 font-mono font-bold text-lg">{winners.length}</p>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                              <div className="p-2 sm:p-3 bg-green-600/10 border-2 border-green-600">
+                                <p className="text-green-600 font-mono text-[10px] sm:text-xs uppercase tracking-wider mb-1">Winners</p>
+                                <p className="text-green-600 font-mono font-bold text-base sm:text-lg">{winners.length}</p>
                               </div>
-                              <div className="p-3 bg-background border-2 border-text/30">
-                                <p className="text-accent font-mono text-xs uppercase tracking-wider mb-1">Losers</p>
-                                <p className="text-accent font-mono font-bold text-lg">{losers.length}</p>
+                              <div className="p-2 sm:p-3 bg-background border-2 border-text/30">
+                                <p className="text-accent font-mono text-[10px] sm:text-xs uppercase tracking-wider mb-1">Losers</p>
+                                <p className="text-accent font-mono font-bold text-base sm:text-lg">{losers.length}</p>
                               </div>
                             </div>
                           )}

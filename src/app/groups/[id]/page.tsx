@@ -388,7 +388,7 @@ export default function GroupPage() {
                             {/* Transfer UI (only show for other members) */}
                             {member.address !== wallet?.address && (
                               <div className="flex gap-2 w-full sm:w-auto">
-                                <Input
+                                <input
                                   type="number"
                                   step="0.01"
                                   min="0"
@@ -398,17 +398,18 @@ export default function GroupPage() {
                                     ...prev, 
                                     [member.address]: e.target.value 
                                   }))}
-                                  className="w-32"
                                   disabled={transferring[member.address]}
+                                  className="flex-1 sm:w-32 h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                                 />
                                 <Button
                                   onClick={() => handleTransfer(member.address, member.username)}
                                   loading={transferring[member.address]}
                                   disabled={!transferAmounts[member.address] || parseFloat(transferAmounts[member.address]) <= 0}
-                                  className="whitespace-nowrap"
+                                  className="flex-shrink-0 h-12"
                                 >
-                                  <span className="material-symbols-outlined">send</span>
-                                  Send USDC
+                                  <span className="material-symbols-outlined text-base">send</span>
+                                  <span className="hidden sm:inline">Send USDC</span>
+                                  <span className="sm:hidden">Send</span>
                                 </Button>
                               </div>
                             )}
