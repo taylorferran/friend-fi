@@ -173,51 +173,28 @@ export default function GroupExpenseTrackerPage() {
 
     setProcessing(true);
     try {
-      // Expenses are stored in Supabase, not on-chain
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      // Use the helper function from supabase-services
+      const { createExpenseInSupabase } = await import('@/lib/supabase-services');
       
-      // Calculate split amount per person
-      const amountPerPerson = amount / members.length;
+      // Calculate split amount per person (in micro-USDC)
+      const totalAmountMicroUsdc = BigInt(Math.floor(amount * 1_000_000));
+      const splitAmount = BigInt(Math.floor(amount * 1_000_000) / members.length);
       
-      // Create expense record
-      const { data: expense, error: expenseError } = await supabase
-        .from('expenses')
-        .insert({
-          group_id: groupId,
-          payer_address: wallet.address,
-          description: expenseName,
-          total_amount: amount,
-          split_type: 'equal', // Required field
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      
-      if (expenseError) {
-        console.error('[AddExpense] Supabase error:', expenseError);
-        throw new Error('Failed to create expense');
-      }
-      
-      // Create expense splits for each member (including payer)
+      // Create splits for each member
       const splits = members.map(member => ({
-        expense_id: expense.id,
-        debtor_address: member.address,
-        amount: amountPerPerson,
-        settled: member.address === wallet.address, // Payer's share is auto-settled
+        participantAddress: member.address,
+        amount: splitAmount,
       }));
       
-      const { error: splitsError } = await supabase
-        .from('expense_splits')
-        .insert(splits);
-      
-      if (splitsError) {
-        console.error('[AddExpense] Splits error:', splitsError);
-        throw new Error('Failed to create expense splits');
-      }
+      // Create expense with splits
+      await createExpenseInSupabase(
+        groupId,
+        expenseName,
+        totalAmountMicroUsdc,
+        wallet.address,
+        'equal',
+        splits
+      );
 
       showToast({
         type: 'success',
@@ -331,8 +308,9 @@ export default function GroupExpenseTrackerPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mobile-content lg:p-0 lg:pt-16 lg:pb-16">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8">
+          <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <Link 
             href={`/groups/${groupId}`}
@@ -678,6 +656,7 @@ export default function GroupExpenseTrackerPage() {
               )}
             </>
           )}
+          </div>
         </div>
       </main>
     </div>

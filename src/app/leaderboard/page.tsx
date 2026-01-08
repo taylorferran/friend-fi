@@ -107,8 +107,9 @@ export default function LeaderboardPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mobile-content lg:p-0 lg:pt-16 lg:pb-16">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8">
+          <div className="max-w-4xl mx-auto">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Leaderboard</h1>
             <p className="text-accent font-mono text-sm sm:text-base">Friends across your groups</p>
@@ -244,6 +245,7 @@ export default function LeaderboardPage() {
             <p className="text-accent text-xs font-mono">
               <span className="text-text font-bold">Note:</span> Leaderboard shows all friends across your groups, sorted by profit & loss.
             </p>
+          </div>
           </div>
         </div>
       </main>

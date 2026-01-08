@@ -272,8 +272,9 @@ export default function SettingsPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-12 lg:pb-16 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 mobile-content lg:p-0 lg:pt-12 lg:pb-16">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8">
+          <div className="max-w-5xl mx-auto">
           <div className="mb-6 sm:mb-8">
             <h1 className="text-text text-2xl sm:text-3xl lg:text-4xl font-display font-bold tracking-tight mb-2">Settings</h1>
             <p className="text-accent font-mono text-sm sm:text-base">Customize your profile and preferences.</p>
@@ -559,6 +560,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+      </div>
       </main>
     </div>
   );

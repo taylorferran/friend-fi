@@ -3,7 +3,6 @@ import { Libre_Baskerville, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { BiometricAuthWrapper } from "@/components/providers/BiometricAuthWrapper";
 import { ToastProvider } from "@/components/ui/Toast";
-import { MobileDebugLogger } from "@/components/debug/MobileDebugLogger";
 
 const libreBaskerville = Libre_Baskerville({
   variable: "--font-display",
@@ -69,7 +68,6 @@ export default function RootLayout({
         <BiometricAuthWrapper>
           <ToastProvider>
             {children}
-            <MobileDebugLogger />
           </ToastProvider>
         </BiometricAuthWrapper>
       </body>

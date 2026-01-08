@@ -202,8 +202,9 @@ export default function GroupPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mobile-content lg:p-0 lg:py-16">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16">
+          <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <Link 
             href="/dashboard" 
@@ -422,6 +423,7 @@ export default function GroupPage() {
               )}
             </>
           )}
+        </div>
         </div>
       </main>
     </div>

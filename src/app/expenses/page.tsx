@@ -16,8 +16,9 @@ export default function ExpensesPage() {
     <div className="flex min-h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 mobile-content p-4 pt-8 pb-12 lg:p-8 lg:pt-16 lg:pb-16 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 mobile-content lg:p-0 lg:pt-16 lg:pb-16">
+        <div className="p-4 sm:p-6 pt-8 pb-12 lg:p-8">
+          <div className="max-w-4xl mx-auto">
           <Link 
             href="/dashboard" 
             className="inline-flex items-center gap-2 text-accent hover:text-text transition-colors mb-6 font-mono uppercase text-sm tracking-wider font-bold"
@@ -46,6 +47,7 @@ export default function ExpensesPage() {
               </p>
             </CardContent>
           </Card>
+          </div>
         </div>
       </main>
     </div>
