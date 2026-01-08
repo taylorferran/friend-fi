@@ -211,19 +211,19 @@ export default function DemoPredictionsPage() {
       };
       setAdminUser(admin);
       
-      // Fund admin with 0.05 USDC
-      setCurrentAction('Funding admin with 0.05 USDC...');
+      // Fund admin with 500 USDC
+      setCurrentAction('Funding admin with 500 USDC...');
       const fundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         admin.address,
-        0.05
+        500
       );
       
       if (!fundResult.success) {
         throw new Error('Failed to fund admin account');
       }
       
-      recordTx(admin.name, 'Funded 0.05 USDC', fundResult.hash, 'success');
+      recordTx(admin.name, 'Funded 500 USDC', fundResult.hash, 'success');
       
       // Small delay to ensure account state is propagated
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -301,7 +301,7 @@ export default function DemoPredictionsPage() {
         : 0;
       setBetId(newBetId);
       
-      // Admin places wager (95% of 0.05 USDC = 0.0475 USDC = 47,500 micro-USDC)
+      // Admin places wager (95% of 500 USDC = 475 USDC = 475,000,000 micro-USDC)
       setCurrentAction('Admin placing wager on Yes...');
       
       // Request fresh signature for wager
@@ -321,14 +321,14 @@ export default function DemoPredictionsPage() {
       const adminWagerPayload = buildPlaceWagerPayload(
         newBetId,
         0,
-        47500,
+        475000000, // 475 USDC
         wagerProof.signature,
         wagerProof.expiresAt
       );
       await executeDemoTransaction(
         admin.walletData,
         adminWagerPayload,
-        'Wager 0.0475 USDC on Yes',
+        'Wager 475 USDC on Yes',
         admin.name
       );
       
@@ -356,18 +356,18 @@ export default function DemoPredictionsPage() {
         
         setCurrentAction(`Creating ${name}...`);
         
-        // Fund user with 0.05 USDC
+        // Fund user with 500 USDC
         const fundResult = await transferUSDCFromFaucet(
           FAUCET_PRIVATE_KEY,
           user.address,
-          0.05
+          500
         );
         
         if (!fundResult.success) {
           throw new Error(`Failed to fund ${name}'s account`);
         }
         
-        recordTx(user.name, 'Funded 0.05 USDC', fundResult.hash, 'success');
+        recordTx(user.name, 'Funded 500 USDC', fundResult.hash, 'success');
         
         // Small delay to ensure account state is propagated
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -390,7 +390,7 @@ export default function DemoPredictionsPage() {
         // Wait longer to ensure Supabase membership is fully propagated
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 0.05 = 0.0475 USDC = 47,500 micro-USDC
+        // Vote: first 3 vote Yes (0), last 3 vote No (1) - 95% of 500 = 475 USDC = 475,000,000 micro-USDC
         const outcome = idx < 3 ? 0 : 1;
         const outcomeName = outcome === 0 ? 'Yes' : 'No';
         
@@ -423,14 +423,14 @@ export default function DemoPredictionsPage() {
         const wagerPayload = buildPlaceWagerPayload(
           newBetId,
           outcome,
-          47500,
+          475000000, // 475 USDC
           voteProof.signature,
           voteProof.expiresAt
         );
         await executeDemoTransaction(
           user.walletData,
           wagerPayload,
-          `Wager 0.0475 USDC on ${outcomeName}`,
+          `Wager 475 USDC on ${outcomeName}`,
           user.name
         );
       });
@@ -476,8 +476,8 @@ export default function DemoPredictionsPage() {
       const feeCollected = Math.floor(totalPool * feePercentage);
       const netPool = totalPool - feeCollected;
       
-      // Calculate payouts (proportional to wager) - all winners wagered 47,500
-      const winnerWagers = [47500, 47500, 47500, 47500]; // admin + 3 users
+      // Calculate payouts (proportional to wager) - all winners wagered 475,000,000
+      const winnerWagers = [475000000, 475000000, 475000000, 475000000]; // admin + 3 users
       const totalWinnerWagers = winnerWagers.reduce((a, b) => a + b, 0);
       const payouts = winners.map((winner, idx) => ({
         user: winner.name,
@@ -619,8 +619,8 @@ export default function DemoPredictionsPage() {
                   <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
                     <li>Admin creates wallet, profile, group, and bet</li>
                     <li>6 users created with random names</li>
-                    <li>All funded with 0.05 USDC from faucet</li>
-                    <li>Each user bets 95% (0.0475 USDC) - 3 Yes, 3 No</li>
+                    <li>All funded with 500 USDC from faucet</li>
+                    <li>Each user bets 95% (475 USDC) - 3 Yes, 3 No</li>
                     <li>Admin settles bet</li>
                     <li>Winners paid out proportionally</li>
                     <li>0.3% platform fee collected</li>

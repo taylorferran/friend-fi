@@ -21,10 +21,10 @@ const LOCATIONS = ['Bali', 'Paris', 'Tokyo', 'Barcelona', 'Iceland', 'Morocco', 
 const TRIP_TYPES = ['Adventure', 'Getaway', 'Trip', 'Holiday', 'Escape', 'Journey'];
 
 const EXPENSES = [
-  { name: 'Dinner', amount: 3000 },      // 0.003 USDC
-  { name: 'Food Tour', amount: 2250 },    // 0.00225 USDC
-  { name: 'Museum Tickets', amount: 1500 }, // 0.0015 USDC
-  { name: 'Ubers', amount: 2000 },        // 0.002 USDC
+  { name: 'Dinner', amount: 120 },      // $120
+  { name: 'Food Tour', amount: 85 },    // $85
+  { name: 'Museum Tickets', amount: 45 }, // $45
+  { name: 'Ubers', amount: 60 },        // $60
 ];
 
 interface DemoUser {
@@ -211,18 +211,18 @@ export default function DemoExpensesPage() {
         
         setCurrentAction(`Creating ${name}...`);
         
-        // Fund user with 0.0125 USDC
+        // Fund user with 150 USDC (enough for their share of expenses)
         const fundResult = await transferUSDCFromFaucet(
           FAUCET_PRIVATE_KEY,
           user.address,
-          0.0125
+          150
         );
         
         if (!fundResult.success) {
           throw new Error(`Failed to fund ${name}'s account`);
         }
         
-        recordTx(user.name, 'Funded 0.0125 USDC', fundResult.hash, 'success');
+        recordTx(user.name, 'Funded 150 USDC', fundResult.hash, 'success');
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Set profile in Supabase
@@ -254,7 +254,7 @@ export default function DemoExpensesPage() {
       
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Phase 3: Add Expenses
+      // Phase 3: Add Expenses (OFF-CHAIN in Supabase)
       setPhase('add-expenses');
       setCurrentAction('Adding expenses...');
       
@@ -266,36 +266,30 @@ export default function DemoExpensesPage() {
         
         setCurrentAction(`${payer.name} adding expense: ${expense.name}...`);
         
-        // Request membership signature
-        const membershipResponse = await fetch(`/api/groups/${newGroupId}/membership-proof`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: payer.address }),
-        });
+        // Create expense in Supabase (off-chain, instant, no gas)
+        const { createExpenseInSupabase } = await import('@/lib/supabase-services');
         
-        if (!membershipResponse.ok) {
-          const error = await membershipResponse.json();
-          throw new Error(`Failed to get membership proof: ${error.error || 'Unknown error'}`);
-        }
+        // Calculate splits (equal split among all members)
+        const splitAmount = BigInt(Math.floor((expense.amount * 1_000_000) / newUsers.length)); // Convert to micro-USDC
+        const splits = newUsers.map(user => ({
+          participantAddress: user.address,
+          amount: splitAmount,
+        }));
         
-        const membershipProof = await membershipResponse.json();
-        
-        const participants = newUsers.map(u => u.address);
-        const payload = buildCreateExpenseEqualPayload(
+        const newExpense = await createExpenseInSupabase(
           newGroupId,
           expense.name,
-          expense.amount,
-          participants,
-          membershipProof.signature,
-          membershipProof.expiresAt
+          BigInt(expense.amount * 1_000_000), // Convert to micro-USDC
+          payer.address,
+          'equal',
+          splits
         );
         
-        await executeDemoTransaction(
-          payer.walletData,
-          payload,
-          `Add Expense: ${expense.name}`,
-          payer.name
-        );
+        if (!newExpense) {
+          throw new Error(`Failed to create expense: ${expense.name}`);
+        }
+        
+        recordTx(payer.name, `Add Expense: ${expense.name} (Supabase)`, 'supabase-expense', 'success');
         
         addedExpenses.push({
           name: expense.name,
@@ -303,61 +297,86 @@ export default function DemoExpensesPage() {
           payer: payer.address,
           payerName: payer.name
         });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       setExpenses(addedExpenses);
       
-      // Phase 4: Calculate Debts
+      // Phase 4: Calculate Debts (OFF-CHAIN from Supabase)
       setPhase('calculate-debts');
-      setCurrentAction('Calculating debts...');
+      setCurrentAction('Calculating debts from Supabase...');
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const result = await getGroupDebts(newGroupId);
+      // Fetch expenses and splits from Supabase to calculate debts
+      const { supabase } = await import('@/lib/supabase');
+      
+      // Get all expense splits for this group
+      const { data: splits, error } = await supabase
+        .from('expense_splits')
+        .select(`
+          *,
+          expense:expenses!inner(group_id, payer_address)
+        `)
+        .eq('expense.group_id', newGroupId);
+      
+      if (error) throw error;
+      
+      // Calculate net balances (who owes whom)
+      const balances: Record<string, number> = {};
+      
+      newUsers.forEach(user => {
+        balances[user.address] = 0;
+      });
+      
+      // For each expense split
+      splits?.forEach((split: any) => {
+        const payerAddr = split.expense.payer_address;
+        const participantAddr = split.participant_address;
+        const amount = parseFloat(split.amount);
+        
+        // Payer paid the full amount
+        if (payerAddr === participantAddr) {
+          // This is the payer's own share - already settled
+        } else {
+          // Participant owes the payer
+          balances[participantAddr] -= amount; // Participant owes
+          balances[payerAddr] += amount; // Payer is owed
+        }
+      });
+      
+      // Convert balances to debt records
       const calculatedDebts: Debt[] = [];
       
-      for (let i = 0; i < result.debtors.length; i++) {
-        const fromAddr = result.debtors[i];
-        const toAddr = result.creditors[i];
-        const amount = result.amounts[i];
-        
-        if (fromAddr === toAddr || amount === 0) continue;
-        
-        const fromUser = newUsers.find(u => u.address === fromAddr);
-        const toUser = newUsers.find(u => u.address === toAddr);
-        
-        if (fromUser && toUser) {
-          calculatedDebts.push({
-            from: fromAddr,
-            to: toAddr,
-            amount,
-            fromName: fromUser.name,
-            toName: toUser.name
-          });
+      // Simple debt settlement: each person with negative balance owes those with positive
+      const debtors = Object.entries(balances).filter(([_, balance]) => balance < 0);
+      const creditors = Object.entries(balances).filter(([_, balance]) => balance > 0);
+      
+      for (const [debtorAddr, debtAmount] of debtors) {
+        for (const [creditorAddr, creditAmount] of creditors) {
+          const settleAmount = Math.min(Math.abs(debtAmount), creditAmount);
+          
+          if (settleAmount > 0.01) { // Only show debts > $0.01
+            const fromUser = newUsers.find(u => u.address === debtorAddr);
+            const toUser = newUsers.find(u => u.address === creditorAddr);
+            
+            if (fromUser && toUser) {
+              calculatedDebts.push({
+                from: debtorAddr,
+                to: creditorAddr,
+                amount: Math.floor(settleAmount), // Convert to micro-USDC
+                fromName: fromUser.name,
+                toName: toUser.name
+              });
+            }
+          }
         }
       }
+      
       setDebts(calculatedDebts);
+      recordTx('System', 'Calculate Debts (Supabase)', 'supabase-debts', 'success');
       
-      // Phase 5: Settle Debts
-      setPhase('settle-debts');
-      setCurrentAction('Settling debts...');
-      
-      for (const debt of calculatedDebts) {
-        const debtor = newUsers.find(u => u.address === debt.from);
-        if (!debtor) continue;
-        
-        setCurrentAction(`${debt.fromName} settling debt to ${debt.toName}...`);
-        
-        const payload = buildSettleDebtPayload(newGroupId, debt.to, debt.amount);
-        await executeDemoTransaction(
-          debtor.walletData,
-          payload,
-          `Settle Debt to ${debt.toName}`,
-          debt.fromName
-        );
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
+      // Phase 5: Complete (debts calculated - settlement would be done via USDC transfers)
       setPhase('complete');
       setCurrentAction('Demo complete!');
       
@@ -480,12 +499,11 @@ export default function DemoExpensesPage() {
                   <h3 className="font-display font-bold text-text mb-3">What happens:</h3>
                   <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
                     <li>3 users created with random names</li>
-                    <li>All funded with 0.0125 USDC from faucet</li>
+                    <li>All funded with 150 USDC from faucet</li>
                     <li>Group created for the trip</li>
-                    <li>4 expenses added and split equally</li>
-                    <li>Debts calculated automatically</li>
-                    <li>All debts settled on-chain</li>
-                    <li>0.3% platform fee collected</li>
+                    <li>4 expenses added (stored in Supabase)</li>
+                    <li>Debts calculated from Supabase</li>
+                    <li>Who owes whom displayed</li>
                   </ol>
                 </div>
 
@@ -525,14 +543,14 @@ export default function DemoExpensesPage() {
                             <span className="text-xs text-accent ml-2">paid by {expense.payerName}</span>
                           </div>
                           <span className="font-mono font-bold text-text">
-                            ${(expense.amount / 1_000_000).toFixed(4)} USDC
+                            ${expense.amount.toFixed(2)} USDC
                           </span>
                         </div>
                       ))}
                       <div className="flex justify-between items-center p-3 border-2 border-text bg-primary/20 font-bold">
                         <span className="font-mono text-text">Total Spent</span>
                         <span className="font-mono text-text">
-                          ${(expenses.reduce((sum, e) => sum + e.amount, 0) / 1_000_000).toFixed(4)} USDC
+                          ${expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)} USDC
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-2 border-2 border-text bg-surface">
@@ -567,11 +585,11 @@ export default function DemoExpensesPage() {
                                 </span>
                               </div>
                               <span className="font-mono text-xl font-bold text-green-600">
-                                ${(debt.amount / 1_000_000).toFixed(4)} USDC
+                                ${(debt.amount / 1_000_000).toFixed(2)} USDC
                               </span>
                             </div>
                             <div className="text-xs font-mono text-accent ml-8">
-                              Recipient received: ${(netAmount / 1_000_000).toFixed(5)} USDC (0.3% fee: ${(feeAmount / 1_000_000).toFixed(5)} USDC)
+                              (Calculated from Supabase expense splits)
                             </div>
                           </div>
                         );

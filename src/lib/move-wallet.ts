@@ -130,7 +130,7 @@ export async function signAndSubmitGaslessTransaction(
   const account = getMoveAccount();
   
   try {
-    // Step 1: Build transaction WITHOUT feePayer (Shinami will add it)
+    // Step 1: Build transaction WITH feePayer flag (Shinami will add their signature)
     const transaction = await aptos.transaction.build.simple({
       sender: account.accountAddress,
       data: {
@@ -138,6 +138,7 @@ export async function signAndSubmitGaslessTransaction(
         typeArguments: payload.typeArguments,
         functionArguments: payload.functionArguments,
       },
+      withFeePayer: true, // Tell SDK a fee payer will be added
     });
 
     // Step 2: Sign the transaction with our account
@@ -274,38 +275,8 @@ export async function transferUSDCFromFaucet(
     : `0x${toAddress.padStart(64, '0')}`;
   
   try {
-    // Step 1: Ensure recipient has a primary store for test USDC
-    // This is necessary for new accounts that have never received USDC
-    try {
-      const ensureStoreTransaction = await aptos.transaction.build.simple({
-        sender: faucetAccount.accountAddress,
-        data: {
-          function: "0x1::primary_fungible_store::ensure_primary_store_exists",
-          typeArguments: ["0x1::fungible_asset::Metadata"],
-          functionArguments: [
-            AccountAddress.from(normalizedRecipient),  // owner
-            USDC_METADATA_ADDR,  // metadata
-          ],
-        },
-      });
-
-      const ensureStoreTxn = await aptos.signAndSubmitTransaction({
-        signer: faucetAccount,
-        transaction: ensureStoreTransaction,
-      });
-
-      // Wait for store creation to complete
-      await aptos.waitForTransaction({
-        transactionHash: ensureStoreTxn.hash,
-      });
-      
-      console.log('Primary store ensured for recipient');
-    } catch (storeError) {
-      // Ignore if store already exists
-      console.log('Primary store creation skipped (may already exist):', storeError);
-    }
-
-    // Step 2: Transfer USDC to the target address
+    // Step 1: Transfer USDC to the target address
+    // The mint function auto-creates the primary store if needed
     const transaction = await aptos.transaction.build.simple({
       sender: faucetAccount.accountAddress,
       data: {

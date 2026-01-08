@@ -36,58 +36,87 @@ export async function POST(request: NextRequest) {
     console.log('Calling Shinami Gas Station...');
     console.log('Request payload:', JSON.stringify(rpcRequest, null, 2));
     
-    const response = await fetch(SHINAMI_GAS_STATION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': SHINAMI_API_KEY,
-      },
-      body: JSON.stringify(rpcRequest),
-    });
-
-    const responseText = await response.text();
+    // Retry logic for network errors
+    let lastError: Error | null = null;
+    const maxRetries = 2;
     
-    console.log('Shinami response status:', response.status);
-    console.log('Shinami response:', responseText);
-
-    if (!response.ok) {
-      // Try to parse error details
-      let errorDetails = responseText;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const errorJson = JSON.parse(responseText);
-        errorDetails = JSON.stringify(errorJson, null, 2);
-        console.error('Shinami error details:', errorDetails);
-      } catch {
-        // Keep as-is if not JSON
+        const response = await fetch(SHINAMI_GAS_STATION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': SHINAMI_API_KEY,
+          },
+          body: JSON.stringify(rpcRequest),
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
+
+        const responseText = await response.text();
+        
+        console.log('Shinami response status:', response.status);
+        console.log('Shinami response:', responseText);
+
+        if (!response.ok) {
+          // Try to parse error details
+          let errorDetails = responseText;
+          try {
+            const errorJson = JSON.parse(responseText);
+            errorDetails = JSON.stringify(errorJson, null, 2);
+            console.error('Shinami error details:', errorDetails);
+          } catch {
+            // Keep as-is if not JSON
+          }
+          throw new Error(`Shinami API returned ${response.status}: ${errorDetails}`);
+        }
+
+        if (!responseText) {
+          throw new Error('Empty response from Shinami');
+        }
+
+        const result = JSON.parse(responseText);
+        
+        console.log('Shinami result:', JSON.stringify(result, null, 2));
+
+        if (result.error) {
+          console.error('Shinami error:', result.error);
+          throw new Error(result.error.message || JSON.stringify(result.error));
+        }
+
+        // Shinami returns { result: { pendingTransaction: { hash, ... } } }
+        const pendingTransaction = result.result?.pendingTransaction;
+        
+        if (!pendingTransaction?.hash) {
+          console.error('Unexpected Shinami response structure:', result);
+          throw new Error('Invalid response from Shinami - missing transaction hash');
+        }
+
+        console.log('Transaction successful! Hash:', pendingTransaction.hash);
+
+        // Return the pending transaction with hash
+        return NextResponse.json({ pendingTx: pendingTransaction });
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        
+        // Don't retry on non-network errors
+        if (!lastError.message.includes('fetch failed') && 
+            !lastError.message.includes('ECONNRESET') &&
+            !lastError.message.includes('timeout')) {
+          break;
+        }
+        
+        // If this isn't the last attempt, wait before retrying
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 500; // 500ms, 1000ms
+          console.log(`Shinami connection failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-      throw new Error(`Shinami API returned ${response.status}: ${errorDetails}`);
     }
-
-    if (!responseText) {
-      throw new Error('Empty response from Shinami');
-    }
-
-    const result = JSON.parse(responseText);
     
-    console.log('Shinami result:', JSON.stringify(result, null, 2));
-
-    if (result.error) {
-      console.error('Shinami error:', result.error);
-      throw new Error(result.error.message || JSON.stringify(result.error));
-    }
-
-    // Shinami returns { result: { pendingTransaction: { hash, ... } } }
-    const pendingTransaction = result.result?.pendingTransaction;
-    
-    if (!pendingTransaction?.hash) {
-      console.error('Unexpected Shinami response structure:', result);
-      throw new Error('Invalid response from Shinami - missing transaction hash');
-    }
-
-    console.log('Transaction successful! Hash:', pendingTransaction.hash);
-
-    // Return the pending transaction with hash
-    return NextResponse.json({ pendingTx: pendingTransaction });
+    // All retries failed
+    throw lastError;
   } catch (error) {
     console.error('Error sponsoring transaction:', error);
     

@@ -52,10 +52,10 @@ module friend_fi::habit_tracker {
 
     /// USDC metadata address on Movement testnet.
     const USDC_METADATA_ADDR: address =
-        @0xb89077cfd2a82a0c1450534d49cfd5f2707643155273069bc23a912bcfefdee7;
+        @0x9cdf923fb59947421487b61b19f9cacb172d971a755d6bb34f69474148c11ada; // Test USDC
 
-    /// Escrow object seed for habit tracker.
-    const ESCROW_OBJECT_SEED: vector<u8> = b"FRIEND_FI_HABIT_ESCROW";
+    /// Escrow object seed for habit tracker (v2 with new USDC).
+    const ESCROW_OBJECT_SEED: vector<u8> = b"FRIEND_FI_HABIT_ESCROW_V2";
 
     /// Fee numerator for deposit rake (3 = 0.3%).
     const RAKE_NUMERATOR: u64 = 3;
@@ -319,6 +319,35 @@ module friend_fi::habit_tracker {
             group_commitments: vector::empty<GroupCommitments>(),
             next_commitment_id: 0,
         });
+    }
+
+    /// Migrate to a new escrow with updated USDC metadata.
+    /// This is used when the USDC metadata address changes (e.g., switching to test USDC).
+    public entry fun migrate_escrow(admin: &signer) acquires AppConfig {
+        let admin_addr = signer::address_of(admin);
+        assert!(admin_addr == admin_address(), E_NOT_ADMIN);
+        assert!(exists<AppConfig>(admin_addr), E_NOT_INITIALIZED);
+
+        // Create NEW escrow object with current seed
+        let constructor_ref = object::create_named_object(
+            admin,
+            ESCROW_OBJECT_SEED,
+        );
+
+        let escrow_signer = object::generate_signer(&constructor_ref);
+        move_to(&escrow_signer, EscrowMarker {});
+
+        let extend_ref = object::generate_extend_ref(&constructor_ref);
+        let metadata = usdc_metadata();
+        let escrow_store = fungible_asset::create_store(
+            &constructor_ref,
+            metadata,
+        );
+
+        // Update AppConfig with new escrow
+        let config = borrow_global_mut<AppConfig>(admin_addr);
+        config.extend_ref = extend_ref;
+        config.escrow_store = escrow_store;
     }
 
     #[test_only]

@@ -189,14 +189,17 @@ export default function DemoHabitsPage() {
       const aliceFundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         aliceUser.address,
-        0.05  // Increased from 0.0375 to ensure enough for commitment + fees
+        10  // 10 USDC for habit commitments and fees
       );
       
       if (!aliceFundResult.success) {
         throw new Error('Failed to fund Alice');
       }
       
-      recordTx(aliceName, 'Funded 0.05 USDC', aliceFundResult.hash, 'success');
+      recordTx(aliceName, 'Funded 10 USDC', aliceFundResult.hash, 'success');
+      
+      // Wait for account to be fully initialized
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Set Alice's profile
       await upsertProfile(aliceUser.address, aliceName, aliceAvatar);
@@ -225,14 +228,17 @@ export default function DemoHabitsPage() {
       const bobFundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         bobUser.address,
-        0.05  // Increased from 0.0375 to ensure enough for commitment + fees
+        10  // 10 USDC for habit commitments and fees
       );
       
       if (!bobFundResult.success) {
         throw new Error('Failed to fund Bob');
       }
       
-      recordTx(bobName, 'Funded 0.05 USDC', bobFundResult.hash, 'success');
+      recordTx(bobName, 'Funded 10 USDC', bobFundResult.hash, 'success');
+      
+      // Wait for account to be fully initialized
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Set Bob's profile
       await upsertProfile(bobUser.address, bobName, bobAvatar);
