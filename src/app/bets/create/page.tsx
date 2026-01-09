@@ -21,7 +21,7 @@ export default function CreateBetPage() {
   const [betType, setBetType] = useState<'yesno' | 'multiple'>('yesno');
   const [options, setOptions] = useState<string[]>(['', '']);
   const [initialOutcomeIndex, setInitialOutcomeIndex] = useState<number>(0);
-  const [initialWager, setInitialWager] = useState<string>('0.05'); // Default minimum
+  const [initialWager, setInitialWager] = useState<string>('1'); // Default minimum
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [groupId, setGroupId] = useState<number | null>(null);
@@ -100,8 +100,8 @@ export default function CreateBetPage() {
     }
     
     const wagerAmount = parseFloat(initialWager);
-    if (isNaN(wagerAmount) || wagerAmount < 0.05) {
-      showToast({ type: 'error', title: 'Invalid wager', message: 'Minimum wager is 0.05 USDC' });
+    if (isNaN(wagerAmount) || wagerAmount < 1) {
+      showToast({ type: 'error', title: 'Invalid wager', message: 'Minimum wager is 1 USDC' });
       setLoading(false);
       return;
     }
@@ -163,7 +163,7 @@ export default function CreateBetPage() {
         showToast({ 
           type: 'error', 
           title: 'Wager too low', 
-          message: 'Minimum wager is 0.05 USDC' 
+          message: 'Minimum wager is 1 USDC' 
         });
       } else {
         showToast({ type: 'error', title: 'Transaction failed', message });
@@ -322,7 +322,7 @@ export default function CreateBetPage() {
               <div className="mb-6 p-4 border-2 border-primary bg-primary/10">
                 <label className="text-text text-base font-mono font-bold uppercase tracking-wider block mb-2">Your Initial Wager (Required)</label>
                 <p className="text-accent text-xs font-mono mb-3">
-                  Show confidence in your bet! Minimum 0.05 USDC. Fee: 0.3% + 0.1% on resolution = ~0.4% total.
+                  Show confidence in your bet! Minimum 1 USDC. Fee: 0.3% + 0.1% on resolution = ~0.4% total.
                 </p>
                 
                 <div className="flex gap-3 items-start">
@@ -343,11 +343,11 @@ export default function CreateBetPage() {
                     <label className="text-accent text-xs font-mono block mb-1">Amount (USDC)</label>
                     <input
                       type="number"
-                      min="0.05"
+                      min="1"
                       step="0.01"
                       value={initialWager}
                       onChange={(e) => setInitialWager(e.target.value)}
-                      placeholder="0.05"
+                      placeholder="1.00"
                       className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
@@ -358,7 +358,7 @@ export default function CreateBetPage() {
                 <Button 
                   type="button" 
                   onClick={() => setStep(2)}
-                  disabled={!question || (betType === 'multiple' && getOutcomes().length < 2) || parseFloat(initialWager) < 0.05}
+                  disabled={!question || (betType === 'multiple' && getOutcomes().length < 2) || parseFloat(initialWager) < 1}
                 >
                   Continue
                   <span className="material-symbols-outlined">arrow_forward</span>

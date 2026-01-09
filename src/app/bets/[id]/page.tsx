@@ -100,6 +100,17 @@ export default function ViewBetPage() {
   const handlePlaceWager = async () => {
     if (selectedOutcome === null || !wagerAmount || !wallet || !bet) return;
     
+    // Validate minimum wager
+    const wagerAmountNum = parseFloat(wagerAmount);
+    if (isNaN(wagerAmountNum) || wagerAmountNum < 1) {
+      showToast({ 
+        type: 'error', 
+        title: 'Invalid wager', 
+        message: 'Minimum wager is 1 USDC' 
+      });
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
@@ -410,9 +421,9 @@ export default function ViewBetPage() {
                             type="number"
                             value={wagerAmount}
                             onChange={(e) => setWagerAmount(e.target.value)}
-                            placeholder="0.00"
+                            placeholder="1.00"
                             step="0.01"
-                            min="0"
+                            min="1"
                             className="w-full h-12 border-2 border-text bg-surface text-text placeholder:text-accent/60 px-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                           />
                         </div>

@@ -395,7 +395,7 @@ module friend_fi::private_prediction_refactored {
     /// Create a new bet within a group WITH mandatory initial wager.
     /// This prevents spam and ensures gas costs are covered by fees.
     /// 
-    /// Minimum wager: 50,000 micro-USDC (0.05 USDC)
+    /// Minimum wager: 1,000,000 micro-USDC (1 USDC)
     /// Fee collected: 0.3% of initial wager
     public entry fun create_bet_with_wager(
         account: &signer,
@@ -411,8 +411,8 @@ module friend_fi::private_prediction_refactored {
     ) acquires State, AppConfig {
         let caller = signer::address_of(account);
 
-        // Verify minimum wager (0.05 USDC = 50,000 micro-USDC)
-        assert!(initial_wager_amount >= 50_000, E_INSUFFICIENT_AMOUNT);
+        // Verify minimum wager (1 USDC = 1,000,000 micro-USDC)
+        assert!(initial_wager_amount >= 1_000_000, E_INSUFFICIENT_AMOUNT);
 
         // Verify membership using signature authentication
         signature_auth::assert_membership(group_id, caller, expires_at_ms, signature);

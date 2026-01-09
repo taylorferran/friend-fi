@@ -155,9 +155,9 @@ export function useMoveWallet() {
   ) => {
     if (!wallet) throw new Error('Wallet not initialized');
     
-    // Verify minimum wager (0.05 USDC)
-    if (initialWagerUSDC < 0.05) {
-      throw new Error('Minimum wager is 0.05 USDC');
+    // Verify minimum wager (1 USDC)
+    if (initialWagerUSDC < 1) {
+      throw new Error('Minimum wager is 1 USDC');
     }
     
     // Check USDC balance before creating bet

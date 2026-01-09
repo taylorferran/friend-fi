@@ -1,32 +1,36 @@
-# Friend-Fi 🎲
+<div align="center">
+  <img src="public/logo.svg" alt="Friend-Fi Logo" width="200"/>
+</div>
+
+# Friend-Fi
 
 Your mobile-first social finance hub - Manage money, track habits, and make predictions with friends using USDC on Movement Network.
 
 ## Features
 
-### 🎲 Private Predictions
+### Private Predictions
 - Create and wager on predictions within groups
 - Proportional payouts
 - Encrypted bet details for privacy
 - Bet admin controlled settlement
 
-### 💰 Expense Splitting
+### Expense Splitting
 - Split bills and expenses within friend groups
 - Track who owes what in real-time
 - Settle up with instant USDC transfers
 - Full transaction history
 
-### 🎯 Habit Tracking & Accountability
+### Habit Tracking & Accountability
 - Create personal goals and habits
 - Stake USDC to stay accountable
 - Friends can verify your progress
 - Get your stake back when you succeed
 
 
-### 🔐 Core Benefits
+### Core Benefits
 - **Mobile-First**: Optimized for on-the-go use
 - **Private & Secure**: On-chain encryption for sensitive data
-- **No Gas Fees**: All transaction costs covered
+- **No Gas Fees**: All transaction costs covered by Shinami Gas Station
 - **USDC Only**: Stable currency for all interactions
 - **Social by Default**: Everything happens within friend groups
 
@@ -35,11 +39,11 @@ Your mobile-first social finance hub - Manage money, track habits, and make pred
 - **Frontend**: Next.js 15 + React + TypeScript
 - **Styling**: Tailwind CSS
 - **Authentication**: WebAuthn biometric authentication
-- **Blockchain**: Movement Network Testnet (EVM-compatible)
+- **Blockchain**: Movement Bardock Testnet
 - **Smart Contracts**: Move language
 - **Database**: Supabase (for off-chain indexing)
 - **Mobile**: Progressive Web App (PWA) with biometric support
-- **Gas Sponsorship**: Transaction fees covered by the app
+- **Gas Sponsorship**: Transaction fees covered by Shinami Gas Station
 
 ## Getting Started
 
@@ -142,22 +146,21 @@ src/
 
 ## Smart Contracts
 
-The app uses Move smart contracts deployed on Movement Network:
+The app uses Move smart contracts deployed on Movement Bardock Testnet:
 
-- **groups.move** - Group creation and membership management
 - **private_prediction_refactored.move** - Encrypted prediction markets
 - **expense_splitting.move** - Bill splitting and settlement
 - **habit_tracker.move** - Habit staking and verification
+- **signature_auth.move** - Secure authentication system for off-chain groups
 - **test_usdc.move** - Test USDC token for development
-- **signature_auth.move** - Secure authentication system
 
 ## Movement Network Configuration
 
-The app is configured for Movement Network Testnet:
+The app is configured for Movement Bardock Testnet:
 
 - **Chain ID**: 30732
-- **RPC URL**: https://mevm.testnet.imola.movementlabs.xyz
-- **Explorer**: https://explorer.testnet.imola.movementlabs.xyz
+- **RPC URL**: https://testnet.bardock.movementlabs.xyz
+- **Explorer**: https://explorer.movementlabs.xyz
 
 ## User Flows
 

@@ -225,8 +225,18 @@ export default function DemoPredictionsPage() {
       
       recordTx(admin.name, 'Funded 500 USDC', fundResult.hash, 'success');
       
-      // Small delay to ensure account state is propagated
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer to ensure account state is propagated to all nodes (including Shinami)
+      setCurrentAction('Waiting for account to propagate...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Verify account exists and has balance before proceeding
+      try {
+        const accountInfo = await aptos.getAccountInfo({ accountAddress: admin.address });
+        console.log('✅ Admin account verified on-chain, sequence:', accountInfo.sequence_number);
+      } catch (error) {
+        console.error('⚠️ Admin account not yet visible on-chain, waiting longer...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
       
       // Set profile in Supabase (off-chain, instant, no gas)
       setCurrentAction('Setting admin profile...');
@@ -369,14 +379,18 @@ export default function DemoPredictionsPage() {
         
         recordTx(user.name, 'Funded 500 USDC', fundResult.hash, 'success');
         
-        // Small delay to ensure account state is propagated
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Longer delay to ensure account state is propagated to Shinami
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Set profile in Supabase
         await upsertProfile(user.address, user.name, user.avatarId);
         recordTx(user.name, 'Set Profile (Supabase)', 'supabase-profile', 'success');
       }
       setUsers(newUsers);
+      
+      // Extra delay to ensure all accounts are visible on all nodes
+      setCurrentAction('Ensuring all accounts are propagated...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Phase 5: Users Join and Vote (in parallel)
       setPhase('users-join-vote');

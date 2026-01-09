@@ -80,7 +80,19 @@ export async function POST(request: NextRequest) {
 
         if (result.error) {
           console.error('Shinami error:', result.error);
-          throw new Error(result.error.message || JSON.stringify(result.error));
+          
+          // Provide more context for common errors
+          let errorMessage = result.error.message || JSON.stringify(result.error);
+          if (result.error.code === -32603) {
+            errorMessage = `Shinami internal error (code -32603): ${errorMessage}. This usually means the transaction simulation failed. Common causes:\n` +
+              '1. Account does not exist or has insufficient balance\n' +
+              '2. Transaction would fail on-chain due to contract logic\n' +
+              '3. Signature verification failed\n' +
+              '4. Temporary network sync issues\n\n' +
+              'Try waiting a few seconds and retrying the transaction.';
+          }
+          
+          throw new Error(errorMessage);
         }
 
         // Shinami returns { result: { pendingTransaction: { hash, ... } } }
