@@ -1,4 +1,7 @@
 <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Yellow background -->
+  <rect width="48" height="48" fill="#F5C301"/>
+  
   <!-- Left person -->
   <circle cx="15" cy="12" r="7" fill="#211408"/>
   <path d="M4 40C4 31.1634 11.1634 24 20 24C23.3137 24 26 26.6863 26 30V40C26 41.6569 24.6569 43 23 43H7C5.34315 43 4 41.6569 4 40Z" fill="#211408" fill-opacity="0.7"/>
@@ -6,7 +9,4 @@
   <!-- Right person -->
   <circle cx="33" cy="12" r="7" fill="#211408"/>
   <path d="M22 40C22 31.1634 29.1634 24 38 24C41.3137 24 44 26.6863 44 30V40C44 41.6569 42.6569 43 41 43H25C23.3431 43 22 41.6569 22 40Z" fill="#211408"/>
-  
-  <!-- Yellow background -->
-  <rect width="48" height="48" fill="#F5C301" style="mix-blend-mode: multiply" opacity="0.3"/>
 </svg>

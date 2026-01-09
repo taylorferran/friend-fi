@@ -189,14 +189,14 @@ export default function DemoHabitsPage() {
       const aliceFundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         aliceUser.address,
-        10  // 10 USDC for habit commitments and fees
+        15  // 15 USDC for habit commitment and fees
       );
       
       if (!aliceFundResult.success) {
         throw new Error('Failed to fund Alice');
       }
       
-      recordTx(aliceName, 'Funded 10 USDC', aliceFundResult.hash, 'success');
+      recordTx(aliceName, 'Funded 15 USDC', aliceFundResult.hash, 'success');
       
       // Wait for account to be fully initialized
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -228,14 +228,14 @@ export default function DemoHabitsPage() {
       const bobFundResult = await transferUSDCFromFaucet(
         FAUCET_PRIVATE_KEY,
         bobUser.address,
-        10  // 10 USDC for habit commitments and fees
+        15  // 15 USDC for habit commitment and fees
       );
       
       if (!bobFundResult.success) {
         throw new Error('Failed to fund Bob');
       }
       
-      recordTx(bobName, 'Funded 10 USDC', bobFundResult.hash, 'success');
+      recordTx(bobName, 'Funded 15 USDC', bobFundResult.hash, 'success');
       
       // Wait for account to be fully initialized
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -289,16 +289,16 @@ export default function DemoHabitsPage() {
         aliceProof.signature,
         aliceProof.expiresAt,
         bobUser.address,
-        50000,  // 0.05 USDC total payout
-        3,      // 3 check-ins required
-        1,      // 1 week duration
+        20_000_000,  // 20 USDC total payout (10 USDC each)
+        3,           // 3 check-ins required
+        1,           // 1 week duration
         'Gym 3 times this week'
       );
       
       await executeDemoTransaction(
         aliceUser.walletData,
         createCommitmentPayload,
-        'Create commitment (stake 0.025 USDC + fee)',
+        'Create commitment (stake 10 USDC)',
         aliceName
       );
       
@@ -329,7 +329,7 @@ export default function DemoHabitsPage() {
       await executeDemoTransaction(
         bobUser.walletData,
         acceptPayload,
-        'Accept commitment (stake 0.025 USDC + fee)',
+        'Accept commitment (stake 10 USDC)',
         bobName
       );
       
@@ -369,7 +369,7 @@ export default function DemoHabitsPage() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Alice wins (met 3/3 requirement)
-      const totalPool = 50000; // 0.05 USDC
+      const totalPool = 20_000_000; // 20 USDC
       setWinner(aliceName);
       setWinnings(totalPool);
       recordTx(aliceName, '⏱️ Week passes - Alice wins! (simulated)', '0xsimulated', 'success');
@@ -496,13 +496,13 @@ export default function DemoHabitsPage() {
                   <h3 className="font-display font-bold text-text mb-3">What happens:</h3>
                   <ol className="space-y-2 font-mono text-sm text-accent list-decimal list-inside">
                     <li>Alice & Bob created with wallets</li>
-                    <li>Both funded with 0.05 USDC from faucet</li>
+                    <li>Both funded with 15 USDC from faucet</li>
                     <li>Group created and members added</li>
-                    <li>Alice creates gym commitment (0.025 USDC stake)</li>
-                    <li>Bob accepts commitment (0.025 USDC stake)</li>
+                    <li>Alice creates gym commitment (10 USDC stake)</li>
+                    <li>Bob accepts commitment (10 USDC stake)</li>
                     <li>Alice checks in 3/3 times ✓</li>
                     <li>Bob checks in only 2/3 times ✗</li>
-                    <li>Alice wins the pool (0.05 USDC)</li>
+                    <li>Alice wins the pool (20 USDC)</li>
                   </ol>
                 </div>
 
@@ -557,11 +557,11 @@ export default function DemoHabitsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-accent">Stakes:</span>
-                        <span className="text-text">0.025 USDC each</span>
+                        <span className="text-text">10 USDC each</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-accent">Total Pool:</span>
-                        <span className="text-primary font-bold">0.05 USDC</span>
+                        <span className="text-primary font-bold">20 USDC</span>
                       </div>
                     </div>
                   </div>
