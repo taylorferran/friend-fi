@@ -97,16 +97,16 @@ export default function GroupPrivatePredictionsPage() {
                 avatarId: profiles.get(wager.address)?.avatarId,
                 amount: wager.amount,
                 outcomeIndex: wager.outcomeIndex,
-                isWinner: betData.resolved ? wager.outcomeIndex === betData.winningOutcomeIndex : false,
+                isWinner: betData?.resolved ? wager.outcomeIndex === betData.winningOutcomeIndex : false,
                 payout: wager.payout
               }));
               
               return { 
                 id, 
                 description,
-                resolved: betData.resolved,
-                winningOutcome: betData.resolved ? betData.outcomes[betData.winningOutcomeIndex].label : undefined,
-                totalPool: betData.totalPool,
+                resolved: betData?.resolved || false,
+                winningOutcome: betData?.resolved ? betData.outcomes[betData.winningOutcomeIndex].label : undefined,
+                totalPool: betData?.totalPool || 0,
                 participantCount: bettorsWithProfiles.length,
                 bettors: bettorsWithProfiles
               };
